@@ -1,0 +1,73 @@
+/icmis
+│
+├── /config                     # Global Configuration
+│   ├── config.php              # Base URL, Root Path, Error Reporting
+│   └── database.php            # Database Connection ($conn)
+│
+├── /core                       # Core System Logic (The "Brain")
+│   ├── Auth.php                # Login check, Session start, Permission checks
+│   ├── Context.php             # Project/Phase Context logic (from project_context.php)
+│   └── Router.php              # (Optional) For handling clean URLs
+│
+├── /includes                   # Shared UI Components (Views)
+│   ├── header.php              # Top Navigation Bar & Global Toast Logic
+│   ├── sidebar.php             # Side Navigation Menu
+│   ├── footer.php              # Closing </body> tags, global scripts
+│   └── toast.php               # Toast Notification Component
+│
+├── /assets                     # Static Public Assets
+│   ├── /css
+│   │   ├── output.css          # Tailwind/Compiled CSS
+│   │   └── style.css           # Custom Overrides
+│   ├── /js
+│   │   ├── app.js              # Global JS functions
+│   │   └── charts.js           # Chart.js configs
+│   └── /images                 # Logos, Favicons
+│
+├── /modules                    # THE SUBSYSTEMS (Business Logic)
+│   │
+│   ├── /auth                   # Authentication Module
+│   │   ├── login.php           # Login Page
+│   │   ├── register.php        # Sign Up Page
+│   │   └── /api                # Auth Actions
+│   │       ├── login_process.php
+│   │       └── logout.php
+│   │
+│   ├── /budget                 # Budgeting & Cost Control Module
+│   │   ├── dashboard.php       # Budget Dashboard
+│   │   ├── proposals.php       # Budget Proposals List
+│   │   ├── create_proposal.php # Create Form
+│   │   ├── expenses.php        # Expense Tracker
+│   │   ├── add_expense.php     # Add Expense Form
+│   │   ├── reports.php         # Financial Reports Page
+│   │   └── /api                # Backend Processors
+│   │       ├── export_pdf.php
+│   │       └── delete_expense.php
+│   │
+│   ├── /procurement            # Procurement & Inventory Module
+│   │   ├── ihpnventory.php       # Inventory Masterlist
+│   │   ├── purchase_orders.php # PO Management
+│   │   ├── stock_in.php        # Stock In Entry
+│   │   ├── stock_out.php       # Stock Out Entry
+│   │   ├── suppliers.php       # Supplier Management
+│   │   └── /api                # Procurement Actions
+│   │       └── process_po.p
+│   │
+│   ├── /labor                  # Labor & Workforce Module
+│   │   ├── dashboard.php       # Labor Dashboard
+│   │   ├── employees.php       # Employee List
+│   │   ├── attendance.php      # Daily Attendance
+│   │   ├── assignments.php     # Site Assignments
+│   │   ├── payroll.php         # Payroll Processing
+│   │   ├── reports.php         # Labor Reports
+│   │   └── /api                # Labor Actions
+│   │       └── process_payroll.php
+│   │
+│   └── /projects               # Project Management Module
+│       ├── list.php            # Project List (was projects.php)
+│       ├── create.php          # New Project
+│       └── view.php            # Project Details
+│
+├── index.php                   # Entry Point (Router: Redirects to Login or Dashboard)
+├── dashboard.php               # Main System Dashboard (Landing page after login)
+└── admin.php                   # System Administrator Settings
