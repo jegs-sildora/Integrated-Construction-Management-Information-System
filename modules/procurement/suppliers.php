@@ -87,10 +87,8 @@ if (!isset($_SESSION['user_id'])) {
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-
             <form id="supplierForm" class="p-6 space-y-4">
                 <input type="hidden" id="sup_id">
-                
                 <div class="grid grid-cols-3 gap-4">
                     <div class="col-span-2 flex flex-col gap-1">
                         <label class="text-sm font-bold text-slate-600">Supplier Name</label>
@@ -104,7 +102,6 @@ if (!isset($_SESSION['user_id'])) {
                         </select>
                     </div>
                 </div>
-
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
                         <label class="text-sm font-bold text-slate-600">Contact Person</label>
@@ -115,17 +112,14 @@ if (!isset($_SESSION['user_id'])) {
                         <input type="text" id="sup_phone" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
-
                 <div class="flex flex-col gap-1">
                     <label class="text-sm font-bold text-slate-600">Email Address</label>
                     <input type="email" id="sup_email" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
-
                 <div class="flex flex-col gap-1">
                     <label class="text-sm font-bold text-slate-600">Address</label>
                     <input type="text" id="sup_address" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
-
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
                     <button type="button" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 cursor-pointer" onclick="closeSupplierModal()">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover font-bold cursor-pointer shadow-md">Save Supplier</button>
@@ -152,13 +146,11 @@ if (!isset($_SESSION['user_id'])) {
                     </button>
                 </div>
             </div>
-
             <div class="p-8">
                 <div class="mb-6">
                     <p class="text-gray-700 text-lg font-medium mb-2">Are you sure you want to delete this supplier?</p>
                     <p class="text-gray-500 text-sm">This action is permanent and cannot be undone.</p>
                 </div>
-                
                 <div class="bg-red-50 border-2 border-red-200 rounded-xl p-5 shadow-sm">
                     <div class="flex items-start gap-4">
                         <div class="bg-red-100 rounded-full p-2 shrink-0">
@@ -171,7 +163,6 @@ if (!isset($_SESSION['user_id'])) {
                     </div>
                 </div>
             </div>
-
             <div class="flex items-center justify-end gap-3 p-6 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
                 <button onclick="closeDeleteModal()" class="px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-semibold shadow-sm cursor-pointer">
                     Cancel
