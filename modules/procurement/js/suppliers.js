@@ -5,14 +5,28 @@ document.addEventListener("DOMContentLoaded", () => {
 let isEditMode = false;
 let supplierToDelete = null;
 
+// NOTE: showToast() is handled globally by toast.php. 
+
 /* =========================================
-   1. FETCH & RENDER TABLE
+   1. FETCH & RENDER TABLE (Fixed Error Handling)
    ========================================= */
-function fetchSuppliers() {
-    fetch('php/fetch_suppliers.php')
-    .then(response => response.json())
-    .then(data => {
+async function fetchSuppliers() {
+    try {
+        const response = await fetch('php/fetch_suppliers.php');
+        const responseText = await response.text(); // Read raw text first
+
+        let data;
+        try {
+            data = JSON.parse(responseText); // Try to parse JSON
+        } catch (e) {
+            console.error("Server Error (Not JSON):", responseText); // Log the HTML error
+            if(typeof showToast === 'function') showToast("Server Error: Check console for details", "error");
+            return;
+        }
+
         const tbody = document.getElementById("suppliers-table-body");
+        if(!tbody) return;
+        
         tbody.innerHTML = "";
 
         if (!data || data.length === 0) {
@@ -21,7 +35,6 @@ function fetchSuppliers() {
         }
 
         data.forEach(sup => {
-            // Tailwind Status Badges
             let statusClass = "bg-green-100 text-green-700";
             if(sup.status === 'Inactive') statusClass = "bg-red-100 text-red-700";
 
@@ -43,21 +56,21 @@ function fetchSuppliers() {
             `;
             tbody.innerHTML += row;
         });
-    })
-    .catch(error => {
-        console.error('Error loading suppliers:', error);
-        if(typeof showToast === 'function') showToast("Error loading supplier data", "error");
-    });
+
+    } catch (error) {
+        console.error('Fetch Network Error:', error);
+        if(typeof showToast === 'function') showToast("Connection failed", "error");
+    }
 }
 
 /* =========================================
-   2. MODAL HELPER (Force Visibility)
+   2. MODAL HELPER
    ========================================= */
 function showModal(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) {
         modal.classList.remove('hidden');
-        modal.style.display = 'flex'; // Force flex for centering
+        modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
 }
@@ -72,7 +85,7 @@ function hideModal(modalId) {
 }
 
 /* =========================================
-   3. ADD / EDIT LOGIC
+   3. ADD / EDIT LOGIC (Fixed Error Handling)
    ========================================= */
 function openSupplierModal() {
     isEditMode = false;
@@ -80,7 +93,6 @@ function openSupplierModal() {
     document.getElementById("sup_id").value = "";
     document.getElementById("sup_status").value = "Active"; 
     document.querySelector("#supplierModal h2").textContent = "Add New Supplier";
-    
     showModal('supplierModal');
 }
 
@@ -88,7 +100,6 @@ function openEditModal(sup) {
     isEditMode = true;
     document.querySelector("#supplierModal h2").textContent = "Edit Supplier";
     
-    // Fill the form
     document.getElementById("sup_id").value = sup.supplierID;
     document.getElementById("sup_name").value = sup.supplierName;
     document.getElementById("sup_person").value = sup.contactPerson;
@@ -104,7 +115,7 @@ function closeSupplierModal() {
     hideModal('supplierModal');
 }
 
-document.getElementById("supplierForm").addEventListener("submit", function(event) {
+document.getElementById("supplierForm").addEventListener("submit", async function(event) {
     event.preventDefault();
 
     let formData = new FormData();
@@ -116,30 +127,38 @@ document.getElementById("supplierForm").addEventListener("submit", function(even
     formData.append('address', document.getElementById("sup_address").value);
     formData.append('status', document.getElementById("sup_status").value);
 
-    fetch('php/save_supplier.php', { method: 'POST', body: formData })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch('php/save_supplier.php', { method: 'POST', body: formData });
+        const responseText = await response.text();
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch(e) {
+            console.error("Save Error (Not JSON):", responseText);
+            if(typeof showToast === 'function') showToast("Server Error: Check console", "error");
+            return;
+        }
+
         if (data.status === "success") {
             let msg = isEditMode ? "Supplier updated successfully!" : "Supplier added successfully!";
-            if(typeof showToast === 'function') showToast(msg, "success");
-            closeSupplierModal();
-            fetchSuppliers();
+            if(typeof showToast === 'function') showToast(msg, "success", true);
+            
+            window.location.reload(); // Reload to refresh data
         } else {
             if(typeof showToast === 'function') showToast("Error: " + data.message, "error");
         }
-    })
-    .catch(error => {
-        if(typeof showToast === 'function') showToast("Server Error: " + error, "error");
-    });
+    } catch (error) {
+        console.error("Save Network Error:", error);
+    }
 });
 
 /* =========================================
-   4. DELETE LOGIC (UPDATED)
+   4. DELETE LOGIC (Fixed Error Handling)
    ========================================= */
 function deleteSupplier(id) {
     supplierToDelete = id;
     
-    // Update Modal Text
     document.getElementById('delete_title').textContent = "Delete Supplier";
     document.getElementById('delete_label').textContent = "SUPPLIER ID";
     document.getElementById('delete_id_display').textContent = id;
@@ -152,7 +171,7 @@ function closeDeleteModal() {
     supplierToDelete = null;
 }
 
-document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
     if (!supplierToDelete) return;
 
     const btn = this;
@@ -163,28 +182,35 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', function()
     let formData = new FormData();
     formData.append('id', supplierToDelete);
 
-    fetch('php/delete_supplier.php', { method: 'POST', body: formData })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch('php/delete_supplier.php', { method: 'POST', body: formData });
+        const responseText = await response.text();
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch(e) {
+            console.error("Delete Error (Not JSON):", responseText);
+            if(typeof showToast === 'function') showToast("Server Error: Check console", "error");
+            return;
+        }
+
         if (data.status === "success") {
-            if(typeof showToast === 'function') showToast("Supplier deleted successfully!", "success");
-            closeDeleteModal();
-            fetchSuppliers();
+            if(typeof showToast === 'function') showToast("Supplier deleted successfully!", "success", true);
+            window.location.reload();
         } else {
             if(typeof showToast === 'function') showToast("Error deleting supplier.", "error");
         }
-    })
-    .catch(error => {
-        if(typeof showToast === 'function') showToast("Server Error: " + error, "error");
-    })
-    .finally(() => {
+    } catch (error) {
+        console.error("Delete Network Error:", error);
+    } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
-    });
+    }
 });
 
 /* =========================================
-   5. WINDOW CLICK (Close modals on outside click)
+   5. WINDOW CLICK
    ========================================= */
 window.onclick = function(event) {
     if (event.target === document.getElementById('supplierModal')) {

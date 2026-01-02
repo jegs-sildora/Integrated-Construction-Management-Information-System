@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Get User Info from Session (with fallbacks)
 $userName = $_SESSION['user_name'] ?? 'Guest User';
 $userRole = $_SESSION['user_role'] ?? 'Staff';
-$notificationCount = 0; // Placeholder for notification logic
+$notificationCount = 0; 
 
 // Calculate Initials
 $nameParts = explode(' ', $userName);
@@ -96,7 +96,7 @@ if (!isset($pageSection) || !isset($pageTitle)) {
                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
-                <span class="text-sm text-gray-600"><?php echo htmlspecialchars($pageSubTitle); ?></span>
+                <span class="text-sm text-gray-600"><?php echo $pageSubTitle; ?></span>
             <?php endif; ?>
         </div>
 
@@ -122,7 +122,7 @@ if (!isset($pageSection) || !isset($pageTitle)) {
                     <div class="text-xs text-gray-500"><?php echo htmlspecialchars($userRole); ?></div>
                 </div>
 
-                <div class="w-9 h-9 bg-navy-light text-white rounded-lg flex items-center justify-center shadow-sm">
+                <div class="w-9 h-9 bg-slate-800 text-white rounded-lg flex items-center justify-center shadow-sm">
                     <span class="text-xs font-bold tracking-widest"><?php echo $userInitials; ?></span>
                 </div>
             </div>
@@ -130,7 +130,4 @@ if (!isset($pageSection) || !isset($pageTitle)) {
     </div>
 </header>
 
-<?php
-// Include toast for notifications if needed
-include_once __DIR__ . '/toast.php';
-?>
+<?php include_once __DIR__ . '/toast.php'; ?>

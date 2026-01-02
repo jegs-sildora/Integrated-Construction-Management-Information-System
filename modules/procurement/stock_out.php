@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Out - ICMIS</title>
+    <title>Stock Out | ICMIS</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;600;700&display=swap" rel="stylesheet">

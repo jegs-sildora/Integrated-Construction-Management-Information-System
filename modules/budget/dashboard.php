@@ -1,267 +1,228 @@
+<?php 
+  // 1. Connection & Context
+  // Assuming connection.php is in the same directory as dashboard.php
+  include __DIR__ . '/connection.php';
+  include __DIR__ . '/project_context.php'; 
+  require_once __DIR__ . '/../../config/config.php';
+
+  
+  if (session_status() === PHP_SESSION_NONE) {
+      session_start();
+  }
+
+  // Get selected project ID
+  $selected_project_id = getProjectContext($conn);
+  
+  // 2. Fetch Projects for Dropdown (Logic moved BEFORE header include)
+  $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
+  $result_projects = $conn->query($sql_projects);
+  $projects = [];
+  if ($result_projects && $result_projects->num_rows > 0) {
+    while ($row = $result_projects->fetch_assoc()) {
+      $projects[] = $row;
+      // Set first project as default if none selected
+      if ($selected_project_id == 0) {
+        $selected_project_id = $row['project_id'];
+      }
+    }
+  }
+
+  // 3. Build Dropdown HTML
+  $current_page = basename($_SERVER['PHP_SELF']);
+  $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
+  
+  // Dropdown Wrapper
+  $breadcrumbHTML .= '<div class="relative inline-block">';
+  $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
+  
+  foreach ($projects as $proj) {
+    $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
+    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
+  }
+  
+  $breadcrumbHTML .= '</select>';
+  // Custom arrow icon for the select
+  $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
+  $breadcrumbHTML .= '</div>';
+  $breadcrumbHTML .= '</div>';
+
+  // 4. Set Header Variables
+  $pageSection = "Budget & Cost Control";
+  $pageTitle = "Budget Dashboard";
+  $pageSubTitle = $breadcrumbHTML; // Pass the HTML dropdown here
+  
+  // 5. Budget Calculation Logic
+  $project_name = 'No Project Selected';
+  $total_budget = 0;
+  $actual_spending = 0;
+  $remaining_budget = 0;
+  $budget_utilization = 0;
+  $alert_type = 'good';
+  $alert_message = '';
+
+  if ($selected_project_id > 0) {
+    // ... (Your existing budget calculation logic) ...
+    $sql_project = "SELECT p.project_id, p.project_code, p.name,
+                    (SELECT COALESCE(SUM(bp.total_amount), 0) 
+                     FROM budget_proposals bp 
+                     WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
+                    (SELECT COALESCE(SUM(e.amount), 0) 
+                     FROM budget_expenses e 
+                     WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
+                    FROM projects p
+                    WHERE p.project_id = ?";
+    $stmt = $conn->prepare($sql_project);
+    $stmt->bind_param("i", $selected_project_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result && $result->num_rows > 0) {
+      $project = $result->fetch_assoc();
+      $project_name = $project['name'];
+      $total_budget = floatval($project['total_budget']);
+      $actual_spending = floatval($project['actual_spending']);
+      $remaining_budget = $total_budget - $actual_spending;
+      $budget_utilization = $total_budget > 0 ? ($actual_spending / $total_budget) * 100 : 0;
+
+      if ($budget_utilization >= 85) {
+        $alert_type = 'high';
+        $alert_message = "$project_name has utilized " . number_format($budget_utilization, 1) . "% of its budget. Consider reviewing remaining expenses.";
+      } elseif ($budget_utilization >= 70) {
+        $alert_type = 'warning';
+        $alert_message = "$project_name: Budget tracking on schedule at " . number_format($budget_utilization, 1) . "% utilization.";
+      } else {
+        $alert_type = 'good';
+        $alert_message = "$project_name is under budget at " . number_format($budget_utilization, 1) . "% utilization. Good progress.";
+      }
+    }
+    $stmt->close();
+
+    // Phase Calculation Logic
+    $phases_data = [];
+    $phase_definitions = [
+      'Phase 1: Mobilization' => ['color' => 'blue', 'icon' => 'truck'],
+      'Phase 2: Structural' => ['color' => 'purple', 'icon' => 'building-2'],
+      'Phase 3: MEPFS' => ['color' => 'orange', 'icon' => 'zap'],
+      'Phase 4: Finishing' => ['color' => 'green', 'icon' => 'check-circle-2']
+    ];
+
+    // Get Allocations
+    $sql_phases = "SELECT bp.phase, COALESCE(SUM(bp.total_amount), 0) as allocated, MIN(bp.phase_start_date) as phase_start_date, MAX(bp.phase_end_date) as phase_end_date FROM budget_proposals bp WHERE bp.project_id = ? AND bp.status = 'APPROVED' GROUP BY bp.phase ORDER BY bp.phase";
+    $stmt_phases = $conn->prepare($sql_phases);
+    $stmt_phases->bind_param("i", $selected_project_id);
+    $stmt_phases->execute();
+    $result_phases = $stmt_phases->get_result();
+    
+    while ($row = $result_phases->fetch_assoc()) {
+      $phase_name = $row['phase'];
+      if (isset($phase_definitions[$phase_name])) {
+        $date_range = (!empty($row['phase_start_date']) && !empty($row['phase_end_date'])) 
+            ? (new DateTime($row['phase_start_date']))->format('M j') . ' - ' . (new DateTime($row['phase_end_date']))->format('M j, Y') 
+            : 'No dates set';
+            
+        $phases_data[$phase_name] = [
+          'phase' => $phase_name,
+          'color' => $phase_definitions[$phase_name]['color'],
+          'icon' => $phase_definitions[$phase_name]['icon'],
+          'date_range' => $date_range,
+          'allocated' => floatval($row['allocated']),
+          'spent' => 0, 'remaining' => floatval($row['allocated']), 'utilization' => 0, 'expense_count' => 0, 'status' => 'Active'
+        ];
+      }
+    }
+    $stmt_phases->close();
+
+    // Get Expenses
+    $sql_expenses = "SELECT phase, COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0) as spent, COUNT(expense_id) as expense_count FROM budget_expenses WHERE project_id = ? GROUP BY phase";
+    $stmt_expenses = $conn->prepare($sql_expenses);
+    $stmt_expenses->bind_param("i", $selected_project_id);
+    $stmt_expenses->execute();
+    $result_expenses = $stmt_expenses->get_result();
+
+    while ($row = $result_expenses->fetch_assoc()) {
+      $phase_name = $row['phase'];
+      if (isset($phases_data[$phase_name])) {
+        $spent = floatval($row['spent']);
+        $phases_data[$phase_name]['spent'] = $spent;
+        $phases_data[$phase_name]['remaining'] = $phases_data[$phase_name]['allocated'] - $spent;
+        $phases_data[$phase_name]['utilization'] = $phases_data[$phase_name]['allocated'] > 0 ? ($spent / $phases_data[$phase_name]['allocated']) * 100 : 0;
+        $phases_data[$phase_name]['expense_count'] = intval($row['expense_count']);
+        
+        if ($phases_data[$phase_name]['utilization'] > 100) $phases_data[$phase_name]['status'] = 'Over Budget';
+        elseif ($phases_data[$phase_name]['utilization'] >= 99) $phases_data[$phase_name]['status'] = 'Completed';
+      }
+    }
+    $stmt_expenses->close();
+
+    // Fill missing phases
+    foreach ($phase_definitions as $phase_name => $phase_info) {
+      if (!isset($phases_data[$phase_name])) {
+        $phases_data[$phase_name] = [
+          'phase' => $phase_name, 'color' => $phase_info['color'], 'icon' => $phase_info['icon'],
+          'date_range' => 'No dates set', 'allocated' => 0, 'spent' => 0, 'remaining' => 0, 'utilization' => 0, 'expense_count' => 0, 'status' => 'Upcoming'
+        ];
+      }
+    }
+    
+    $active_phases_count = 0;
+    foreach ($phases_data as $phase) {
+      if ($phase['status'] === 'Active' || $phase['status'] === 'Over Budget') $active_phases_count++;
+    }
+  }
+
+  // Check for approved proposals
+  $has_approved_proposals = false;
+  if ($selected_project_id > 0) {
+    $sql_check_proposals = "SELECT COUNT(*) as proposal_count FROM budget_proposals WHERE project_id = ? AND status = 'APPROVED'";
+    $stmt_check = $conn->prepare($sql_check_proposals);
+    $stmt_check->bind_param("i", $selected_project_id);
+    $stmt_check->execute();
+    $result_check = $stmt_check->get_result();
+    if ($result_check && $row_check = $result_check->fetch_assoc()) {
+      $has_approved_proposals = intval($row_check['proposal_count']) > 0;
+    }
+    $stmt_check->close();
+  }
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Global project styles -->
-  <link rel="stylesheet" href="/icmis_budget/css/output.css">
-  <link rel="stylesheet" href="/icmis_budget/css/input.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Budget Dashboard - ICMIS</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>Budget Dashboard | ICMIS</title>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="./css/output.css">
+  <link rel="stylesheet" href="./css/input.css">
+
+  <?php include '../../includes/head_assetsv2.php'; ?>
+
+
   <style>
-    body {
-      font-family: 'Arimo', sans-serif;
+    * {
+      font-family: 'Inter', sans-serif;
     }
   </style>
 </head>
 <body class="bg-gray-50">
+
   <?php 
-    include __DIR__ . '/connection.php';
-    include __DIR__ . '/core/Context.php';
-    
-    // Get selected project ID from global context BEFORE sidebar
-    $selected_project_id = getProjectContext($conn);
-    
-    $userName = "John Doe";
-    $userRole = "Financial Manager";
-    $notificationCount = 0;
-  ?>
-  <?php include __DIR__ . '/../components/sidebar.php'; ?>
-
-  <?php
-
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
-    $result_projects = $conn->query($sql_projects);
-    $projects = [];
-    if ($result_projects && $result_projects->num_rows > 0) {
-      while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-        // Set first project as default if none selected
-        if ($selected_project_id == 0) {
-          $selected_project_id = $row['project_id'];
-        }
-      }
-    }
-
-    // Build breadcrumb navigation with dropdown
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
-    
-    // Project Dropdown
-    $breadcrumbHTML .= '<div class="relative inline-block">';
-    $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
-    
-    foreach ($projects as $proj) {
-      $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
-    }
-    
-    $breadcrumbHTML .= '</select>';
-    $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-    $breadcrumbHTML .= '</div>';
-    
-    $breadcrumbHTML .= '</div>';
-
-    // Set header variables
-    $pageTitle = "Budget Dashboard";
-    $pageSection = "Budget & Cost Control";
-    $pageSubTitle = $breadcrumbHTML;
-    
-    include __DIR__ . '/../components/header.php';
-
-    // Initialize project data variables
-    $project_name = 'No Project Selected';
-    $total_budget = 0;
-    $actual_spending = 0;
-    $remaining_budget = 0;
-    $budget_utilization = 0;
-    $alert_type = 'good';
-    $alert_message = '';
-
-    // Fetch selected project details with budget data
-    if ($selected_project_id > 0) {
-      // Get project basic info with total approved budget proposals
-      $sql_project = "SELECT p.project_id, p.project_code, p.name,
-                      (SELECT COALESCE(SUM(bp.total_amount), 0) 
-                       FROM budget_proposals bp 
-                       WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
-                      (SELECT COALESCE(SUM(e.amount), 0) 
-                       FROM budget_expenses e 
-                       WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                      FROM projects p
-                      WHERE p.project_id = ?";
-      $stmt = $conn->prepare($sql_project);
-      $stmt->bind_param("i", $selected_project_id);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      
-      if ($result && $result->num_rows > 0) {
-        $project = $result->fetch_assoc();
-        $project_name = $project['name'];
-        $total_budget = floatval($project['total_budget']);
-        $actual_spending = floatval($project['actual_spending']);
-        $remaining_budget = $total_budget - $actual_spending;
-        $budget_utilization = $total_budget > 0 ? ($actual_spending / $total_budget) * 100 : 0;
-
-        // Determine alert type and message
-        if ($budget_utilization >= 85) {
-          $alert_type = 'high';
-          $alert_message = "$project_name has utilized " . number_format($budget_utilization, 1) . "% of its budget. Consider reviewing remaining expenses.";
-        } elseif ($budget_utilization >= 70) {
-          $alert_type = 'warning';
-          $alert_message = "$project_name: Budget tracking on schedule at " . number_format($budget_utilization, 1) . "% utilization.";
-        } else {
-          $alert_type = 'good';
-          $alert_message = "$project_name is under budget at " . number_format($budget_utilization, 1) . "% utilization. Good progress.";
-        }
-      }
-      $stmt->close();
-
-      // Fetch phase-based budget data
-      $phases_data = [];
-      // Query budget proposals and expenses separately, then merge
-      // First get all phases with approved budget proposals
-      $sql_phases = "SELECT 
-                      bp.phase,
-                      COALESCE(SUM(bp.total_amount), 0) as allocated,
-                      MIN(bp.phase_start_date) as phase_start_date,
-                      MAX(bp.phase_end_date) as phase_end_date
-                     FROM budget_proposals bp
-                     WHERE bp.project_id = ? AND bp.status = 'APPROVED'
-                     GROUP BY bp.phase
-                     ORDER BY bp.phase";
-      $stmt_phases = $conn->prepare($sql_phases);
-      $stmt_phases->bind_param("i", $selected_project_id);
-      $stmt_phases->execute();
-      $result_phases = $stmt_phases->get_result();
-      
-      $phase_definitions = [
-        'Phase 1: Mobilization' => ['color' => 'blue', 'icon' => 'truck'],
-        'Phase 2: Structural' => ['color' => 'purple', 'icon' => 'building-2'],
-        'Phase 3: MEPFS' => ['color' => 'orange', 'icon' => 'zap'],
-        'Phase 4: Finishing' => ['color' => 'green', 'icon' => 'check-circle-2']
-      ];
-
-      // Build phases data from budget proposals
-      while ($row = $result_phases->fetch_assoc()) {
-        $phase_name = $row['phase'];
-        $allocated = floatval($row['allocated']);
-        
-        // Format date range
-        $date_range = 'No dates set';
-        if (!empty($row['phase_start_date']) && !empty($row['phase_end_date'])) {
-          $start_date = new DateTime($row['phase_start_date']);
-          $end_date = new DateTime($row['phase_end_date']);
-          $date_range = $start_date->format('M j') . ' - ' . $end_date->format('M j, Y');
-        }
-        
-        // Only add phases that are in our definitions
-        if (isset($phase_definitions[$phase_name])) {
-          $phases_data[$phase_name] = [
-            'phase' => $phase_name,
-            'color' => $phase_definitions[$phase_name]['color'],
-            'icon' => $phase_definitions[$phase_name]['icon'],
-            'date_range' => $date_range,
-            'allocated' => $allocated,
-            'spent' => 0,
-            'remaining' => $allocated,
-            'utilization' => 0,
-            'expense_count' => 0,
-            'status' => 'Active' // Phases with approved budgets are active
-          ];
-        }
-      }
-      $stmt_phases->close();
-
-      // Now get expenses data and update the phases
-      $sql_expenses = "SELECT 
-                        phase,
-                        COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0) as spent,
-                        COUNT(expense_id) as expense_count
-                       FROM budget_expenses
-                       WHERE project_id = ?
-                       GROUP BY phase";
-      $stmt_expenses = $conn->prepare($sql_expenses);
-      $stmt_expenses->bind_param("i", $selected_project_id);
-      $stmt_expenses->execute();
-      $result_expenses = $stmt_expenses->get_result();
-
-      while ($row = $result_expenses->fetch_assoc()) {
-        $phase_name = $row['phase'];
-        $spent = floatval($row['spent']);
-        
-        if (isset($phases_data[$phase_name])) {
-          $phases_data[$phase_name]['spent'] = $spent;
-          $phases_data[$phase_name]['remaining'] = $phases_data[$phase_name]['allocated'] - $spent;
-          $phases_data[$phase_name]['utilization'] = $phases_data[$phase_name]['allocated'] > 0 ? 
-                                                      ($spent / $phases_data[$phase_name]['allocated']) * 100 : 0;
-          $phases_data[$phase_name]['expense_count'] = intval($row['expense_count']);
-          
-          // Update status based on utilization
-          if ($phases_data[$phase_name]['utilization'] > 100) {
-            $phases_data[$phase_name]['status'] = 'Over Budget';
-          } elseif ($phases_data[$phase_name]['utilization'] >= 99) {
-            $phases_data[$phase_name]['status'] = 'Completed';
-          }
-          // Otherwise keep 'Active' status
-        }
-      }
-      $stmt_expenses->close();
-
-      // Fill in missing phases with zero data
-      foreach ($phase_definitions as $phase_name => $phase_info) {
-        if (!isset($phases_data[$phase_name])) {
-          $phases_data[$phase_name] = [
-            'phase' => $phase_name,
-            'color' => $phase_info['color'],
-            'icon' => $phase_info['icon'],
-            'date_range' => 'No dates set',
-            'allocated' => 0,
-            'spent' => 0,
-            'remaining' => 0,
-            'utilization' => 0,
-            'expense_count' => 0,
-            'status' => 'Upcoming'
-          ];
-        }
-      }
-
-      // Calculate active phases count
-      $active_phases_count = 0;
-      foreach ($phases_data as $phase) {
-        if ($phase['status'] === 'Active' || $phase['status'] === 'Over Budget') {
-          $active_phases_count++;
-        }
-      }
-    }
-
-    // Check if there are approved budget proposals for the selected project
-    $has_approved_proposals = false;
-    if ($selected_project_id > 0) {
-      $sql_check_proposals = "SELECT COUNT(*) as proposal_count 
-                              FROM budget_proposals 
-                              WHERE project_id = ? AND status = 'APPROVED'";
-      $stmt_check = $conn->prepare($sql_check_proposals);
-      $stmt_check->bind_param("i", $selected_project_id);
-      $stmt_check->execute();
-      $result_check = $stmt_check->get_result();
-      if ($result_check && $row_check = $result_check->fetch_assoc()) {
-        $has_approved_proposals = intval($row_check['proposal_count']) > 0;
-      }
-      $stmt_check->close();
-    }
+  // FIX: Go up two levels to find 'includes'
+  // Current: modules/budget/dashboard.php
+  // Target:  includes/sidebar.php
+  include __DIR__ . '/../../includes/sidebar.php'; 
   ?>
 
-  <!-- Main Content Area -->
-  <main class="ml-56 mt-20 p-6">
+  <?php 
+  // FIX: Go up two levels to find 'includes'
+  include __DIR__ . '/../../includes/header.php'; 
+  ?>
+
+  <main class="ml-56 pt-24 p-6 transition-all duration-300">
     <div class="max-w-7xl mx-auto">
       <?php if ($has_approved_proposals): ?>
-      <!-- Dynamic Alert Banner -->
+      
       <?php
         $alert_colors = [
           'high' => ['bg' => 'bg-red-50', 'border' => 'border-red-200', 'icon' => 'text-red-600', 'text' => 'text-red-900'],
@@ -275,10 +236,7 @@
         <p class="<?php echo $colors['text']; ?> text-sm font-medium"><?php echo htmlspecialchars($alert_message); ?></p>
       </div>
 
-      
-      <!-- Budget Summary Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <!-- Total Budget Allocated -->
         <div class="bg-white rounded-xl shadow-sm p-6 border-2 border-[#e9922c] hover:shadow-lg transition-shadow duration-300">
           <div class="flex items-center justify-center w-12 h-12 bg-linear-to-br from-[#e9922c] to-[#d17f1f] rounded-lg mb-4">
             <i data-lucide="wallet" class="w-6 h-6 text-white"></i>
@@ -288,7 +246,6 @@
           <p class="text-gray-500 text-xs">Across 4 phases</p>
         </div>
 
-        <!-- Total Spent -->
         <div class="bg-white rounded-xl shadow-sm p-6 border-2 <?php echo $budget_utilization > 90 ? 'border-red-500' : 'border-green-500'; ?> hover:shadow-lg transition-shadow duration-300">
           <div class="flex items-center justify-center w-12 h-12 bg-linear-to-br <?php echo $budget_utilization > 90 ? 'from-red-500 to-red-600' : 'from-green-500 to-green-600'; ?> rounded-lg mb-4">
             <i data-lucide="trending-down" class="w-6 h-6 text-white"></i>
@@ -298,7 +255,6 @@
           <p class="text-gray-500 text-xs"><?php echo number_format($budget_utilization, 1); ?>% utilized</p>
         </div>
 
-        <!-- Remaining Budget -->
         <div class="bg-white rounded-xl shadow-sm p-6 border-2 border-blue-500 hover:shadow-lg transition-shadow duration-300">
           <div class="flex items-center justify-center w-12 h-12 bg-linear-to-br from-blue-500 to-blue-600 rounded-lg mb-4">
             <i data-lucide="piggy-bank" class="w-6 h-6 text-white"></i>
@@ -308,7 +264,6 @@
           <p class="text-gray-500 text-xs"><?php echo number_format(100 - $budget_utilization, 1); ?>% available</p>
         </div>
 
-        <!-- Active Phases -->
         <div class="bg-white rounded-xl shadow-sm p-6 border-2 border-purple-500 hover:shadow-lg transition-shadow duration-300">
           <div class="flex items-center justify-center w-12 h-12 bg-linear-to-br from-purple-500 to-purple-600 rounded-lg mb-4">
             <i data-lucide="layers" class="w-6 h-6 text-white"></i>
@@ -319,7 +274,6 @@
         </div>
       </div>
 
-      <!-- Phase Cards Grid -->
       <div class="grid grid-cols-1 <?php if ($active_phases_count > 1) echo 'lg:grid-cols-2'; ?> gap-6 mb-8">
         <?php foreach ($phases_data as $phase_name => $phase):
           // Only render active phases (not upcoming)
@@ -340,9 +294,7 @@
             'Over Budget' => 'bg-red-100 text-red-700 border-red-300'
           ];
         ?>
-        <!-- Phase Card -->
         <div class="bg-white border-2 border-<?php echo $color; ?>-500 rounded-xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer phase-card" data-phase="<?php echo htmlspecialchars($phase_name); ?>">
-          <!-- Card Header with Gradient -->
           <div class="bg-linear-to-r from-<?php echo $color; ?>-500 to-<?php echo $color; ?>-600 px-5 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
@@ -357,30 +309,24 @@
             </span>
           </div>
 
-          <!-- Card Body -->
           <div class="p-5">
-            <!-- Timeline -->
             <div class="flex items-center gap-2 text-gray-600 text-sm mb-4">
               <i data-lucide="calendar" class="w-4 h-4"></i>
               <span><?php echo $phase['date_range']; ?></span>
             </div>
 
-            <!-- Metrics Grid -->
             <div class="grid grid-cols-3 gap-3 mb-4">
-              <!-- Budget -->
               <div class="bg-gray-50 rounded-lg p-3 text-center">
                 <p class="text-xs text-gray-500 mb-1">Budget</p>
                 <p class="text-lg font-bold text-gray-900">₱<?php echo number_format($phase['allocated'], 2); ?></p>
               </div>
 
-              <!-- Spent -->
               <div class="bg-gray-50 rounded-lg p-3 text-center">
                 <p class="text-xs text-gray-500 mb-1">Spent</p>
                 <p class="text-lg font-bold text-<?php echo $color; ?>-600">₱<?php echo number_format($phase['spent'], 2); ?></p>
                 <p class="text-xs text-gray-500"><?php echo number_format($phase['utilization'], 1); ?>%</p>
               </div>
 
-              <!-- Remaining -->
               <div class="bg-gray-50 rounded-lg p-3 text-center">
                 <p class="text-xs text-gray-500 mb-1">Remaining</p>
                 <p class="text-lg font-bold text-gray-900">₱<?php echo number_format($phase['remaining'], 2); ?></p>
@@ -388,7 +334,6 @@
               </div>
             </div>
 
-            <!-- Progress Bar -->
             <div class="mb-4">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-gray-700">Budget Utilization</span>
@@ -405,7 +350,6 @@
               <?php endif; ?>
             </div>
 
-            <!-- Card Footer -->
             <div class="flex items-center justify-between pt-4 border-t border-gray-200">
               <div class="flex items-center gap-4 text-sm text-gray-600">
                 <div class="flex items-center gap-1">
@@ -423,7 +367,6 @@
         <?php endforeach; ?>
       </div>
       <?php else: ?>
-      <!-- No Approved Budget Proposals State -->
       <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 h-[calc(100vh-128px)] flex items-center justify-center">
         <div class="max-w-md mx-auto text-center">
           <div class="flex justify-center mb-6">
@@ -437,13 +380,10 @@
           <p class="text-gray-500 mb-8 leading-relaxed">
             Please create and approve budget proposals first to view the budget dashboard and track expenses.
           </p>
-          <!-- Helper Information Section -->
-            <div class="mt-8 pt-8 border-t border-gray-200">
+          <div class="mt-8 pt-8 border-t border-gray-200">
               <p class="text-sm text-gray-600 mb-3 text-left">To view the budget dashboard:</p>
               
-              <!-- Feature Cards Grid -->
               <div class="space-y-3">
-                <!-- Feature 1 -->
                 <div class="flex gap-3 bg-gray-50 rounded-lg p-3 text-left">
                   <div class="flex-shrink-0 mt-1.5">
                     <div class="w-1.5 h-1.5 bg-[#e9922c] rounded-full"></div>
@@ -452,8 +392,6 @@
                     <div class="text-sm text-gray-900 font-medium">Navigate to Budget Proposals section</div>
                   </div>
                 </div>
-
-                <!-- Feature 2 -->
                 <div class="flex gap-3 bg-gray-50 rounded-lg p-3 text-left">
                   <div class="flex-shrink-0 mt-1.5">
                     <div class="w-1.5 h-1.5 bg-[#e9922c] rounded-full"></div>
@@ -462,8 +400,6 @@
                     <div class="text-sm text-gray-900 font-medium">Create a new budget proposal for this project</div>
                   </div>
                 </div>
-
-                <!-- Feature 3 -->
                 <div class="flex gap-3 bg-gray-50 rounded-lg p-3 text-left">
                   <div class="flex-shrink-0 mt-1.5">
                     <div class="w-1.5 h-1.5 bg-[#e9922c] rounded-full"></div>
@@ -480,12 +416,8 @@
     </div>
   </main>
 
-  <!-- Toast included globally via header.php -->
-
-  <!-- Phase Detail Modal (Receipt Style) -->
   <div id="phase-detail-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-      <!-- Modal Header -->
       <div class="bg-linear-to-r from-slate-800 to-slate-700 px-6 py-5 relative">
         <div class="absolute top-0 left-0 right-0 h-1 phase-modal-border"></div>
         <div class="flex items-center justify-between">
@@ -506,11 +438,8 @@
         </div>
       </div>
 
-      <!-- Scrollable Content -->
       <div class="overflow-y-auto max-h-[calc(90vh-160px)] p-6">
-        <!-- Receipt Document -->
         <div id="receipt-content" class="bg-white rounded-xl border-t-4 phase-border shadow-lg">
-          <!-- Company Header -->
           <div class="border-b-2 border-dashed border-gray-300 p-6 text-center">
             <div class="flex justify-center mb-3">
               <div class="w-16 h-16 bg-linear-to-br from-[#e9922c] to-[#d17f1f] rounded-xl flex items-center justify-center text-white text-3xl font-bold shadow-lg">
@@ -522,7 +451,6 @@
             <p class="text-xs text-gray-500 mt-1">Budget Proposal Document</p>
           </div>
 
-          <!-- Info Grid -->
           <div class="grid grid-cols-2 gap-4 p-6 border-b border-gray-200 bg-gray-50">
             <div>
               <p class="text-xs text-gray-500 mb-1">Phase Name</p>
@@ -542,7 +470,6 @@
             </div>
           </div>
 
-          <!-- Summary Cards -->
           <div class="grid grid-cols-3 gap-4 p-6 border-b border-gray-200">
             <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
               <p class="text-xs text-green-600 font-medium mb-1">ALLOCATED</p>
@@ -559,7 +486,6 @@
             </div>
           </div>
 
-          <!-- Utilization Bar -->
           <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-semibold text-gray-700">Budget Utilization</span>
@@ -570,35 +496,30 @@
             </div>
           </div>
 
-          <!-- Approved Budget Proposals -->
           <div class="p-6 border-b border-gray-200">
             <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
               <i data-lucide="file-text" class="w-5 h-5"></i>
               Approved Budget Proposals
             </h3>
             <div id="receipt-budget-proposals" class="space-y-2">
-              <!-- Dynamic budget proposals will be inserted here -->
               <div class="text-center py-8 text-gray-500">
                 <p>Loading budget proposals...</p>
               </div>
             </div>
           </div>
 
-          <!-- Line Items Breakdown -->
           <div class="p-6">
             <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
               <i data-lucide="list" class="w-5 h-5"></i>
               Expense Line Items
             </h3>
             <div id="receipt-line-items" class="space-y-2">
-              <!-- Dynamic line items will be inserted here -->
               <div class="text-center py-8 text-gray-500">
                 <p>No expenses recorded for this phase yet.</p>
               </div>
             </div>
           </div>
 
-          <!-- Grand Total Section -->
           <div class="border-t-2 border-dashed border-gray-300 phase-total-bg p-6">
             <div class="flex items-center justify-between">
               <div>
@@ -611,7 +532,6 @@
         </div>
       </div>
 
-      <!-- Modal Footer -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
         <button type="button" onclick="printPhaseDetails()" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
           <i data-lucide="printer" class="w-4 h-4"></i>
