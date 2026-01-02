@@ -1,16 +1,25 @@
 <?php
+// modules/inventory/php/fetch_inventory_dropdown.php
 header('Content-Type: application/json');
-include 'db_connect.php';
+require_once 'db_connect.php'; // Ensure this file exists in the same folder
 
-// Select only items that actually have stock
-$sql = "SELECT itemID, itemName, quantity, unit FROM inventory WHERE quantity > 0";
-$result = $conn_proc->query($sql);
+// Use correct connection variable
+$db = $conn_proc ?? $conn;
 
-$data = array();
-while($row = $result->fetch_assoc()) {
-    $data[] = $row;
+// Fetch items with available stock
+$sql = "SELECT itemID, item_name as itemName, quantity, unit 
+        FROM inventory 
+        WHERE quantity > 0 
+        ORDER BY item_name ASC";
+
+$result = $db->query($sql);
+
+$data = [];
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
 }
 
 echo json_encode($data);
-$conn_proc->close();
 ?>

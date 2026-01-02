@@ -1,4 +1,6 @@
 <?php
+// modules/inventory/stock_in.php
+
 // 1. Load Config & Session
 require_once '../../config/config.php';
 
@@ -25,8 +27,11 @@ if (!isset($_SESSION['user_id'])) {
 <body class="bg-slate-50 font-sans text-slate-800">
 
     <?php include '../../includes/sidebar.php'; ?>
-
-    <?php include '../../includes/header.php'; ?>
+    <?php 
+        $pageTitle = "Inventory Management";
+        $pageSubTitle = "Stock In (Receiving)";
+        include '../../includes/header.php'; 
+    ?>
 
     <main class="ml-56 pt-24 p-8 min-h-screen transition-all duration-300">
         
@@ -34,24 +39,28 @@ if (!isset($_SESSION['user_id'])) {
             <div class="flex justify-between items-end bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                 <div>
                     <h1 class="text-2xl font-black text-navy-dark">Stock In (Receiving)</h1>
-                    <p class="text-slate-500 mt-1">Process incoming items from approved Purchase Orders.</p>
+                    <p class="text-slate-500 mt-1">Receive items from Approved Purchase Orders.</p>
                 </div>
-                <button class="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center gap-2" onclick="openStockModal()">
-                    <i class="fa-solid fa-box-open"></i> Receive Stock
+                <button class="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-100 transition-all flex items-center gap-2 transform hover:-translate-y-0.5" onclick="openStockModal()">
+                    <i class="fa-solid fa-box-open"></i> 
+                    <span>Receive Items</span>
                 </button>
             </div>
 
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 class="font-bold text-slate-700">Recent Receiving Logs</h3>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Reference No.</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">PO Source</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Item Name</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Qty Received</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date Received</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Received By</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Log ID</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">PO Reference</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Item Name</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Qty Received</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Date Received</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Received By</th>
                             </tr>
                         </thead>
                         <tbody id="stockin-table-body" class="divide-y divide-slate-100">
@@ -62,48 +71,76 @@ if (!isset($_SESSION['user_id'])) {
         </div>
     </main>
 
-    <div id="stockModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
-            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-navy-dark">Receive Stock</h2>
-                <button type="button" class="text-slate-400 hover:text-red-500 transition-colors text-xl" onclick="closeStockModal()">
+    <div id="stockModal" class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden transform transition-all scale-100 m-4">
+            
+            <div class="bg-gradient-to-r from-navy-dark to-slate-800 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/10 p-2 rounded-lg text-white">
+                        <i class="fa-solid fa-dolly"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-white">Receive Stock</h2>
+                        <p class="text-slate-400 text-xs">Select a PO to view ordered items</p>
+                    </div>
+                </div>
+                <button type="button" class="text-slate-400 hover:text-white transition-colors text-xl" onclick="closeStockModal()">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <form id="stockForm" class="p-6 space-y-4">
-                <div class="space-y-1">
-                    <label class="block text-xs font-bold text-slate-500 uppercase">Select Approved PO</label>
-                    <select id="stk_po_select" onchange="autoFillStockDetails()" required class="w-full p-2.5 bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block">
-                        </select>
-                </div>
+            <div class="p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
                 
-                <div class="space-y-1">
-                    <label class="block text-xs font-bold text-slate-500 uppercase">Item Name</label>
-                    <input type="text" id="stk_item" class="w-full p-2.5 bg-slate-100 border border-slate-200 text-slate-500 text-sm rounded-lg" readonly>
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Select Approved PO</label>
+                    <select id="stk_po_select" class="w-full p-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-shadow">
+                        <option value="" disabled selected>-- Select an Approved Order --</option>
+                    </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-slate-500 uppercase">Quantity</label>
-                        <input type="number" id="stk_qty" required class="w-full p-2.5 bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary">
+                <div id="items_container" class="hidden animate-fade-in">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-navy-dark uppercase">Items in this Order</h3>
+                        <span class="text-xs text-slate-500 italic">* Uncheck items you are NOT receiving today</span>
                     </div>
-                    <div class="space-y-1">
-                        <label class="block text-xs font-bold text-slate-500 uppercase">Unit</label>
-                        <input type="text" id="stk_unit" class="w-full p-2.5 bg-slate-100 border border-slate-200 text-slate-500 text-sm rounded-lg" readonly>
+
+                    <div class="border border-slate-200 rounded-xl overflow-hidden mb-6">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-3 w-10 text-center"><input type="checkbox" id="check_all_items" checked class="rounded border-slate-300 text-primary focus:ring-primary"></th>
+                                    <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Item Name</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right">Ordered</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right w-32">Receive Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody id="po_items_list" class="divide-y divide-slate-100 bg-white">
+                                </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex gap-3 mb-6">
+                        <i class="fa-solid fa-circle-info text-yellow-600 mt-0.5"></i>
+                        <div class="text-xs text-yellow-800">
+                            <strong>Note:</strong> Items received will be added to current inventory. The Purchase Order status will be updated to <b>COMPLETED</b> if all items are fully received.
+                        </div>
                     </div>
                 </div>
 
-                <div class="space-y-1">
-                    <label class="block text-xs font-bold text-slate-500 uppercase">Received By</label>
-                    <input type="text" id="stk_user" value="<?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?>" required class="w-full p-2.5 bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary" readonly>
+                <div class="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Received By</label>
+                        <input type="text" id="stk_user_display" value="<?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?>" class="w-full p-2.5 bg-slate-100 border border-slate-200 text-slate-600 font-bold rounded-lg cursor-not-allowed" readonly>
+                        <input type="hidden" id="stk_user_id" value="<?php echo $_SESSION['user_id'] ?? 1; ?>">
+                    </div>
+                    <div class="flex items-end justify-end gap-3">
+                        <button type="button" class="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" onclick="closeStockModal()">Cancel</button>
+                        <button id="confirm_receive_btn" type="button" class="px-5 py-2.5 text-sm font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Confirm Receipt
+                        </button>
+                    </div>
                 </div>
-
-                <div class="pt-4 mt-2 flex justify-end gap-3">
-                    <button type="button" class="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onclick="closeStockModal()">Cancel</button>
-                    <button type="submit" class="px-4 py-2 text-sm font-bold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-md transition-colors">Confirm Receipt</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 

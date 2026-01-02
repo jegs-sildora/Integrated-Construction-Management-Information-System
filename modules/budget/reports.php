@@ -73,7 +73,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   
-  <style> body { font-family: 'Arimo', sans-serif; } </style>
+  <link rel="apple-touch-icon" sizes="180x180" href="../../assets/images/favicon/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="../../assets/images/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../../assets/images/favicon/favicon-16x16.png">
+  <link rel="manifest" href="../../assets/images/favicon/site.webmanifest">
+  <?php include '../../includes/head_assetsv2.php'; ?>
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+  </style>
 </head>
 <body class="bg-gray-50 text-slate-800">
   <?php include __DIR__ . '/../components/sidebar.php'; ?>

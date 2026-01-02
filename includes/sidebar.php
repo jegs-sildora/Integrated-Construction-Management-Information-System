@@ -47,7 +47,7 @@ $is_budget_reports = ($current_page === 'reports.php' && $is_budget);
 // 5. PROCUREMENT MODULE
 $is_procurement = strpos($current_uri, '/modules/procurement/') !== false;
 $is_inventory = ($current_page === 'inventory.php');
-$is_po = ($current_page === 'orders.php');
+$is_po = in_array($current_page, ['orders.php', 'create_order.php', 'edit_order.php']);
 $is_stock_in = ($current_page === 'stock_in.php');
 $is_stock_out = ($current_page === 'stock_out.php');
 $is_suppliers = ($current_page === 'suppliers.php');

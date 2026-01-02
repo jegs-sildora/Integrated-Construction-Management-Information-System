@@ -219,7 +219,7 @@
   include __DIR__ . '/../../includes/header.php'; 
   ?>
 
-  <main class="ml-56 pt-24 p-6 transition-all duration-300">
+  <main class="ml-56 pt-28 p-6 transition-all duration-300">
     <div class="max-w-7xl mx-auto">
       <?php if ($has_approved_proposals): ?>
       
@@ -243,7 +243,6 @@
           </div>
           <p class="text-gray-600 text-sm mb-1">Total Budget Allocated</p>
           <p class="text-gray-900 text-3xl font-bold mb-1">₱<?php echo number_format($total_budget, 2); ?></p>
-          <p class="text-gray-500 text-xs">Across 4 phases</p>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm p-6 border-2 <?php echo $budget_utilization > 90 ? 'border-red-500' : 'border-green-500'; ?> hover:shadow-lg transition-shadow duration-300">

@@ -1,37 +1,31 @@
 <?php
-error_reporting(0);
-ini_set('display_errors', 0);
+// modules/inventory/php/fetch_stockout.php
 header('Content-Type: application/json');
-include 'db_connect.php';
+require_once 'db_connect.php';
 
-if ($conn_proc->connect_error) {
-    echo json_encode([]);
-    exit();
-}
+$db = $conn_proc ?? $conn;
 
-// Ensure the table names here match your database exactly
+// Join stock_out with inventory to get the Item Name and Unit
 $sql = "SELECT 
-            s.id,
-            s.refNo, 
-            COALESCE(i.itemName, 'Unknown Item') as itemName, 
-            s.quantity, 
-            COALESCE(i.unit, '-') as unit, 
-            s.issuedTo, 
-            s.dateIssued, 
-            s.notes 
-        FROM stock_out s
-        LEFT JOIN inventory i ON s.itemID = i.itemID
-        ORDER BY s.dateIssued DESC, s.id DESC";
+            so.refNo, 
+            i.item_name as itemName, 
+            so.quantity, 
+            i.unit, 
+            so.issuedTo, 
+            DATE_FORMAT(so.dateIssued, '%b %d, %Y') as dateIssued, 
+            so.notes 
+        FROM stock_out so 
+        JOIN inventory i ON so.itemID = i.itemID 
+        ORDER BY so.dateIssued DESC, so.id DESC";
 
-$result = $conn_proc->query($sql);
+$result = $db->query($sql);
 
-$data = array();
+$data = [];
 if ($result) {
-    while($row = $result->fetch_assoc()) {
+    while ($row = $result->fetch_assoc()) {
         $data[] = $row;
     }
 }
 
 echo json_encode($data);
-$conn_proc->close();
 ?>

@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 6.0.0-dev+20250914.f72491a1c0
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Dec 22, 2025 at 05:14 AM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Host: localhost:3306
+-- Generation Time: Jan 02, 2026 at 06:46 PM
+-- Server version: 8.4.3
+-- PHP Version: 8.4.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -28,62 +28,94 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `inventory` (
-  `itemID` int(11) NOT NULL,
-  `itemName` varchar(100) NOT NULL,
-  `quantity` int(11) NOT NULL DEFAULT 0,
-  `unit` varchar(20) DEFAULT 'pcs',
-  `status` varchar(20) DEFAULT 'In Stock',
-  `lastUpdated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `itemID` int NOT NULL,
+  `item_name` varchar(255) NOT NULL,
+  `category` varchar(100) DEFAULT 'Uncategorized',
+  `quantity` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `unit` varchar(50) DEFAULT NULL,
+  `unit_cost` decimal(15,2) DEFAULT '0.00',
+  `last_updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `inventory`
 --
 
-INSERT INTO `inventory` (`itemID`, `itemName`, `quantity`, `unit`, `status`, `lastUpdated`) VALUES
-(1, 'Plywood', 100, 'pcs', 'In Stock', '2025-12-22 04:08:31'),
-(2, 'Portland Cement', 100, 'bags', 'In Stock', '2025-12-22 03:59:30'),
-(3, 'Steel Rebar', 1000, 'pcs', 'In Stock', '2025-12-22 03:59:30'),
-(4, 'Paint Latex', 50, 'gals', 'In Stock', '2025-12-22 03:59:30'),
-(5, 'G.I. Sheet (Corrugated)', 150, 'pcs', 'In Stock', '2025-12-22 04:11:36'),
-(6, 'Electrical Wire (THHN 3.5mm)', 15, 'rolls', 'Low Stock', '2025-12-22 04:11:36'),
-(7, 'PVC Pipe (4 inch)', 8, 'pcs', 'Low Stock', '2025-12-22 04:11:36'),
-(8, 'Sand (Vibro)', 0, 'cu.m', 'Out of Stock', '2025-12-22 04:11:36'),
-(9, 'Gravel (3/4)', 40, 'cu.m', 'In Stock', '2025-12-22 04:11:36'),
-(10, 'Safety Helmet (White)', 25, 'pcs', 'In Stock', '2025-12-22 04:11:36'),
-(11, 'Angle Bar 2x2', 200, 'pcs', 'In Stock', '2025-12-22 04:11:36');
+INSERT INTO `inventory` (`itemID`, `item_name`, `category`, `quantity`, `unit`, `unit_cost`, `last_updated`) VALUES
+(1, 'Assorted Common Wire Nails (kg)', 'General', 15.00, 'pcs', 85.00, '2026-01-02 18:35:40');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `purchaseorders`
+-- Table structure for table `inventory_receiving_logs`
 --
 
-CREATE TABLE `purchaseorders` (
-  `orderID` varchar(20) NOT NULL,
-  `orderDate` date DEFAULT NULL,
-  `itemName` varchar(100) NOT NULL,
-  `itemSubtext` varchar(100) DEFAULT NULL,
-  `quantity` int(11) NOT NULL,
-  `unit` varchar(20) NOT NULL,
-  `totalCost` decimal(10,2) DEFAULT NULL,
-  `supplierName` varchar(100) DEFAULT NULL,
-  `location` varchar(100) DEFAULT NULL,
-  `status` varchar(20) DEFAULT 'Pending'
+CREATE TABLE `inventory_receiving_logs` (
+  `id` int NOT NULL,
+  `po_id` int NOT NULL,
+  `item_id_ref` int NOT NULL COMMENT 'ID from purchase_order_items',
+  `item_name` varchar(255) NOT NULL,
+  `quantity_received` decimal(10,2) NOT NULL,
+  `received_by` int NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `inventory_receiving_logs`
+--
+
+INSERT INTO `inventory_receiving_logs` (`id`, `po_id`, `item_id_ref`, `item_name`, `quantity_received`, `received_by`, `created_at`) VALUES
+(1, 1, 6, 'Assorted Common Wire Nails (kg)', 15.00, 7, '2026-01-02 18:35:40');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `purchase_orders`
+--
+
+CREATE TABLE `purchase_orders` (
+  `po_id` int NOT NULL,
+  `po_reference` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `project_id` int NOT NULL,
+  `supplier_id` int NOT NULL,
+  `phase` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `order_title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `order_date` date NOT NULL DEFAULT (curdate()),
+  `total_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `status` enum('PENDING','APPROVED','REJECTED','COMPLETED') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'PENDING',
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `purchaseorders`
+-- Dumping data for table `purchase_orders`
 --
 
-INSERT INTO `purchaseorders` (`orderID`, `orderDate`, `itemName`, `itemSubtext`, `quantity`, `unit`, `totalCost`, `supplierName`, `location`, `status`) VALUES
-('PO-2025-001', '2025-01-10', 'Plywood', 'asd', 100, 'pcs', 45000.00, 'CitiHardware', 'asd', 'Approved'),
-('PO-2025-002', '2025-01-12', 'Portland Cement', NULL, 50, 'bags', 12500.00, 'Wilcon Depot', NULL, 'Approved'),
-('PO-2025-003', '2025-01-15', 'Electrical Wire (THHN 3.5mm)', 'Phelps Dodge', 20, 'rolls', 56000.00, 'Negros Electrical Supply', 'Project Alpha', 'Pending'),
-('PO-2025-004', '2025-01-18', 'G.I. Sheet (Corrugated)', 'Gauge 26', 100, 'pcs', 35000.00, 'Bacolod Steel & Roofing', 'Warehouse', 'Approved'),
-('PO-2025-005', '2025-01-19', 'Safety Shoes', 'Size 9 - Caterpillar', 10, 'pairs', 25000.00, 'CitiHardware', 'HR Dept', 'Rejected'),
-('PO-2025-006', '2025-01-20', 'PVC Pipe (4 inch)', 'Neltex Blue', 50, 'pcs', 12500.00, 'TopNotch Plumbing', 'Project Beta', 'Approved'),
-('PO-2025-007', '2025-01-22', 'Paint Thinner', 'Gallon Size', 10, 'gals', 3500.00, 'Wilcon Depot', 'Painting Team', 'Pending');
+INSERT INTO `purchase_orders` (`po_id`, `po_reference`, `project_id`, `supplier_id`, `phase`, `order_title`, `order_date`, `total_amount`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'PO-2026-0001', 1, 3, 'Phase 1: Mobilization', 'Phase 1 Materials', '2026-01-03', 1275.00, 'COMPLETED', 1, '2026-01-02 17:51:18', '2026-01-02 18:35:40');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `purchase_order_items`
+--
+
+CREATE TABLE `purchase_order_items` (
+  `id` int NOT NULL,
+  `po_id` int NOT NULL,
+  `item_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `quantity` decimal(10,2) NOT NULL,
+  `unit_cost` decimal(15,2) NOT NULL,
+  `total_cost` decimal(15,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `purchase_order_items`
+--
+
+INSERT INTO `purchase_order_items` (`id`, `po_id`, `item_name`, `quantity`, `unit_cost`, `total_cost`) VALUES
+(6, 1, 'Assorted Common Wire Nails (kg)', 15.00, 85.00, 1275.00);
 
 -- --------------------------------------------------------
 
@@ -92,25 +124,15 @@ INSERT INTO `purchaseorders` (`orderID`, `orderDate`, `itemName`, `itemSubtext`,
 --
 
 CREATE TABLE `stock_in` (
-  `stockInID` int(11) NOT NULL,
+  `stockInID` int NOT NULL,
   `referenceNo` varchar(50) DEFAULT NULL,
-  `poID` varchar(20) NOT NULL,
+  `po_id` int NOT NULL,
   `itemName` varchar(100) NOT NULL,
-  `quantityReceived` int(11) NOT NULL,
+  `quantityReceived` int NOT NULL,
   `unit` varchar(20) DEFAULT NULL,
   `receivedBy` varchar(100) DEFAULT NULL,
   `dateReceived` date DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `stock_in`
---
-
-INSERT INTO `stock_in` (`stockInID`, `referenceNo`, `poID`, `itemName`, `quantityReceived`, `unit`, `receivedBy`, `dateReceived`) VALUES
-(1, 'SI-2025-001', 'PO-2025-001', 'Plywood', 100, 'pcs', 'Admin User', '2025-01-15'),
-(2, 'SI-2025-101', 'PO-2025-004', 'G.I. Sheet (Corrugated)', 100, 'pcs', 'Admin User', '2025-01-20'),
-(3, 'SI-2025-102', 'PO-2025-001', 'Plywood', 50, 'pcs', 'Admin User', '2025-01-21'),
-(4, 'SI-2025-103', 'PO-2025-006', 'PVC Pipe (4 inch)', 30, 'pcs', 'Warehouse Keeper', '2025-01-23');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -119,30 +141,14 @@ INSERT INTO `stock_in` (`stockInID`, `referenceNo`, `poID`, `itemName`, `quantit
 --
 
 CREATE TABLE `stock_out` (
-  `id` int(11) NOT NULL,
-  `refNo` varchar(50) NOT NULL,
-  `itemID` int(11) NOT NULL,
-  `quantity` int(11) NOT NULL,
-  `issuedTo` varchar(100) DEFAULT NULL,
+  `id` int NOT NULL,
+  `refNo` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `itemID` int NOT NULL,
+  `quantity` int NOT NULL,
+  `issuedTo` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `dateIssued` date DEFAULT NULL,
-  `notes` text DEFAULT NULL
+  `notes` text COLLATE utf8mb4_general_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `stock_out`
---
-
-INSERT INTO `stock_out` (`id`, `refNo`, `itemID`, `quantity`, `issuedTo`, `dateIssued`, `notes`) VALUES
-(1, 'OUT-2025-001', 1, 20, 'Project Alpha', '2025-02-01', 'Formworks'),
-(2, 'OUT-2025-002', 2, 10, 'Project Beta', '2025-02-05', 'Foundation'),
-(3, 'OUT-2025-7050', 1, 400, 'Foreman', '2025-12-22', 'asdasd'),
-(4, 'OUT-2025-8801', 1, 15, 'Site A - Framing Team', '2025-01-20', 'Urgent request for wall partitioning'),
-(5, 'OUT-2025-8802', 2, 20, 'Foundation Crew', '2025-01-22', 'Pouring for storage room extension'),
-(6, 'OUT-2025-8803', 4, 5, 'Maintenance Dept', '2025-01-25', 'Repainting lobby walls'),
-(7, 'OUT-2025-8804', 3, 50, 'Project Alpha', '2025-01-26', 'Column reinforcement'),
-(8, 'OUT-2025-8805', 1, 10, 'Carpentry Workshop', '2025-01-28', 'Fabricating office cabinets'),
-(9, 'OUT-2025-8806', 2, 12, 'Site B - Masonry', '2025-01-29', 'Perimeter fence repairs'),
-(10, 'OUT-2025-8807', 4, 3, 'Finishing Team', '2025-01-30', 'Touch-ups for conference room');
 
 -- --------------------------------------------------------
 
@@ -151,13 +157,13 @@ INSERT INTO `stock_out` (`id`, `refNo`, `itemID`, `quantity`, `issuedTo`, `dateI
 --
 
 CREATE TABLE `suppliers` (
-  `supplierID` int(11) NOT NULL,
-  `supplierName` varchar(100) NOT NULL,
-  `contactPerson` varchar(100) DEFAULT NULL,
-  `contactNumber` varchar(20) DEFAULT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `address` text DEFAULT NULL,
-  `status` varchar(20) DEFAULT 'Active'
+  `supplierID` int NOT NULL,
+  `supplierName` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `contactPerson` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `contactNumber` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_general_ci,
+  `status` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'Active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -181,20 +187,36 @@ INSERT INTO `suppliers` (`supplierID`, `supplierName`, `contactPerson`, `contact
 --
 ALTER TABLE `inventory`
   ADD PRIMARY KEY (`itemID`),
-  ADD UNIQUE KEY `itemName` (`itemName`);
+  ADD UNIQUE KEY `unique_item` (`item_name`);
 
 --
--- Indexes for table `purchaseorders`
+-- Indexes for table `inventory_receiving_logs`
 --
-ALTER TABLE `purchaseorders`
-  ADD PRIMARY KEY (`orderID`);
+ALTER TABLE `inventory_receiving_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_po_id` (`po_id`);
+
+--
+-- Indexes for table `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  ADD PRIMARY KEY (`po_id`),
+  ADD KEY `idx_project` (`project_id`),
+  ADD KEY `idx_supplier` (`supplier_id`);
+
+--
+-- Indexes for table `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_po_items` (`po_id`);
 
 --
 -- Indexes for table `stock_in`
 --
 ALTER TABLE `stock_in`
   ADD PRIMARY KEY (`stockInID`),
-  ADD KEY `fk_stockin_po` (`poID`);
+  ADD KEY `fk_stockin_po_new` (`po_id`);
 
 --
 -- Indexes for table `stock_out`
@@ -218,35 +240,59 @@ ALTER TABLE `suppliers`
 -- AUTO_INCREMENT for table `inventory`
 --
 ALTER TABLE `inventory`
-  MODIFY `itemID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `itemID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `inventory_receiving_logs`
+--
+ALTER TABLE `inventory_receiving_logs`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `stock_in`
 --
 ALTER TABLE `stock_in`
-  MODIFY `stockInID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `stockInID` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `stock_out`
 --
 ALTER TABLE `stock_out`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `suppliers`
 --
 ALTER TABLE `suppliers`
-  MODIFY `supplierID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `supplierID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- Constraints for dumped tables
 --
 
 --
+-- Constraints for table `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  ADD CONSTRAINT `fk_po_items` FOREIGN KEY (`po_id`) REFERENCES `purchase_orders` (`po_id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `stock_in`
 --
 ALTER TABLE `stock_in`
-  ADD CONSTRAINT `fk_stockin_po` FOREIGN KEY (`poID`) REFERENCES `purchaseorders` (`orderID`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_stockin_po_new` FOREIGN KEY (`po_id`) REFERENCES `purchase_orders` (`po_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `stock_out`

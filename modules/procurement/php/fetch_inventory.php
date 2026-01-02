@@ -1,28 +1,28 @@
 <?php
+// modules/inventory/php/fetch_inventory.php
 header('Content-Type: application/json');
-include 'db_connect.php';
+require_once __DIR__ . '/db_connect.php'; // Adjust path to your connection file
 
-// FIX: Select directly from the 'inventory' table instead of calculating from logs
-// We alias 'quantity' as 'totalQty' because your inventory.js expects 'totalQty'
-$sql = "SELECT 
-            itemID, 
-            itemName, 
-            quantity, 
-            unit, 
-            lastUpdated, 
-            status 
+$db = $conn_proc ?? $conn;
+
+if (!$db) {
+    echo json_encode([]);
+    exit;
+}
+
+// Fetch inventory sorted by latest updates
+$sql = "SELECT itemID, item_name, category, quantity, unit, unit_cost, last_updated 
         FROM inventory 
-        ORDER BY itemName ASC";
+        ORDER BY item_name ASC";
 
-$result = $conn_proc->query($sql);
+$result = $db->query($sql);
 
-$data = array();
-if ($result && $result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
+$data = [];
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
         $data[] = $row;
     }
 }
 
 echo json_encode($data);
-$conn_proc->close();
 ?>

@@ -1,59 +1,62 @@
 <?php
-error_reporting(0);
-ini_set('display_errors', 0);
+// modules/inventory/php/save_stockout.php
 header('Content-Type: application/json');
-include 'db_connect.php';
+require_once 'db_connect.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // These IDs must match the 'name' attributes in your HTML form
-    $itemID = $_POST['stock_itemID']; 
-    $qtyToIssue = (int)$_POST['stock_quantity'];
-    $issuedTo = $_POST['stock_issuedTo'];
-    $notes = $_POST['stock_notes'];
-    $date = date('Y-m-d');
-    
-    // Create a random Reference Number
-    $refNo = "OUT-" . date("Y") . "-" . rand(1000, 9999); 
+$db = $conn_proc ?? $conn;
 
-    $conn_proc->begin_transaction();
+// Get POST data
+$itemID = intval($_POST['stock_itemID'] ?? 0);
+$qty = floatval($_POST['stock_quantity'] ?? 0);
+$issuedTo = $_POST['stock_issuedTo'] ?? '';
+$notes = $_POST['stock_notes'] ?? '';
 
-    try {
-        // 1. Check Stock
-        $stmtCheck = $conn_proc->prepare("SELECT quantity FROM inventory WHERE itemID = ? FOR UPDATE");
-        $stmtCheck->bind_param("s", $itemID);
-        $stmtCheck->execute();
-        $resCheck = $stmtCheck->get_result();
-        $row = $resCheck->fetch_assoc();
-        
-        if (!$row) { throw new Exception("Item not found."); }
-        
-        $currentStock = (int)$row['quantity'];
-        $stmtCheck->close();
+if ($itemID <= 0 || $qty <= 0 || empty($issuedTo)) {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid input data.']);
+    exit;
+}
 
-        if ($currentStock < $qtyToIssue) {
-            throw new Exception("Insufficient stock! Available: $currentStock");
-        }
+// Start Transaction
+$db->begin_transaction();
 
-        // 2. Deduct Stock
-        $stmtUpdate = $conn_proc->prepare("UPDATE inventory SET quantity = quantity - ? WHERE itemID = ?");
-        $stmtUpdate->bind_param("is", $qtyToIssue, $itemID);
-        $stmtUpdate->execute();
-        $stmtUpdate->close();
+try {
+    // 1. Check current stock level (Lock row for safety)
+    $checkStmt = $db->prepare("SELECT quantity FROM inventory WHERE itemID = ? FOR UPDATE");
+    $checkStmt->bind_param("i", $itemID);
+    $checkStmt->execute();
+    $res = $checkStmt->get_result();
+    $item = $res->fetch_assoc();
 
-        // 3. Record Log
-        $stmtInsert = $conn_proc->prepare("INSERT INTO stock_out (refNo, itemID, quantity, issuedTo, dateIssued, notes) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmtInsert->bind_param("ssisss", $refNo, $itemID, $qtyToIssue, $issuedTo, $date, $notes);
-        $stmtInsert->execute();
-        $stmtInsert->close();
-
-        $conn_proc->commit();
-        echo json_encode(["status" => "success", "message" => "Stock issued successfully!"]);
-
-    } catch (Exception $e) {
-        $conn_proc->rollback();
-        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    if (!$item) {
+        throw new Exception("Item not found in inventory.");
     }
-    
-    $conn_proc->close();
+
+    if ($item['quantity'] < $qty) {
+        throw new Exception("Insufficient stock! Available: " . $item['quantity']);
+    }
+
+    // 2. Deduct from Inventory
+    $updateStmt = $db->prepare("UPDATE inventory SET quantity = quantity - ? WHERE itemID = ?");
+    $updateStmt->bind_param("di", $qty, $itemID);
+    if (!$updateStmt->execute()) {
+        throw new Exception("Failed to update inventory.");
+    }
+
+    // 3. Generate Reference No (e.g., OUT-20231025-123)
+    $refNo = "OUT-" . date('Ymd') . "-" . rand(100, 999);
+
+    // 4. Insert into Stock Out Log
+    $insertStmt = $db->prepare("INSERT INTO stock_out (refNo, itemID, quantity, issuedTo, dateIssued, notes) VALUES (?, ?, ?, ?, CURDATE(), ?)");
+    $insertStmt->bind_param("siiss", $refNo, $itemID, $qty, $issuedTo, $notes);
+    if (!$insertStmt->execute()) {
+        throw new Exception("Failed to save log.");
+    }
+
+    $db->commit();
+    echo json_encode(['status' => 'success', 'message' => 'Stock issued successfully!']);
+
+} catch (Exception $e) {
+    $db->rollback();
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
 ?>

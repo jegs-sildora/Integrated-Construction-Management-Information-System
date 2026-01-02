@@ -1,32 +1,29 @@
+<?php
+	require_once __DIR__ . '/../../../config/config.php';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 	<!-- Global project styles -->
-	<link rel="stylesheet" href="/icmis_budget/css/output.css">
-	<link rel="stylesheet" href="/icmis_budget/css/input.css">
+	<link rel="stylesheet" href="../css/output.css">
+	<link rel="stylesheet" href="../css/input.css">
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Budget Proposals</title>
+	<title>Create Budget Proposal | ICMIS</title>
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-	<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-	<style>
-    * { font-family: 'Inter', sans-serif; }
-  </style>
-</head>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/images/favicon/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="../../../assets/images/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../../../assets/images/favicon/favicon-16x16.png">
+  <link rel="manifest" href="../../../assets/images/favicon/site.webmanifest">
 <body class="bg-gray-50">
-	<?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
-	<?php include __DIR__ . '/../connection.php'; ?>
-	
-	<?php 
-		$pageTitle = "Budget Proposals";
-		$pageSubTitle = "Create New Proposal";
-		$pageSection = "Budgeting & Cost Control";
-		$userName = "John Doe";
-		$userRole = "Financial Manager";
-		$notificationCount = 0;
+<?php 
+		include __DIR__ . '/../../../includes/sidebar.php';
+		include __DIR__ . '/../connection.php';  
 		include __DIR__ . '/../../../includes/header.php'; 
 	?>
 
@@ -41,10 +38,9 @@
 			}
 		}
 	?>
-	
-		<?php include __DIR__ . '/../../../includes/toast.php'; ?>
 
-		<main class="ml-56 mt-20 p-6">
+
+		<main class="ml-56 mt-24 p-6">
 				<div class="max-w-7xl mx-auto">
 				<!-- Back Link -->
 				<a href="../proposals.php" class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors underline">
@@ -314,8 +310,8 @@
 
 								<!-- Receipt Header -->
 								<div class="flex items-center mb-6">
-										<div class="w-12 h-12 bg-[#e9922c] rounded-lg flex items-center justify-center text-white text-2xl font-bold mr-4">
-												I
+										<div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-md p-1.5 mr-4 border border-gray-100">
+												<img src="/icmis/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
 										</div>
 										<div>
 												<h2 class="text-xl font-bold text-gray-900">ICMIS</h2>

@@ -1,4 +1,6 @@
 <?php
+// modules/inventory/inventory.php
+
 // 1. Load Config & Session
 require_once '../../config/config.php';
 
@@ -20,12 +22,14 @@ if (!isset($_SESSION['user_id'])) {
     <title>Inventory Masterlist | ICMIS</title>
     
     <?php include '../../includes/head_assets.php'; ?>
-
     <link rel="stylesheet" href="css/style.css"> 
     
     <style>
+        /* RESTORED OLD PRINT UI STYLES */
         @media print {
-            @page { margin: 0.5in; size: auto; }
+            /* Landscape to fit 7 columns */
+            @page { margin: 0.5in; size: landscape; }
+            
             body { 
                 background-color: white !important; 
                 color: black !important;
@@ -68,7 +72,7 @@ if (!isset($_SESSION['user_id'])) {
                 color: black !important;
             }
             
-            /* LOGO SIZING */
+            /* LOGO SIZING (Restored) */
             .print-logo {
                 max-height: 80px;
                 width: auto;
@@ -108,26 +112,35 @@ if (!isset($_SESSION['user_id'])) {
             <div class="flex justify-between items-end bg-white p-6 rounded-xl shadow-sm border border-slate-100 no-print">
                 <div>
                     <h1 class="text-2xl font-black text-navy-dark">Inventory Masterlist</h1>
-                    <p class="text-slate-500 mt-1">Real-time view of current stock levels.</p>
+                    <p class="text-slate-500 mt-1">Real-time view of current stock levels and valuation.</p>
                 </div>
                 <button class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2" onclick="printReport()">
                     <i class="fa-solid fa-print"></i> Print Report
                 </button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
                     <div>
-                        <h3 class="text-slate-500 text-sm font-bold uppercase tracking-wider">Total Items</h3>
+                        <h3 class="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Items</h3>
                         <h2 id="total-items-count" class="text-3xl font-black text-navy-dark mt-1">0</h2>
                     </div>
                     <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl">
                         <i class="fa-solid fa-layer-group"></i>
                     </div>
                 </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Valuation</h3>
+                        <h2 id="total-value-count" class="text-3xl font-black text-green-600 mt-1">₱0.00</h2>
+                    </div>
+                    <div class="w-12 h-12 bg-green-50 text-green-600 rounded-lg flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-sack-dollar"></i>
+                    </div>
+                </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-red-100 flex items-center justify-between">
                     <div>
-                        <h3 class="text-red-500 text-sm font-bold uppercase tracking-wider">Low Stock Alerts</h3>
+                        <h3 class="text-red-500 text-xs font-bold uppercase tracking-wider">Low Stock</h3>
                         <h2 id="low-stock-count" class="text-3xl font-black text-red-600 mt-1">0</h2>
                     </div>
                     <div class="w-12 h-12 bg-red-50 text-red-600 rounded-lg flex items-center justify-center text-xl">
@@ -141,11 +154,13 @@ if (!isset($_SESSION['user_id'])) {
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Item Name</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Total Stock</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Unit</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Last Updated</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Item Name</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Category</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Stock Level</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Unit Cost</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Total Value</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Last Updated</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
                             </tr>
                         </thead>
                         <tbody id="inventory-table-body" class="divide-y divide-slate-100">
@@ -166,13 +181,13 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="text-center">
                     <p class="text-xs font-bold text-gray-500 uppercase mb-8">Verified By:</p>
                     <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4">Engr. Jane Doe</p> 
+                    <p class="text-sm font-bold mt-2 pt-4">___________</p> 
                     <p class="text-xs text-gray-500">Project Engineer</p>
                 </div>
                 <div class="text-center">
                     <p class="text-xs font-bold text-gray-500 uppercase mb-8">Approved By:</p>
                     <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4">John Smith</p> 
+                    <p class="text-sm font-bold mt-2 pt-4">___________</p> 
                     <p class="text-xs text-gray-500">Project Manager</p>
                 </div>
             </div>
@@ -185,7 +200,6 @@ if (!isset($_SESSION['user_id'])) {
         function printReport() {
             const dateEl = document.getElementById('print-date');
             if(dateEl) {
-                // Professional Date Format
                 const now = new Date();
                 dateEl.innerText = now.toLocaleDateString('en-US', { 
                     year: 'numeric', month: 'long', day: 'numeric', 
