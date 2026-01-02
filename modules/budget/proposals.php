@@ -42,23 +42,22 @@ z
   <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
   
   <?php
-    // 3. Fetch Projects for Dropdown
-    $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
+    // Fetch all projects for dropdown (Explicitly from icmis database)
+    $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
+    
     if ($result_projects && $result_projects->num_rows > 0) {
       while ($row = $result_projects->fetch_assoc()) {
         $projects[] = $row;
-        // Default to first project if none selected (Matches dashboard logic)
-        if ($selected_project_id == 0) {
-            $selected_project_id = $row['project_id'];
-        }
       }
     }
 
-    // 4. Build Breadcrumb with Dropdown
+    // Build breadcrumb navigation with dropdown
     $current_page = basename($_SERVER['PHP_SELF']);
     $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
+    
+    // Project Dropdown
     $breadcrumbHTML .= '<div class="relative inline-block">';
     $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
     

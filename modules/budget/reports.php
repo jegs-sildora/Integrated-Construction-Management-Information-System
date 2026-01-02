@@ -39,7 +39,7 @@
         $report_sql = "SELECT * FROM generated_reports 
                        WHERE project_id = ? 
                        ORDER BY created_at DESC 
-                       LIMIT 10";
+                       LIMIT 50"; 
         
         $stmt = $conn->prepare($report_sql);
         $stmt->bind_param("i", $selected_project_id);
@@ -52,80 +52,156 @@
         $stmt->close();
     }
 
-    $userName = "John Doe";
-    $userRole = "Financial Manager";
-    $notificationCount = 0;
+    $userName = $_SESSION['user_name'] ?? "Admin"; 
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Global project styles -->
-    <link rel="stylesheet" href="/icmis_budget/css/output.css">
-    <link rel="stylesheet" href="/icmis_budget/css/input.css">
+    <link rel="stylesheet" href="/css/output.css">
+  <link rel="stylesheet" href="/css/input.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Financial Reports - ICMIS</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-  
+  <title>Financial Reports | ICMIS</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="apple-touch-icon" sizes="180x180" href="../../assets/images/favicon/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="../../assets/images/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../../assets/images/favicon/favicon-16x16.png">
   <link rel="manifest" href="../../assets/images/favicon/site.webmanifest">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <?php include '../../includes/head_assetsv2.php'; ?>
+  
   <style>
     * { font-family: 'Inter', sans-serif; }
+
+    /* PRINT UI STYLES */
+    @media print {
+        @page { margin: 0.5in; size: landscape; }
+        
+        body { 
+            background-color: white !important; 
+            color: black !important;
+            -webkit-print-color-adjust: exact; 
+        }
+        
+        /* HIDE UI ELEMENTS */
+        header, aside, .sidebar, .top-bar, .no-print, button, .generate-btn, .report-template-card, .breadcrumb { 
+            display: none !important; 
+        }
+        
+        /* SHOW REPORT ELEMENTS */
+        .print-only { 
+            display: block !important; 
+        }
+        
+        /* RESET LAYOUT */
+        main { 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            width: 100% !important; 
+            min-height: auto !important;
+        }
+        
+        /* TABLE PRINT STYLING */
+        .bg-white { box-shadow: none !important; border: none !important; }
+        .overflow-x-auto { overflow: visible !important; }
+        table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
+        
+        thead tr { background-color: #f3f4f6 !important; }
+        thead th { 
+            border: 1px solid #9ca3af !important; 
+            padding: 8px !important; 
+            color: black !important;
+            text-transform: uppercase;
+            font-size: 9pt;
+        }
+        tbody td { 
+            border: 1px solid #e5e7eb !important; 
+            padding: 8px !important; 
+            color: black !important;
+        }
+        
+        /* Hide Action Column in Print */
+        th:last-child, td:last-child {
+            display: none !important;
+        }
+
+        /* LOGO SIZING */
+        .print-logo {
+            max-height: 80px;
+            width: auto;
+            margin: 0 auto 10px auto;
+            display: block;
+        }
+        
+        /* FOOTER SPACING */
+        .print-footer {
+            margin-top: 50px !important;
+            page-break-inside: avoid;
+        }
+    }
   </style>
 </head>
 <body class="bg-gray-50 text-slate-800">
-  <?php include __DIR__ . '/../components/sidebar.php'; ?>
+  
+  <div class="no-print">
+      <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
 
-  <?php
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
-    $result_projects = $conn->query($sql_projects);
-    $projects = [];
-    if ($result_projects && $result_projects->num_rows > 0) {
-      while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-      }
-    }
+      <?php
+        // Fetch all projects for dropdown
+        $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
+        $result_projects = $conn->query($sql_projects);
+        $projects = [];
+        
+        if ($result_projects && $result_projects->num_rows > 0) {
+          while ($row = $result_projects->fetch_assoc()) {
+            $projects[] = $row;
+          }
+        }
 
-    // Build breadcrumb navigation with dropdown
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
-    
-    // Project Dropdown
-    $breadcrumbHTML .= '<div class="relative inline-block">';
-    $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
-    
-    foreach ($projects as $proj) {
-      $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
-    }
-    
-    $breadcrumbHTML .= '</select>';
-    $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-    $breadcrumbHTML .= '</div>';
-    $breadcrumbHTML .= '</div>';
+        // Build breadcrumb navigation with dropdown
+        $current_page = basename($_SERVER['PHP_SELF']);
+        $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
+        
+        // Project Dropdown
+        $breadcrumbHTML .= '<div class="relative inline-block">';
+        $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
+        
+        foreach ($projects as $proj) {
+          $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
+          $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
+        }
+        
+        $breadcrumbHTML .= '</select>';
+        $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
+        $breadcrumbHTML .= '</div>';
+        $breadcrumbHTML .= '</div>';
 
-    $pageTitle = "Financial Reports";
-    $pageSection = "Budget & Cost Control";
-    $pageSubTitle = $breadcrumbHTML;
-    
-    // Header includes the toast container and logic automatically
-    include __DIR__ . '/../components/header.php';
-  ?>
+        $pageTitle = "Financial Reports";
+        $pageSection = "Budget & Cost Control";
+        $pageSubTitle = $breadcrumbHTML;
+        include __DIR__ . '/../../includes/header.php';
+      ?>
+  </div>
 
-  <main class="ml-56 mt-20 p-6">
+  <main class="ml-56 mt-20 p-6 transition-all duration-300">
+    
+    <div class="print-only hidden mb-6">
+        <div class="print-logo-area text-center border-b pb-4 mb-4">
+            <img src="../../assets/images/logo.png" alt="ICMIS Logo" class="print-logo" onerror="this.style.display='none';">
+            
+            <h1 class="text-2xl font-bold uppercase tracking-wide">Generated Reports Log</h1>
+            <p class="text-sm text-gray-500">ICMIS Financial Management System</p>
+            <p class="text-sm font-bold mt-1 text-[#e9922c]"><?php echo htmlspecialchars($current_project_name); ?></p>
+            <p class="text-xs mt-1">Generated on: <span id="print-date"></span></p>
+        </div>
+    </div>
+
     <div class="max-w-7xl mx-auto">
       
-      <div class="border-b border-gray-200 pb-6 mb-8">
+      <div class="border-b border-gray-200 pb-6 mb-8 no-print">
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-2xl text-gray-900 font-bold">Financial Reports</h1>
@@ -134,7 +210,7 @@
         </div>
       </div>
 
-      <div class="mb-10">
+      <div class="mb-10 no-print">
         <h2 class="text-xl font-bold text-gray-900 mb-6">Quick Generate Templates</h2>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -205,7 +281,7 @@
       </div>
 
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 no-print">
               <div class="flex items-center gap-3">
                   <h3 class="font-bold text-gray-800">Recent Reports</h3>
                   <?php if($selected_project_id): ?>
@@ -214,9 +290,14 @@
                   </span>
                   <?php endif; ?>
               </div>
-              <button onclick="location.reload()" class="text-sm text-gray-500 hover:text-[#e9922c] font-medium transition-colors flex items-center gap-1">
-                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh List
-              </button>
+              <div class="flex gap-2">
+                  <button onclick="printReport()" class="text-sm text-gray-600 hover:text-[#e9922c] font-medium transition-colors flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    <i data-lucide="printer" class="w-3 h-3"></i> Print List
+                  </button>
+                  <button onclick="location.reload()" class="text-sm text-gray-500 hover:text-[#e9922c] font-medium transition-colors flex items-center gap-1 px-2">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
+                  </button>
+              </div>
           </div>
           <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse">
@@ -244,7 +325,7 @@
                         <?php foreach($recent_reports as $report): ?>
                         <tr class="hover:bg-gray-50 transition">
                             <td class="px-6 py-4 font-medium text-gray-700 flex items-center">
-                                <i data-lucide="file-text" class="w-4 h-4 text-gray-400 mr-2"></i>
+                                <i data-lucide="file-text" class="w-4 h-4 text-gray-400 mr-2 no-print"></i>
                                 <?php echo htmlspecialchars($report['report_name'] ?? 'Untitled Report'); ?>
                             </td>
                             <td class="px-6 py-4">
@@ -281,6 +362,30 @@
       </div>
       
     </div>
+
+    <div class="print-only print-footer hidden">
+        <div class="grid grid-cols-3 gap-8">
+            <div class="text-center">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-8">Prepared By:</p>
+                <div class="border-b border-black w-3/4 mx-auto"></div>
+                <p class="text-sm font-bold mt-2 pt-4"><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></p>
+                <p class="text-xs text-gray-500">Inventory Manager</p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-8">Verified By:</p>
+                <div class="border-b border-black w-3/4 mx-auto"></div>
+                <p class="text-sm font-bold mt-2 pt-4">___________</p> 
+                <p class="text-xs text-gray-500">Project Engineer</p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-8">Approved By:</p>
+                <div class="border-b border-black w-3/4 mx-auto"></div>
+                <p class="text-sm font-bold mt-2 pt-4">___________</p> 
+                <p class="text-xs text-gray-500">Project Manager</p>
+            </div>
+        </div>
+    </div>
+
   </main>
 
 <script>
@@ -288,37 +393,39 @@
     lucide.createIcons();
 
     // ============================================
-    // UI STATE MANAGEMENT (FIXED FOR SMALL BUTTONS)
+    // PRINT FUNCTIONALITY
     // ============================================
-    
+    function printReport() {
+        const dateEl = document.getElementById('print-date');
+        if(dateEl) {
+            const now = new Date();
+            dateEl.innerText = now.toLocaleDateString('en-US', { 
+                year: 'numeric', month: 'long', day: 'numeric', 
+                hour: '2-digit', minute: '2-digit' 
+            });
+        }
+        window.print();
+    }
+
+    // ============================================
+    // UI STATE MANAGEMENT
+    // ============================================
     function setLoadingState(button) {
         if(!button) return;
-        
-        // Save original state
         button.dataset.originalContent = button.innerHTML;
         button.dataset.originalClasses = button.className;
         button.disabled = true;
 
-        // Check if it's the small icon-only button (via rounded-full class)
         const isSmallButton = button.classList.contains('rounded-full');
-
         if (isSmallButton) {
-            // Logic for table button: spinner only, no text, no expansion
             button.classList.add('opacity-80', 'cursor-not-allowed', 'text-[#e9922c]');
             button.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`;
         } else {
-            // Logic for large card button: standard loading state
             const width = button.offsetWidth;
-            button.style.width = `${width}px`; // Lock width
+            button.style.width = `${width}px`; 
             button.classList.add('opacity-80', 'cursor-not-allowed');
-            button.innerHTML = `
-                <div class="flex items-center justify-center gap-2">
-                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                    <span>Generating...</span>
-                </div>
-            `;
+            button.innerHTML = `<div class="flex items-center justify-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Generating...</span></div>`;
         }
-        
         lucide.createIcons();
     }
 
@@ -333,179 +440,142 @@
 
     function showSuccessState(button) {
         if(!button) return;
-        
         const isSmallButton = button.classList.contains('rounded-full');
-
         if (isSmallButton) {
-            // Small button success: Green Checkmark only
             button.classList.remove('text-gray-400', 'hover:text-[#e9922c]', 'hover:bg-orange-50');
             button.classList.add('text-green-600', 'bg-green-50');
             button.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i>`;
         } else {
-            // Large button success: Full "Downloaded" bar
             button.className = "w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg transition-all duration-300 shadow-sm";
-            button.innerHTML = `
-                <div class="flex items-center justify-center gap-2">
-                    <i data-lucide="check-circle" class="w-4 h-4"></i>
-                    <span>Downloaded</span>
-                </div>
-            `;
+            button.innerHTML = `<div class="flex items-center justify-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i><span>Downloaded</span></div>`;
         }
-        
         lucide.createIcons();
-
-        // Use global showToast with persistence (persist = true)
         if (typeof showToast === 'function') {
             showToast('Report generated successfully!', 'success', true);
         }
-
-        // Reload page to show new record in Recent Reports table
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+        setTimeout(() => { window.location.reload(); }, 1500);
     }
 
     // ============================================
     // MAIN REPORT GENERATOR
     // ============================================
-
     async function generateReport(templateType) {
         const button = event.target.closest('.generate-btn');
         const card = button.closest('.report-template-card');
         const projectId = '<?php echo $selected_project_id; ?>';
 
-        // Validation for Phase Analysis
         let selectedPhase = '';
         if (templateType === 'phase-analysis' && card) {
             const phaseSelector = card.querySelector('.phase-selector');
             if (!phaseSelector.value) {
-                if (typeof showToast === 'function') {
-                    showToast('Please select a phase first', 'error');
-                } else {
-                    alert('Please select a phase first');
-                }
+                if (typeof showToast === 'function') showToast('Please select a phase first', 'error');
+                else alert('Please select a phase first');
                 return;
             }
             selectedPhase = phaseSelector.value;
         }
 
         if (!projectId) {
-            if (typeof showToast === 'function') {
-                showToast('Please select a project first', 'error');
-            }
+            if (typeof showToast === 'function') showToast('Please select a project first', 'error');
             return;
         }
 
-        // Apply Professional Loading State
         setLoadingState(button);
 
         try {
-            // 1. Fetch Data
             const formData = new FormData();
             formData.append('project_id', projectId);
             formData.append('report_type', templateType);
             if (selectedPhase) formData.append('phase', selectedPhase);
 
-            const response = await fetch('budget_expenses/export_pdf.php', {
-                method: 'POST',
-                body: formData
-            });
-
-            // Check if response is valid JSON
+            const response = await fetch('budget_expenses/export_pdf.php', { method: 'POST', body: formData });
             const contentType = response.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
                 const text = await response.text();
-                throw new Error("Server returned an invalid format. Debug: " + text.substring(0, 100));
+                throw new Error("Server returned an invalid format.");
             }
 
             const result = await response.json();
             if (!result.success) throw new Error(result.message);
 
-            // 2. Generate PDF
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const data = result.data;
 
             switch (templateType) {
-                case 'budget-summary':
-                    generateBudgetSummaryPDF(doc, data);
-                    break;
-                case 'phase-analysis':
-                    generatePhaseAnalysisPDF(doc, data);
-                    break;
-                case 'labor-analysis':
-                    generateLaborAnalysisPDF(doc, data);
-                    break;
-                case 'expense-log':
-                    generateExpenseLogPDF(doc, data);
-                    break;
-                case 'cash-flow':
-                    generateCashFlowPDF(doc, data);
-                    break;
+                case 'budget-summary': generateBudgetSummaryPDF(doc, data); break;
+                case 'phase-analysis': generatePhaseAnalysisPDF(doc, data); break;
+                case 'labor-analysis': generateLaborAnalysisPDF(doc, data); break;
+                case 'expense-log': generateExpenseLogPDF(doc, data); break;
+                case 'cash-flow': generateCashFlowPDF(doc, data); break;
             }
 
-            // 3. Show Success Animation & Reload
             showSuccessState(button);
-
         } catch (error) {
             console.error('Generation Error:', error);
-            if (typeof showToast === 'function') {
-                showToast('Failed: ' + error.message, 'error');
-            } else {
-                alert('Failed: ' + error.message);
-            }
+            if (typeof showToast === 'function') showToast('Failed: ' + error.message, 'error');
+            else alert('Failed: ' + error.message);
             resetLoadingState(button); 
         }
     }
 
     // ============================================
-    // PDF STYLING & GENERATORS (Consistent Style)
+    // PDF STYLING & GENERATORS
     // ============================================
 
     function addCommonHeader(doc, title, project) {
         const pageWidth = doc.internal.pageSize.getWidth();
         const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Brand
-        doc.setFillColor(233, 146, 44); // #e9922c
-        doc.rect(pageWidth / 2 - 6, 15, 12, 12, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('I', pageWidth / 2, 24, { align: 'center' });
+        // --- BRAND: LOGO IMAGE ---
+        const logoEl = document.querySelector('.print-logo');
+        if (logoEl && logoEl.complete && logoEl.naturalHeight !== 0) {
+            const logoWidth = 20; 
+            const logoHeight = 20; 
+            const logoX = (pageWidth / 2) - (logoWidth / 2);
+            try {
+                doc.addImage(logoEl, 'PNG', logoX, 12, logoWidth, logoHeight);
+            } catch (err) {
+                doc.setFontSize(16); doc.text('ICMIS', pageWidth / 2, 24, { align: 'center' });
+            }
+        } else {
+            doc.setFillColor(233, 146, 44);
+            doc.rect(pageWidth / 2 - 6, 15, 12, 12, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.text('I', pageWidth / 2, 24, { align: 'center' });
+        }
 
-        // Title
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text('ICMIS - Integrated Construction Management Information System', pageWidth / 2, 32, { align: 'center' });
+        doc.text('ICMIS - Integrated Construction Management Information System', pageWidth / 2, 36, { align: 'center' });
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(title.toUpperCase(), pageWidth / 2, 42, { align: 'center' });
+        doc.text(title.toUpperCase(), pageWidth / 2, 44, { align: 'center' });
 
-        // Info Box
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.setDrawColor(200, 200, 200);
-        doc.rect(14, 48, pageWidth - 28, 24);
+        doc.rect(14, 50, pageWidth - 28, 24);
         
         doc.setFont('helvetica', 'bold');
-        doc.text('Project Name:', 18, 56);
-        doc.text('Project Code:', 18, 64);
+        doc.text('Project Name:', 18, 58);
+        doc.text('Project Code:', 18, 66);
         doc.setFont('helvetica', 'normal');
-        doc.text(project.name, 45, 56);
-        doc.text(project.project_code || 'N/A', 45, 64);
+        doc.text(project.name, 45, 58);
+        doc.text(project.project_code || 'N/A', 45, 66);
 
         doc.setFont('helvetica', 'bold');
-        doc.text('Date:', 120, 56);
-        doc.text('User:', 120, 64);
+        doc.text('Date:', 120, 58);
+        doc.text('User:', 120, 66);
         doc.setFont('helvetica', 'normal');
-        doc.text(currentDate, 145, 56);
-        doc.text('<?php echo $userName; ?>', 145, 64);
+        doc.text(currentDate, 145, 58);
+        doc.text('<?php echo $userName; ?>', 145, 66);
         
-        return 80;
+        return 82;
     }
 
+    // --- UPDATED 3-COLUMN PDF FOOTER ---
     function addCommonFooter(doc) {
         const pageCount = doc.internal.getNumberOfPages();
         const pageWidth = doc.internal.pageSize.getWidth();
@@ -518,29 +588,52 @@
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(9);
             
-            // Signatures
-            doc.text('Prepared By:', 18, footerY);
-            doc.line(18, footerY + 8, 80, footerY + 8);
-            doc.setFont('helvetica', 'italic');
-            doc.setFontSize(8);
-            doc.text('Budget Officer', 18, footerY + 13);
-
+            // Column 1: Prepared By
+            doc.setFont('helvetica', 'bold');
+            doc.text('Prepared By:', 20, footerY);
+            doc.setDrawColor(0, 0, 0);
+            doc.line(20, footerY + 8, 70, footerY + 8); // Line
+            doc.setFont('helvetica', 'bold');
+            doc.text('<?php echo $userName; ?>', 20, footerY + 13);
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(9);
-            doc.text('Approved By:', pageWidth - 80, footerY);
-            doc.line(pageWidth - 80, footerY + 8, pageWidth - 18, footerY + 8);
-            doc.setFont('helvetica', 'italic');
             doc.setFontSize(8);
-            doc.text('Project Manager', pageWidth - 80, footerY + 13);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Inventory Manager', 20, footerY + 17); // Matched Snippet Title
+
+            // Column 2: Verified By (Center)
+            const centerBase = pageWidth / 2;
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Verified By:', centerBase - 25, footerY);
+            doc.line(centerBase - 25, footerY + 8, centerBase + 25, footerY + 8); // Line
+            doc.setFont('helvetica', 'bold');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Project Engineer', centerBase - 25, footerY + 17);
+
+            // Column 3: Approved By (Right)
+            const rightBase = pageWidth - 70;
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Approved By:', rightBase, footerY);
+            doc.line(rightBase, footerY + 8, rightBase + 50, footerY + 8); // Line
+            doc.setFont('helvetica', 'bold');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Project Manager', rightBase, footerY + 17);
 
             // Page Number
             doc.setTextColor(150, 150, 150);
             doc.setFont('helvetica', 'normal');
-            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
         }
     }
 
-    // --- PDF GENERATORS ---
+    // --- PDF GENERATORS (Unchanged logic, uses new header/footer) ---
 
     function generateBudgetSummaryPDF(doc, data) {
         let y = addCommonHeader(doc, 'Project Budget Summary', data.project);
@@ -693,7 +786,6 @@
         doc.save(`Cash_Flow_${data.project.project_code}_${dateStr}.pdf`);
     }
 
-    // Phase Selector Listener
     document.querySelectorAll('.phase-selector').forEach(selector => {
       selector.addEventListener('change', function() {
         const card = this.closest('.report-template-card');

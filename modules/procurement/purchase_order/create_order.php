@@ -78,7 +78,7 @@
             </a>
 
             <div class="mb-8 text-center">
-                <h1 class="text-2xl font-bold text-navy-dark">New Purchase Request</h1>
+                <h1 class="text-2xl font-bold text-navy-dark">New Purchase Order</h1>
                 <p class="text-slate-500 mt-1">Fill in the details below to create a comprehensive purchase order</p>
             </div>
 
@@ -86,7 +86,7 @@
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-[calc(100vh-220px)] overflow-y-auto custom-scrollbar">
                     
                     <div class="mb-6">
-                        <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Project Destination (from icmis.projects)</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Project Destination</label>
                         <select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
                             <option value="">-- Select Project --</option>
                             <?php if ($result_projects): while($proj = $result_projects->fetch_assoc()): ?>
@@ -129,7 +129,7 @@
                     </div>
 
                     <div class="border-t border-gray-100 pt-6 mt-6">
-											<h3 class="text-md font-bold text-navy-dark mb-4 uppercase italic">Budget Line Items (from icmis_budget)</h3>
+											<h3 class="text-md font-bold text-navy-dark mb-4 uppercase italic">Budget Line Items</h3>
 											<div class="space-y-4">
 													<div>
 															<label class="block text-sm text-gray-600 mb-1">Approved Budget Item</label>

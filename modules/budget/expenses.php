@@ -38,10 +38,10 @@
   ?>
   <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
 
-  <?php
+<?php
 
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
+    // Fetch all projects for dropdown (Explicitly from icmis database)
+    $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     if ($result_projects && $result_projects->num_rows > 0) {
@@ -108,7 +108,7 @@
                       (SELECT COALESCE(SUM(e.amount), 0) 
                        FROM budget_expenses e 
                        WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                      FROM projects p
+                      FROM icmis.projects p
                       WHERE p.project_id = ?";
       $stmt = $conn->prepare($sql_project);
       $stmt->bind_param("i", $selected_project_id);

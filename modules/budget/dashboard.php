@@ -13,38 +13,34 @@
   // Get selected project ID
   $selected_project_id = getProjectContext($conn);
   
-  // 2. Fetch Projects for Dropdown (Logic moved BEFORE header include)
-  $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
-  $result_projects = $conn->query($sql_projects);
-  $projects = [];
-  if ($result_projects && $result_projects->num_rows > 0) {
-    while ($row = $result_projects->fetch_assoc()) {
-      $projects[] = $row;
-      // Set first project as default if none selected
-      if ($selected_project_id == 0) {
-        $selected_project_id = $row['project_id'];
+    // Fetch all projects for dropdown (Explicitly from icmis database)
+    $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
+    $result_projects = $conn->query($sql_projects);
+    $projects = [];
+    
+    if ($result_projects && $result_projects->num_rows > 0) {
+      while ($row = $result_projects->fetch_assoc()) {
+        $projects[] = $row;
       }
     }
-  }
 
-  // 3. Build Dropdown HTML
-  $current_page = basename($_SERVER['PHP_SELF']);
-  $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
-  
-  // Dropdown Wrapper
-  $breadcrumbHTML .= '<div class="relative inline-block">';
-  $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
-  
-  foreach ($projects as $proj) {
-    $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
-  }
-  
-  $breadcrumbHTML .= '</select>';
-  // Custom arrow icon for the select
-  $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-  $breadcrumbHTML .= '</div>';
-  $breadcrumbHTML .= '</div>';
+    // Build breadcrumb navigation with dropdown
+    $current_page = basename($_SERVER['PHP_SELF']);
+    $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
+    
+    // Project Dropdown
+    $breadcrumbHTML .= '<div class="relative inline-block">';
+    $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
+    
+    foreach ($projects as $proj) {
+      $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
+      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
+    }
+    
+    $breadcrumbHTML .= '</select>';
+    $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
+    $breadcrumbHTML .= '</div>';
+    $breadcrumbHTML .= '</div>';
 
   // 4. Set Header Variables
   $pageSection = "Budget & Cost Control";
