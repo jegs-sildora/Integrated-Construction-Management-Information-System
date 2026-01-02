@@ -65,7 +65,7 @@ $is_labor_reports = ($current_page === 'reports.php' && $is_labor);
     <div class="px-4 py-6 border-b border-gray-200 ml-10">
         <div class="flex items-center gap-3 mb-1">
             <img src="<?php echo $root_path; ?>assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-10 h-10 object-contain">
-            <h1 class="text-xl font-bold text-gray-900 text-center">ICMIS</h1>
+            <h1 class="text-xl font-black text-gray-900 text-center">ICMIS</h1>
         </div>
     </div>
 
