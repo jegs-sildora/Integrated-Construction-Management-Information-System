@@ -42,7 +42,7 @@
     $selected_phase = getPhaseContext();
 
     // Fetch projects from main database
-    $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
+    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     if ($result_projects && $result_projects->num_rows > 0) {
@@ -59,7 +59,7 @@
     $project_name = 'No Project Selected';
     $project_code = '';
     if ($selected_project_id > 0) {
-      $sql_project = "SELECT project_code, project_name FROM projects WHERE project_id = ?";
+      $sql_project = "SELECT project_code, project_name FROM icmis_projects WHERE project_id = ?";
       $stmt = $conn->prepare($sql_project);
       $stmt->bind_param("i", $selected_project_id);
       $stmt->execute();

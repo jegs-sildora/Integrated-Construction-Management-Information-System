@@ -1,21 +1,22 @@
 <?php
-// modules/inventory/php/fetch_inventory.php
+// modules/procurement/php/fetch_inventory.php
 header('Content-Type: application/json');
-require_once __DIR__ . '/db_connect.php'; // Adjust path to your connection file
 
-$db = $conn_proc ?? $conn;
-
-if (!$db) {
+// Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
     echo json_encode([]);
     exit;
 }
+$conn->set_charset("utf8mb4");
 
-// Fetch inventory sorted by latest updates
-$sql = "SELECT itemID, item_name, category, quantity, unit, unit_cost, last_updated 
-        FROM inventory 
+// Fetch inventory sorted by item name
+$sql = "SELECT item_id, item_name, category, quantity, unit, unit_cost, last_updated 
+        FROM procurement_inventory 
         ORDER BY item_name ASC";
 
-$result = $db->query($sql);
+$result = $conn->query($sql);
 
 $data = [];
 if ($result) {
@@ -25,4 +26,5 @@ if ($result) {
 }
 
 echo json_encode($data);
+$conn->close();
 ?>

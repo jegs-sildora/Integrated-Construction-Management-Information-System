@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Reports - Workforce Management System</title>
+  <link rel="stylesheet" href="../common/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Hide sidebar when embedded */
+    .embedded .sidebar {
+      display: none !important;
+    }
+    
+    .embedded .dashboard-container {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Check if embedded and add class -->
+  <script>
+    // Add embedded class to body if embedded
+    if (window.location.search.includes('embedded=true')) {
+      document.documentElement.classList.add('embedded');
+    }
+  </script>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="toggle-sidebar">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </div>
+    <div class="logo">
+      <div class="logo-icon">I</div>
+      <div class="logo-text">ICMIS</div>
+    </div>
+
+    <div class="module-title">Workforce & Labor Management</div>
+
+    <ul class="menu">
+      <li>
+        <span class="material-symbols-outlined icon">dashboard</span>
+        <a href="../dashboard/dashboard.html" style="text-decoration: none; color: inherit;">Dashboard</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">group</span>
+        <a href="../employees/employees.html" style="text-decoration: none; color: inherit;">Employees</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">event_available</span>
+        <a href="../attendance/attendance.html" style="text-decoration: none; color: inherit;">Attendance</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">assignment</span>
+        <a href="../assignments/assignments.html" style="text-decoration: none; color: inherit;">Assignments</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">apartment</span>
+        <a href="../projects/projects.html" style="text-decoration: none; color: inherit;">Projects</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">schedule</span>
+        <a href="../payroll/time_payroll.html" style="text-decoration: none; color: inherit;">Time & Payroll</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">bar_chart</span>
+        <a href="../reports/reports.html" style="text-decoration: none; color: inherit;">Reports</a>
+      </li>
+    </ul>
+  </aside>
+
+  <main class="dashboard-container">
+    <div class="page-header">
+      <div class="header-content">
+        <h2>Project Reports</h2>
+        <p>Comprehensive project analytics and reporting</p>
+      </div>
+      <div class="user-info">
+        <span class="material-symbols-outlined">search</span>
+        <span class="material-symbols-outlined">notifications</span>
+        <div>
+          <p style="margin: 0; font-weight: bold; font-size: 14px; text-align: right;">Manager</p>
+          <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: right;">Admin</p>
+        </div>
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDAiIGZpbGw9IiNmNWFlMGIiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM1IiByPSIxMCIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0zMCA2NSBRNzAgNjUgNzAgNjUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIi8+PC9zdmc+" alt="User" style="width: 50px; height: 50px; border-radius: 50%;">
+      </div>
+    </div>
+
+    <!-- Report Filters -->
+    <div class="report-filters">
+      <div class="filter-group">
+        <label for="projectFilter">Project</label>
+        <select id="projectFilter">
+          <option value="all">All Projects</option>
+          <option value="makati">Makati Skyline Tower</option>
+          <option value="ceb">Cebu Commercial Complex</option>
+          <option value="riverside">Riverside Apartments</option>
+          <option value="central">Central Business Tower</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter">
+          <option value="all">All Statuses</option>
+          <option value="planning">Planning</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="on-hold">On Hold</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="periodFilter">Period</label>
+        <select id="periodFilter">
+          <option value="last-month">Last Month</option>
+          <option value="last-quarter">Last Quarter</option>
+          <option value="last-year">Last Year</option>
+          <option value="custom">Custom Range</option>
+        </select>
+      </div>
+      
+      <div class="filter-group" id="customDateRange" style="display: none;">
+        <label>Custom Range</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="date" id="startDate">
+          <input type="date" id="endDate">
+        </div>
+      </div>
+      
+      <button class="btn-primary" onclick="generateReport()">Generate Report</button>
+    </div>
+
+    <!-- Project Metrics Section -->
+    <section class="report-section">
+      <div class="section-header">
+        <h3>Project Metrics</h3>
+        <div class="section-actions">
+          <button class="export-btn">
+            <span class="material-symbols-outlined">download</span>
+            Export CSV
+          </button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <canvas id="projectChart"></canvas>
+      </div>
+      
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">24</div>
+          <div class="metric-label">Active Projects</div>
+          <div class="metric-change positive">+3 from last month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">87%</div>
+          <div class="metric-label">On-Time Delivery</div>
+          <div class="metric-change positive">+2.1% from last month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">$2.4M</div>
+          <div class="metric-label">Total Budget</div>
+          <div class="metric-change neutral">+0.5% from last month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">156</div>
+          <div class="metric-label">Team Members</div>
+          <div class="metric-change positive">+12 from last month</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Project Status Section -->
+    <section class="report-section">
+      <div class="section-header">
+        <h3>Project Status Overview</h3>
+      </div>
+      
+      <div class="card">
+        <div class="project-status-container">
+          <div class="project-status-item">
+            <div class="status-icon" style="background: #10b981;">
+              <span class="material-symbols-outlined">check_circle</span>
+            </div>
+            <div class="status-info">
+              <div class="status-count">8</div>
+              <div class="status-label">Completed</div>
+            </div>
+          </div>
+          <div class="project-status-item">
+            <div class="status-icon" style="background: #3b82f6;">
+              <span class="material-symbols-outlined">construction</span>
+            </div>
+            <div class="status-info">
+              <div class="status-count">12</div>
+              <div class="status-label">In Progress</div>
+            </div>
+          </div>
+          <div class="project-status-item">
+            <div class="status-icon" style="background: #f59e0b;">
+              <span class="material-symbols-outlined">schedule</span>
+            </div>
+            <div class="status-info">
+              <div class="status-count">3</div>
+              <div class="status-label">Planning</div>
+            </div>
+          </div>
+          <div class="project-status-item">
+            <div class="status-icon" style="background: #ef4444;">
+              <span class="material-symbols-outlined">pause</span>
+            </div>
+            <div class="status-info">
+              <div class="status-count">1</div>
+              <div class="status-label">On Hold</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detailed Project Report Section -->
+    <section class="report-section">
+      <div class="section-header">
+        <h3>Detailed Project Reports</h3>
+      </div>
+      
+      <div class="card performance-list">
+        <div class="table-header">
+          <h3>Project Details</h3>
+          <div class="controls">
+            <button class="filter-btn">
+              <span class="material-symbols-outlined">filter_list</span>
+              Filter
+            </button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Budget</th>
+                <th>Progress</th>
+                <th>Team Size</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="project-info">
+                    <div class="project-name">Makati Skyline Tower</div>
+                    <div class="project-location">Makati City</div>
+                  </div>
+                </td>
+                <td>PROJ001</td>
+                <td><span class="status-badge status-approved">In Progress</span></td>
+                <td>2023-01-15</td>
+                <td>2023-12-31</td>
+                <td>$1.2M</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 75%; background: #3b82f6;"></div>
+                    <span class="progress-text">75%</span>
+                  </div>
+                </td>
+                <td>45</td>
+                <td>
+                  <button class="action-btn">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="project-info">
+                    <div class="project-name">Cebu Commercial Complex</div>
+                    <div class="project-location">Cebu City</div>
+                  </div>
+                </td>
+                <td>PROJ002</td>
+                <td><span class="status-badge status-approved">In Progress</span></td>
+                <td>2023-02-01</td>
+                <td>2023-11-30</td>
+                <td>$800K</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 68%; background: #3b82f6;"></div>
+                    <span class="progress-text">68%</span>
+                  </div>
+                </td>
+                <td>38</td>
+                <td>
+                  <button class="action-btn">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="project-info">
+                    <div class="project-name">Riverside Apartments</div>
+                    <div class="project-location">Quezon City</div>
+                  </div>
+                </td>
+                <td>PROJ003</td>
+                <td><span class="status-badge status-approved">In Progress</span></td>
+                <td>2023-01-20</td>
+                <td>2023-10-15</td>
+                <td>$750K</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 82%; background: #3b82f6;"></div>
+                    <span class="progress-text">82%</span>
+                  </div>
+                </td>
+                <td>42</td>
+                <td>
+                  <button class="action-btn">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="project-info">
+                    <div class="project-name">Central Business Tower</div>
+                    <div class="project-location">Ortigas Center</div>
+                  </div>
+                </td>
+                <td>PROJ004</td>
+                <td><span class="status-badge status-pending">Planning</span></td>
+                <td>2023-03-01</td>
+                <td>2023-12-15</td>
+                <td>$650K</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 15%; background: #f59e0b;"></div>
+                    <span class="progress-text">15%</span>
+                  </div>
+                </td>
+                <td>31</td>
+                <td>
+                  <button class="action-btn">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="project-info">
+                    <div class="project-name">Greenfield Residential</div>
+                    <div class="project-location">Taguig City</div>
+                  </div>
+                </td>
+                <td>PROJ005</td>
+                <td><span class="status-badge status-approved">Completed</span></td>
+                <td>2022-06-01</td>
+                <td>2023-05-31</td>
+                <td>$950K</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%; background: #10b981;"></div>
+                    <span class="progress-text">100%</span>
+                  </div>
+                </td>
+                <td>52</td>
+                <td>
+                  <button class="action-btn">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Chart initialization
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize project chart
+      const ctx = document.getElementById('projectChart').getContext('2d');
+      const projectChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+          datasets: [{
+            label: 'Projects Started',
+            data: [3, 4, 2, 5, 3, 4],
+            backgroundColor: '#3b82f6',
+            borderRadius: 6,
+          }, {
+            label: 'Projects Completed',
+            data: [1, 2, 1, 3, 2, 3],
+            backgroundColor: '#10b981',
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: 'Project Activity Over Time'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+      
+      // Period filter change handler
+      document.getElementById('periodFilter').addEventListener('change', function() {
+        const customDateRange = document.getElementById('customDateRange');
+        if (this.value === 'custom') {
+          customDateRange.style.display = 'block';
+        } else {
+          customDateRange.style.display = 'none';
+        }
+      });
+    });
+    
+    // Generate report function
+    function generateReport() {
+      alert('Report generated successfully! In a real application, this would generate a detailed project report based on the selected filters.');
+    }
+  </script>
+</body>
+</html>

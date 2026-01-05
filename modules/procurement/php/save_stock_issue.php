@@ -1,69 +1,73 @@
 <?php
-// Prevent HTML errors breaking JSON
+// modules/procurement/php/save_stock_issue.php
 error_reporting(0);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
-include 'db_connect.php';
+
+// Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode(["status" => "error", "message" => "Database connection failed"]);
+    exit;
+}
+$conn->set_charset("utf8mb4");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $itemID = $_POST['stock_itemID']; // Make sure this matches JS FormData
-    $qtyToIssue = (int)$_POST['stock_quantity'];
-    $issuedTo = $_POST['stock_issuedTo'];
-    $notes = $_POST['stock_notes'];
-    $date = date('Y-m-d');
-    
-    // Generate a Reference Number (e.g., OUT-2025-001)
-    // For simplicity here, we use a random string or you can implement a counter
-    $refNo = "OUT-" . date("Y") . "-" . rand(1000, 9999); 
+    $item_id = intval($_POST['stock_itemID'] ?? 0);
+    $qtyToIssue = intval($_POST['stock_quantity'] ?? 0);
+    $issuedTo = trim($_POST['stock_issuedTo'] ?? '');
+    $project_id = intval($_POST['stock_projectID'] ?? 0);
 
-    // 1. START TRANSACTION (Crucial for inventory accuracy)
-    $conn_proc->begin_transaction();
+    if ($item_id <= 0 || $qtyToIssue <= 0 || empty($issuedTo)) {
+        echo json_encode(["status" => "error", "message" => "Invalid input data"]);
+        exit;
+    }
+
+    $conn->begin_transaction();
 
     try {
-        // 2. CHECK CURRENT STOCK
-        $checkSql = "SELECT quantity FROM inventory WHERE itemID = ? FOR UPDATE";
-        $stmtCheck = $conn_proc->prepare($checkSql);
-        $stmtCheck->bind_param("s", $itemID);
+        // Check current stock
+        $checkSql = "SELECT quantity FROM procurement_inventory WHERE item_id = ? FOR UPDATE";
+        $stmtCheck = $conn->prepare($checkSql);
+        $stmtCheck->bind_param("i", $item_id);
         $stmtCheck->execute();
         $resCheck = $stmtCheck->get_result();
         $row = $resCheck->fetch_assoc();
-        $currentStock = (int)$row['quantity'];
+        $currentStock = intval($row['quantity'] ?? 0);
         $stmtCheck->close();
 
-        // 3. VALIDATION: Is there enough stock?
         if ($currentStock < $qtyToIssue) {
             throw new Exception("Insufficient stock! Available: $currentStock, Requested: $qtyToIssue");
         }
 
-        // 4. DEDUCT FROM INVENTORY
-        $updateSql = "UPDATE inventory SET quantity = quantity - ? WHERE itemID = ?";
-        $stmtUpdate = $conn_proc->prepare($updateSql);
-        $stmtUpdate->bind_param("is", $qtyToIssue, $itemID);
+        // Deduct from inventory
+        $updateSql = "UPDATE procurement_inventory SET quantity = quantity - ? WHERE item_id = ?";
+        $stmtUpdate = $conn->prepare($updateSql);
+        $stmtUpdate->bind_param("ii", $qtyToIssue, $item_id);
         if (!$stmtUpdate->execute()) {
             throw new Exception("Failed to update inventory.");
         }
         $stmtUpdate->close();
 
-        // 5. INSERT INTO STOCK_OUT LOGS
-        // Assuming table name is 'stock_out' or similar
-        $insertSql = "INSERT INTO stock_out (refNo, itemID, quantity, issuedTo, dateIssued, notes) VALUES (?, ?, ?, ?, ?, ?)";
-        $stmtInsert = $conn_proc->prepare($insertSql);
-        $stmtInsert->bind_param("ssisss", $refNo, $itemID, $qtyToIssue, $issuedTo, $date, $notes);
+        // Insert into stock_out
+        $insertSql = "INSERT INTO procurement_stock_out (item_id, quantity, issued_to, date_issued, project_id) VALUES (?, ?, ?, CURDATE(), ?)";
+        $stmtInsert = $conn->prepare($insertSql);
+        $project_param = $project_id > 0 ? $project_id : null;
+        $stmtInsert->bind_param("iisi", $item_id, $qtyToIssue, $issuedTo, $project_param);
         if (!$stmtInsert->execute()) {
             throw new Exception("Failed to record transaction.");
         }
         $stmtInsert->close();
 
-        // 6. COMMIT TRANSACTION
-        $conn_proc->commit();
-        echo json_encode(["status" => "success", "message" => "Stock issued successfully! Ref: $refNo"]);
+        $conn->commit();
+        echo json_encode(["status" => "success", "message" => "Stock issued successfully!"]);
 
     } catch (Exception $e) {
-        // ROLLBACK IF ANY ERROR
-        $conn_proc->rollback();
+        $conn->rollback();
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
     
-    $conn_proc->close();
+    $conn->close();
 }
 ?>

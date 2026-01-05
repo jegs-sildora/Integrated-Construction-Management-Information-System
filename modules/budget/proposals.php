@@ -39,7 +39,7 @@ z
   
   <?php
     // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
+    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     
@@ -78,24 +78,29 @@ z
   <?php
     // Fetch budget proposals for selected project
     if ($selected_project_id > 0) {
-      $sql = "SELECT bp.*, p.project_name, p.project_code 
-              FROM budget_proposals bp 
-              LEFT JOIN projects p ON bp.project_id = p.project_id 
-              WHERE bp.project_id = ?
-              ORDER BY bp.created_at DESC";
-      $stmt = $conn->prepare($sql);
-      $stmt->bind_param("i", $selected_project_id);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      $proposals = [];
-      if ($result && $result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-          $proposals[] = $row;
+        // CHANGE: Added 'Unknown User' as the second parameter to COALESCE
+        $sql = "SELECT bp.*, p.project_name, p.project_code, 
+                COALESCE(u.full_name, 'System Admin') as user_name 
+                FROM budget_proposals bp 
+                LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
+                LEFT JOIN icmis_users u ON bp.created_by = u.user_id
+                WHERE bp.project_id = ?
+                ORDER BY bp.created_at DESC";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $selected_project_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $proposals = [];
+        if ($result && $result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $proposals[] = $row;
+            }
         }
-      }
-      $stmt->close();
+        $stmt->close();
     } else {
-      $proposals = [];
+        $proposals = [];
     }
   ?>
 
@@ -223,7 +228,7 @@ z
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900"><?php echo htmlspecialchars($proposal['user_name']); ?></span>
+                <span class="text-sm text-gray-900"><?php echo htmlspecialchars($proposal['user_name'] ?? 'Unknown User'); ?></span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-2">

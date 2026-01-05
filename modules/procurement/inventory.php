@@ -26,7 +26,7 @@ $project_name = 'All Projects (Global View)';
 $projects_list = [];
 
 if ($project_id > 0) {
-    $stmt = $conn->prepare("SELECT project_name FROM projects WHERE project_id = ?");
+    $stmt = $conn->prepare("SELECT project_name FROM icmis_projects WHERE project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -34,7 +34,7 @@ if ($project_id > 0) {
 }
 
 // Fetch All Projects for Dropdown
-$sql_all = "SELECT project_id, project_name FROM projects ORDER BY created_at DESC";
+$sql_all = "SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC";
 $res_all = $conn->query($sql_all);
 if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
 ?>

@@ -5,13 +5,10 @@ require_once '../../config/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
 
-// DB Connections
+// DB Connection - Using centralized config
 require_once '../../config/database.php';
-$main_conn = $conn; 
-
-$proc_db_path = __DIR__ . '/php/db_connect.php';
-if (file_exists($proc_db_path)) { include $proc_db_path; $procurement_conn = $conn_proc; }
-else { die("Procurement DB not found"); }
+$main_conn = $conn;
+$procurement_conn = $conn; // Use same connection - all tables now in icmis_db
 
 // ==========================================================================
 // 1. SESSION BASED CONTEXT LOGIC
@@ -37,7 +34,7 @@ $projects_list = [];
 
 // Fetch Current Project Info
 if ($project_id > 0) {
-    $stmt = $main_conn->prepare("SELECT project_name, project_code FROM projects WHERE project_id = ?");
+    $stmt = $main_conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -48,7 +45,7 @@ if ($project_id > 0) {
 }
 
 // Fetch ALL Projects for Dropdown
-$sql_all = "SELECT project_id, project_name FROM projects ORDER BY created_at DESC";
+$sql_all = "SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC";
 $res_all = $main_conn->query($sql_all);
 if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
 
@@ -63,16 +60,16 @@ if ($project_id > 0) {
         SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as pending,
         SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) as approved,
         SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed
-    FROM purchase_orders WHERE project_id = '$project_id'";
+    FROM procurement_purchase_orders WHERE project_id = '$project_id'";
     $kpi_res = $procurement_conn->query($sql_kpi);
     if ($kpi_res) $kpi = $kpi_res->fetch_assoc();
 
     // Orders List
-    $sql_orders = "SELECT po.*, s.supplierName 
-                   FROM purchase_orders po
-                   LEFT JOIN suppliers s ON po.supplier_id = s.supplierID
+    $sql_orders = "SELECT po.*, s.supplier_name 
+                   FROM procurement_purchase_orders po
+                   LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
                    WHERE po.project_id = '$project_id'  
-                   ORDER BY po.created_at DESC";
+                   ORDER BY po.order_date DESC";
     $result_orders = $procurement_conn->query($sql_orders);
 } else {
     $result_orders = false;
@@ -156,10 +153,10 @@ if ($project_id > 0) {
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="px-6 py-4">
                                         <div class="font-bold text-navy-dark"><?= htmlspecialchars($row['po_reference'] ?? '') ?></div>
-                                        <div class="text-xs text-slate-400"><?= date('M d, Y', strtotime($row['created_at'])) ?></div>
+                                        <div class="text-xs text-slate-400"><?= date('M d, Y', strtotime($row['order_date'])) ?></div>
                                     </td>
                                     <td class="px-6 py-4 font-medium text-slate-700"><?= htmlspecialchars($row['order_title'] ?? '') ?></td>
-                                    <td class="px-6 py-4 text-sm font-medium text-slate-700"><?= htmlspecialchars($row['supplierName'] ?? 'N/A') ?></td>
+                                    <td class="px-6 py-4 text-sm font-medium text-slate-700"><?= htmlspecialchars($row['supplier_name'] ?? 'N/A') ?></td>
                                     <td class="px-6 py-4 text-right font-bold text-slate-700">₱<?= number_format($row['total_amount'] ?? 0, 2) ?></td>
                                     <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase <?= $statusClass ?>"><?= $status ?></span></td>
                                     <td class="px-6 py-4 text-center">

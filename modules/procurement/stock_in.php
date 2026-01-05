@@ -5,11 +5,8 @@ require_once '../../config/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
 
-// 1. Connect to Main DB (for Project Names/Context)
-require_once '../../config/database.php';
-
-// 2. Connect to Procurement/Inventory DB (REQUIRED for checking POs)
-require_once 'php/db_connect.php'; 
+// Connect to Main DB (centralized config)
+require_once '../../config/database.php'; 
 
 // ==========================================================================
 // 3. SESSION BASED CONTEXT LOGIC
@@ -31,7 +28,7 @@ $project_name = 'Select Project';
 
 if ($project_id > 0) {
     // Use Main DB Connection ($conn)
-    $stmt = $conn->prepare("SELECT project_name FROM projects WHERE project_id = ?");
+    $stmt = $conn->prepare("SELECT project_name FROM icmis_projects WHERE project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -43,8 +40,8 @@ if ($project_id > 0) {
 // ==========================================================================
 $has_orders = false;
 if ($project_id > 0) {
-    // Check 'icmis_procurement_inventory_db' for approved POs
-    $check_sql = "SELECT COUNT(*) as count FROM icmis_procurement_inventory_db.purchase_orders WHERE project_id = ?";
+    // Check for approved POs in procurement_purchase_orders
+    $check_sql = "SELECT COUNT(*) as count FROM procurement_purchase_orders WHERE project_id = ?";
     if ($stmt = $conn->prepare($check_sql)) {
         $stmt->bind_param("i", $project_id);
         $stmt->execute();

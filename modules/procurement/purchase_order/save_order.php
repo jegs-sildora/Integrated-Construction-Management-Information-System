@@ -20,14 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// 2. Connect to Procurement Database
-include __DIR__ . '/../php/db_connect.php'; 
-
-if (!isset($conn_proc) || $conn_proc->connect_error) {
+// 2. Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
     ob_clean();
     echo json_encode(['success' => false, 'message' => 'Database connection failed']);
     exit;
 }
+$conn->set_charset("utf8mb4");
 
 // 3. Process the Request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -53,20 +54,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $order_title = isset($data['title']) ? trim($data['title']) : 'Untitled Order';
         $items = $data['items'];
         
-        // FIX: Use Logged-in User ID from Session
-        $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 1; 
+        // Use Logged-in User ID from Session
+        $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null; 
 
         // --- Resolve Supplier ID ---
         $supplier_id = 0;
         if (is_numeric($supplier_input)) {
             $supplier_id = intval($supplier_input);
         } else {
-            $stmt_sup = $conn_proc->prepare("SELECT supplierID FROM suppliers WHERE supplierName = ? LIMIT 1");
+            $stmt_sup = $conn->prepare("SELECT supplier_id FROM procurement_suppliers WHERE supplier_name = ? LIMIT 1");
             $stmt_sup->bind_param("s", $supplier_input);
             $stmt_sup->execute();
             $res_sup = $stmt_sup->get_result();
             if ($row_sup = $res_sup->fetch_assoc()) {
-                $supplier_id = $row_sup['supplierID'];
+                $supplier_id = $row_sup['supplier_id'];
             } else {
                 throw new Exception("Supplier '$supplier_input' not found in database.");
             }
@@ -75,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // --- Generate PO Reference ---
         $year = date('Y');
-        $stmt_count = $conn_proc->query("SELECT COUNT(*) as total FROM purchase_orders WHERE YEAR(created_at) = '$year'");
+        $stmt_count = $conn->query("SELECT COUNT(*) as total FROM procurement_purchase_orders WHERE YEAR(order_date) = '$year'");
         $row_count = $stmt_count->fetch_assoc();
         $next_num = $row_count['total'] + 1;
         $po_reference = sprintf("PO-%s-%04d", $year, $next_num);
@@ -87,25 +88,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // --- Begin Transaction ---
-        $conn_proc->begin_transaction();
+        $conn->begin_transaction();
 
         // A. Insert Header
-        $sql_header = "INSERT INTO purchase_orders 
-                       (po_reference, project_id, supplier_id, phase, order_title, total_amount, status, created_by, created_at) 
-                       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, NOW())";
+        $sql_header = "INSERT INTO procurement_purchase_orders 
+                       (po_reference, project_id, supplier_id, phase, order_title, order_date, total_amount, status, created_by_user_id) 
+                       VALUES (?, ?, ?, ?, ?, CURDATE(), ?, 'PENDING', ?)";
         
-        $stmt = $conn_proc->prepare($sql_header);
+        $stmt = $conn->prepare($sql_header);
         $stmt->bind_param("siissdi", $po_reference, $project_id, $supplier_id, $phase, $order_title, $grand_total, $created_by);
         
         if (!$stmt->execute()) {
             throw new Exception("Header Error: " . $stmt->error);
         }
-        $new_po_id = $conn_proc->insert_id;
+        $new_po_id = $conn->insert_id;
         $stmt->close();
 
         // B. Insert Items
-        $sql_item = "INSERT INTO purchase_order_items (po_id, item_name, quantity, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)";
-        $stmt_item = $conn_proc->prepare($sql_item);
+        $sql_item = "INSERT INTO procurement_purchase_order_items (po_id, item_name, quantity, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)";
+        $stmt_item = $conn->prepare($sql_item);
 
         foreach ($items as $item) {
             $i_name = trim($item['name']);
@@ -122,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_item->close();
 
         // --- Commit ---
-        $conn_proc->commit();
+        $conn->commit();
 
         ob_clean(); 
         echo json_encode([
@@ -133,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
     } catch (Exception $e) {
-        if (isset($conn_proc)) $conn_proc->rollback();
+        if (isset($conn)) $conn->rollback();
         ob_clean(); 
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
@@ -141,4 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ob_clean();
     echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
 }
+
+$conn->close();
 ?>

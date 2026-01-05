@@ -16,7 +16,7 @@ set_error_handler("jsonErrorHandler");
 
 try {
     // Include config for database connection
-    require_once __DIR__ . '/../../config/config.php';
+    require_once __DIR__ . '/../../../config/config.php';
     
     // Create database connection
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -54,9 +54,9 @@ try {
 
     // Insert into database
     // This makes the "Recent Reports" table work
-    $check_table = $conn->query("SHOW TABLES LIKE 'generated_reports'");
+    $check_table = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
     if ($check_table && $check_table->num_rows > 0) {
-        $log_sql = "INSERT INTO generated_reports (project_id, report_type, report_name, context, generated_by) VALUES (?, ?, ?, ?, ?)";
+        $log_sql = "INSERT INTO budget_generated_reports (project_id, report_type, report_name, context, generated_by) VALUES (?, ?, ?, ?, ?)";
         $stmt_log = $conn->prepare($log_sql);
         if ($stmt_log) {
             $stmt_log->bind_param("issss", $project_id, $report_type, $report_name, $context_label, $user_name);
@@ -73,7 +73,7 @@ try {
     $sql_project = "SELECT p.project_id, p.project_code, p.project_name, p.location,
                     (SELECT COALESCE(SUM(bp.total_amount), 0) FROM budget_proposals bp WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
                     (SELECT COALESCE(SUM(e.amount), 0) FROM budget_expenses e WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                    FROM projects p WHERE p.project_id = ?";
+                    FROM icmis_projects p WHERE p.project_id = ?";
 
     $stmt = $conn->prepare($sql_project);
     $stmt->bind_param("i", $project_id);
@@ -97,7 +97,10 @@ try {
                 }
                 
                 // Budget
-                $sql_b = "SELECT COALESCE(SUM(total_amount), 0) as budget FROM budget_proposals WHERE project_id = ? AND phase = ? AND status = 'APPROVED'";
+                $sql_b = "SELECT COALESCE(SUM(bp.total_amount), 0) as budget 
+                          FROM budget_proposals bp 
+                          LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id 
+                          WHERE bp.project_id = ? AND pp.phase_name = ? AND bp.status = 'APPROVED'";
                 $stmt = $conn->prepare($sql_b);
                 $stmt->bind_param("is", $project_id, $phase);
                 $stmt->execute();
@@ -105,7 +108,10 @@ try {
                 $stmt->close();
 
                 // Actual
-                $sql_a = "SELECT COALESCE(SUM(amount), 0) as spent FROM budget_expenses WHERE project_id = ? AND phase = ? AND status = 'APPROVED'";
+                $sql_a = "SELECT COALESCE(SUM(e.amount), 0) as spent 
+                          FROM budget_expenses e 
+                          LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id 
+                          WHERE e.project_id = ? AND pp.phase_name = ? AND e.status = 'APPROVED'";
                 $stmt = $conn->prepare($sql_a);
                 $stmt->bind_param("is", $project_id, $phase);
                 $stmt->execute();
@@ -124,9 +130,11 @@ try {
             break;
 
         case 'labor-analysis':
-            $sql_labor = "SELECT expense_date, description, amount, phase FROM budget_expenses 
-                          WHERE project_id = ? AND category = 'LABOR' AND status = 'APPROVED' 
-                          ORDER BY expense_date DESC";
+            $sql_labor = "SELECT e.expense_date, e.description, e.amount, pp.phase_name as phase 
+                          FROM budget_expenses e
+                          LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
+                          WHERE e.project_id = ? AND e.category = 'LABOR' AND e.status = 'APPROVED' 
+                          ORDER BY e.expense_date DESC";
             $stmt = $conn->prepare($sql_labor);
             $stmt->bind_param("i", $project_id);
             $stmt->execute();
@@ -165,9 +173,10 @@ try {
 
         case 'expense-log':
         default: 
-            $sql_expenses = "SELECT e.expense_date, e.category, e.description, s.name as supplier_name, e.amount, e.status, e.phase
+            $sql_expenses = "SELECT e.expense_date, e.category, e.description, s.supplier_name, e.amount, e.status, pp.phase_name as phase
                              FROM budget_expenses e
-                             LEFT JOIN budget_suppliers s ON e.supplier_id = s.supplier_id
+                             LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
+                             LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
                              WHERE e.project_id = ? AND e.status = 'APPROVED'
                              ORDER BY e.expense_date DESC";
             $stmt = $conn->prepare($sql_expenses);

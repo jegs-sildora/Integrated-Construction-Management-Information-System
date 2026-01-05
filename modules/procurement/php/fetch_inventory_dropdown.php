@@ -1,18 +1,23 @@
 <?php
-// modules/inventory/php/fetch_inventory_dropdown.php
+// modules/procurement/php/fetch_inventory_dropdown.php
 header('Content-Type: application/json');
-require_once 'db_connect.php'; // Ensure this file exists in the same folder
 
-// Use correct connection variable
-$db = $conn_proc ?? $conn;
+// Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode([]);
+    exit;
+}
+$conn->set_charset("utf8mb4");
 
 // Fetch items with available stock
-$sql = "SELECT itemID, item_name as itemName, quantity, unit 
-        FROM inventory 
+$sql = "SELECT item_id, item_name, quantity, unit 
+        FROM procurement_inventory 
         WHERE quantity > 0 
         ORDER BY item_name ASC";
 
-$result = $db->query($sql);
+$result = $conn->query($sql);
 
 $data = [];
 if ($result) {
@@ -22,4 +27,5 @@ if ($result) {
 }
 
 echo json_encode($data);
+$conn->close();
 ?>

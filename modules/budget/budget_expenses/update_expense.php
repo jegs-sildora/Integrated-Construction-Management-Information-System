@@ -3,7 +3,7 @@ header('Content-Type: application/json');
 date_default_timezone_set('Asia/Manila');
 
 // Include config for database connection
-require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../../config/config.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -134,7 +134,7 @@ try {
     $stmt->close();
 
     // Verify project exists
-    $stmt = $conn->prepare("SELECT project_id FROM projects WHERE project_id = ?");
+    $stmt = $conn->prepare("SELECT project_id FROM icmis_projects WHERE project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -190,7 +190,7 @@ try {
     }
 
     // Check/create supplier
-    $stmt = $conn->prepare("SELECT supplier_id FROM budget_suppliers WHERE name = ?");
+    $stmt = $conn->prepare("SELECT supplier_id FROM procurement_suppliers WHERE supplier_name = ?");
     $stmt->bind_param("s", $supplier_name);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -200,7 +200,7 @@ try {
         $supplier_id = $supplier['supplier_id'];
     } else {
         // Create new supplier
-        $stmt_insert = $conn->prepare("INSERT INTO budget_suppliers (name, created_at) VALUES (?, NOW())");
+        $stmt_insert = $conn->prepare("INSERT INTO procurement_suppliers (supplier_name, status) VALUES (?, 'Active')");
         $stmt_insert->bind_param("s", $supplier_name);
         
         if (!$stmt_insert->execute()) {
@@ -216,39 +216,42 @@ try {
     $conn->begin_transaction();
 
     try {
-        // Update the main expense record with the first line item
+        // Look up phase_id from phase name
+        $phase_id = null;
+        $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name = ?");
+        $stmt_phase->bind_param("is", $project_id, $phase);
+        $stmt_phase->execute();
+        $result_phase = $stmt_phase->get_result();
+        if ($row_phase = $result_phase->fetch_assoc()) {
+            $phase_id = $row_phase['phase_id'];
+        }
+        $stmt_phase->close();
+
+        // Update the main expense record with the first line item (matching new schema)
         $first_item = $line_items[0];
         
         $sql_update = "UPDATE budget_expenses SET 
                        project_id = ?, 
+                       phase_id = ?,
                        expense_date = ?, 
-                       phase = ?, 
                        category = ?, 
                        description = ?, 
                        supplier_id = ?, 
-                       quantity = ?,
-                       unit_cost = ?,
                        amount = ?, 
-                       status = ?, 
-                       notes = ?, 
-                       receipt_path = ?
+                       status = ?
                        WHERE expense_id = ?";
         
         $stmt_update = $conn->prepare($sql_update);
         $stmt_update->bind_param(
-            "issssidddsssi",
+            "iisssidsi",
             $project_id,
+            $phase_id,
             $expense_date,
-            $phase,
             $first_item['category'],
             $first_item['description'],
             $supplier_id,
-            $first_item['quantity'],
-            $first_item['unitCost'],
             $first_item['subtotal'],
             $status,
-            $notes,
-            $receipt_path,
             $expense_id
         );
 
@@ -264,26 +267,23 @@ try {
             $item = $line_items[$i];
             
             $sql_insert = "INSERT INTO budget_expenses (
-                project_id, expense_date, phase, category, description, 
-                supplier_id, quantity, unit_cost, amount, status, notes, receipt_path
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                project_id, phase_id, expense_date, category, description, 
+                supplier_id, amount, status, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-            $null_receipt_path = null;
+            $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
             $stmt_insert = $conn->prepare($sql_insert);
             $stmt_insert->bind_param(
-                "issssidddsss",
+                "iisssidsi",
                 $project_id,
+                $phase_id,
                 $expense_date,
-                $phase,
                 $item['category'],
                 $item['description'],
                 $supplier_id,
-                $item['quantity'],
-                $item['unitCost'],
                 $item['subtotal'],
                 $status,
-                $notes,
-                $null_receipt_path
+                $created_by
             );
 
             if (!$stmt_insert->execute()) {

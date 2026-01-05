@@ -41,7 +41,7 @@
 <?php
 
     // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
+    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     if ($result_projects && $result_projects->num_rows > 0) {
@@ -109,7 +109,7 @@
                       (SELECT COALESCE(SUM(e.amount), 0) 
                        FROM budget_expenses e 
                        WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                      FROM projects p
+                      FROM icmis_projects p
                       WHERE p.project_id = ?";
       $stmt = $conn->prepare($sql_project);
       $stmt->bind_param("i", $selected_project_id);
@@ -141,18 +141,19 @@
       // Fetch phase-based budget data
       $phases_data = [];
       $sql_phases = "SELECT 
-                      e.phase,
+                      pp.phase_name as phase,
                       (SELECT COALESCE(SUM(bp.total_amount), 0) 
                        FROM budget_proposals bp 
                        WHERE bp.project_id = ? 
-                       AND bp.phase = e.phase 
+                       AND bp.phase_id = e.phase_id 
                        AND bp.status = 'APPROVED') as allocated,
                       COALESCE(SUM(CASE WHEN e.status = 'APPROVED' THEN e.amount ELSE 0 END), 0) as spent,
                       COUNT(e.expense_id) as expense_count
                      FROM budget_expenses e
+                     LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
                      WHERE e.project_id = ?
-                     GROUP BY e.phase
-                     ORDER BY e.phase";
+                     GROUP BY e.phase_id, pp.phase_name
+                     ORDER BY pp.phase_name";
       $stmt_phases = $conn->prepare($sql_phases);
       $stmt_phases->bind_param("ii", $selected_project_id, $selected_project_id);
       $stmt_phases->execute();
@@ -167,6 +168,12 @@
 
       while ($row = $result_phases->fetch_assoc()) {
         $phase_name = $row['phase'];
+        
+        // Skip if phase_name is NULL or not in definitions (expenses with NULL phase_id)
+        if (empty($phase_name) || !isset($phase_definitions[$phase_name])) {
+          continue;
+        }
+        
         $allocated = floatval($row['allocated']);
         $spent = floatval($row['spent']);
         $remaining = $allocated - $spent;
@@ -267,9 +274,10 @@
     // Fetch recent expenses for the table
     $expenses = [];
     if ($selected_project_id > 0) {
-      $sql_expenses = "SELECT e.*, s.name as supplier_name
+      $sql_expenses = "SELECT e.*, s.supplier_name, pp.phase_name as phase
                        FROM budget_expenses e
-                       LEFT JOIN budget_suppliers s ON e.supplier_id = s.supplier_id
+                       LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
+                       LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
                        WHERE e.project_id = ?
                        ORDER BY e.expense_date DESC
                        LIMIT 10";

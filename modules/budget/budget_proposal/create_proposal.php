@@ -39,7 +39,7 @@
 
 	<?php
 		// Fetch projects from database
-		$sql = "SELECT project_id, project_code, project_name, status FROM projects ORDER BY project_id DESC";
+		$sql = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
 		$result = $conn->query($sql);
 		$projects = [];
 		if ($result && $result->num_rows > 0) {
@@ -55,11 +55,10 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
-                Back to Budget Proposal Dashboard
             </a>
 
             <div class="mb-8 text-center">
-                <h1 class="text-2xl font-bold text-gray-900 mb-2">Create New Budget Proposal</h1>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Create New Budget Proposal</h1>
                 <p class="text-sm text-gray-600">Fill in the details below to create a comprehensive budget proposal</p>
             </div>
 
@@ -80,11 +79,6 @@
                     </div>
 
                     <div class="mb-6">
-                        <label for="proposalTitle" class="block text-sm text-gray-700 mb-2">Proposal Title</label>
-                        <input type="text" id="proposalTitle" placeholder="e.g., Q1 2025 Construction Materials Budget" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
-                    </div>
-
-                    <div class="mb-6">
                         <label for="targetPhase" class="block text-sm text-gray-700 mb-2">Target Milestone / Phase</label>
                         <select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                             <option value="">Select Phase...</option>
@@ -93,6 +87,11 @@
                             <option value="Phase 3: MEPFS">Phase 3: MEPFS</option>
                             <option value="Phase 4: Finishing">Phase 4: Finishing</option>
                         </select>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="proposalTitle" class="block text-sm text-gray-700 mb-2">Proposal Title</label>
+                        <input type="text" id="proposalTitle" placeholder="e.g., Q1 2025 Construction Materials Budget" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                     </div>
 
                     <div class="mb-6 grid grid-cols-2 gap-4">
@@ -533,7 +532,7 @@
             items = items.filter(item => item.id !== id);
             renderItems();
             updateGrandTotal();
-            showToast('Item removed successfully', 'error');
+            showToast('Item removed successfully', 'success');
         }
 
         function renderItems() {
@@ -651,27 +650,102 @@
             return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
 
-        // Live Preview Updates
-        document.getElementById('project').addEventListener('change', (e) => {
-            const previewProject = document.getElementById('preview-project');
-            const text = e.target.value || 'No project selected';
-            previewProject.textContent = text;
-            previewProject.className = text === 'No project selected' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-900 mt-1';
-        });
+        // 1. Listen for Project Selection
+        document.getElementById('project').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const projectId = selectedOption.getAttribute('data-id');
+        const phaseSelect = document.getElementById('targetPhase');
 
-        document.getElementById('proposalTitle').addEventListener('input', (e) => {
-            const previewTitle = document.getElementById('preview-title');
-            const text = e.target.value.trim() || 'No title entered';
-            previewTitle.textContent = text;
-            previewTitle.className = text === 'No title entered' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-900 mt-1';
-        });
+        // Reset fields
+        phaseSelect.innerHTML = '<option value="">Loading phases...</option>';
+        document.getElementById('phaseStartDate').value = '';
+        document.getElementById('phaseEndDate').value = '';
+        document.getElementById('proposalTitle').value = '';
 
-        document.getElementById('targetPhase').addEventListener('change', (e) => {
-            const previewPhase = document.getElementById('preview-phase');
-            const text = e.target.value || 'No phase specified';
-            previewPhase.textContent = text;
-            previewPhase.className = text === 'No phase specified' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-900 mt-1';
-        });
+        if (!projectId) {
+            phaseSelect.innerHTML = '<option value="">-- Select a Project First --</option>';
+            return;
+        }
+
+        // Fetch Phases from Backend
+        fetch(`get_project_phases.php?project_id=${projectId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.phases.length > 0) {
+                    phaseSelect.innerHTML = '<option value="">-- Select Target Phase --</option>';
+                    
+                    data.phases.forEach(phase => {
+                        const option = document.createElement('option');
+                        option.value = phase.name; // Keeping name as value based on your DB schema
+                        option.textContent = phase.name;
+                        
+                        // Store data attributes for auto-filling
+                        option.dataset.start = phase.start_date;
+                        option.dataset.end = phase.end_date;
+                        option.dataset.id = phase.id;
+                        
+                        phaseSelect.appendChild(option);
+                    });
+                } else {
+                    phaseSelect.innerHTML = '<option value="">No phases found for this project</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                phaseSelect.innerHTML = '<option value="">Error loading phases</option>';
+            });
+    });
+
+    // 2. Listen for Phase Selection (Auto-fill Title & Dates)
+    document.getElementById('targetPhase').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const previewPhase = document.getElementById('preview-phase'); // Select the preview element
+        
+        if (selectedOption.value) {
+            const startDate = selectedOption.dataset.start;
+            const endDate = selectedOption.dataset.end;
+            const phaseName = selectedOption.textContent; // Use textContent for the display name
+            
+            // Update Phase Preview Text (The Fix)
+            previewPhase.textContent = phaseName;
+            previewPhase.classList.remove('italic', 'text-gray-500');
+            previewPhase.classList.add('text-gray-900');
+
+            // Auto-fill Dates
+            document.getElementById('phaseStartDate').value = startDate;
+            document.getElementById('phaseEndDate').value = endDate;
+            
+            // Auto-fill Proposal Title
+            const titleInput = document.getElementById('proposalTitle');
+            titleInput.value = `${phaseName} Budget Proposal`;
+            
+            // Trigger input event to update the live preview for title
+            titleInput.dispatchEvent(new Event('input'));
+            
+            // Update Timeline Preview
+            updateTimeline();
+        } else {
+            // Reset if empty selection
+            previewPhase.textContent = 'No phase specified';
+            previewPhase.classList.add('italic');
+        }
+    });
+
+    // 3. Listen for Title Input (Live Preview)
+    document.getElementById('proposalTitle').addEventListener('input', function(e) {
+        const previewTitle = document.getElementById('preview-title');
+        const val = e.target.value.trim();
+
+        if (val) {
+            previewTitle.textContent = val;
+            previewTitle.classList.remove('italic');
+            previewTitle.classList.add('text-gray-900');
+        } else {
+            previewTitle.textContent = 'No title entered';
+            previewTitle.classList.add('italic');
+            previewTitle.classList.remove('text-gray-900');
+        }
+    });
 
         function updateTimeline() {
             const startDate = document.getElementById('phaseStartDate').value;
@@ -986,7 +1060,6 @@
                 document.getElementById('submit-proposal').disabled = false;
             });
         }
-
         // Make removeItem available globally
         window.removeItem = removeItem;
     </script>

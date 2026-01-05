@@ -15,7 +15,7 @@
     $current_project_code = "";
     
     if ($selected_project_id) {
-        $stmt = $conn->prepare("SELECT project_name, project_code FROM projects WHERE project_id = ?");
+        $stmt = $conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?");
         $stmt->bind_param("i", $selected_project_id);
         $stmt->execute();
         $res = $stmt->get_result();
@@ -147,7 +147,7 @@
 
       <?php
         // Fetch all projects for dropdown
-        $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
+        $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
         $result_projects = $conn->query($sql_projects);
         $projects = [];
         

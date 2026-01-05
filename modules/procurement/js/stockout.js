@@ -25,13 +25,13 @@ function fetchStockOuts() {
         data.forEach(row => {
             let tr = `
                 <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors">
-                    <td class="px-6 py-4 font-bold text-slate-600 text-sm whitespace-nowrap">${row.refNo}</td>
-                    <td class="px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${row.itemName}</td>
+                    <td class="px-6 py-4 font-bold text-slate-600 text-sm whitespace-nowrap">${row.stock_out_id}</td>
+                    <td class="px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${row.item_name}</td>
                     <td class="px-6 py-4 font-bold text-red-500 text-sm whitespace-nowrap">-${row.quantity}</td>
                     <td class="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">${row.unit}</td>
-                    <td class="px-6 py-4 text-slate-700 text-sm whitespace-nowrap">${row.issuedTo}</td>
-                    <td class="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">${row.dateIssued}</td>
-                    <td class="px-6 py-4 text-slate-400 text-sm whitespace-nowrap italic">${row.notes || '-'}</td>
+                    <td class="px-6 py-4 text-slate-700 text-sm whitespace-nowrap">${row.issued_to}</td>
+                    <td class="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">${row.date_issued}</td>
+                    <td class="px-6 py-4 text-slate-400 text-sm whitespace-nowrap italic">${row.project_name || '-'}</td>
                 </tr>
             `;
             tbody.innerHTML += tr;
@@ -57,10 +57,10 @@ function loadInventoryDropdown() {
         if(data.forEach) {
             data.forEach(item => {
                 let option = document.createElement("option");
-                option.value = item.itemID;
+                option.value = item.item_id;
                 option.setAttribute("data-max", item.quantity);
                 option.setAttribute("data-unit", item.unit);
-                option.text = `${item.itemName} (Available: ${item.quantity} ${item.unit})`;
+                option.text = `${item.item_name} (Available: ${item.quantity} ${item.unit})`;
                 dropdown.appendChild(option);
             });
         }

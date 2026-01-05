@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 // Include config for database connection
-require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../../config/config.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -37,8 +37,9 @@ try {
                 bp.code as proposal_code
             FROM budget_line_items bli
             INNER JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id
+            LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
             WHERE bp.project_id = ? 
-            AND bp.phase = ?
+            AND pp.phase_name = ?
             AND bp.status = 'APPROVED'
             AND bli.item_name LIKE ?
             ORDER BY bli.item_name

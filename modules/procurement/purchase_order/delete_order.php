@@ -1,5 +1,5 @@
 <?php
-// modules/procurement/php/delete_order.php
+// modules/procurement/purchase_order/delete_order.php
 
 // 1. Output Buffering (Crucial: prevents PHP warnings/HTML from breaking JSON)
 ob_start();
@@ -10,20 +10,17 @@ ini_set('display_errors', 0);
 
 header('Content-Type: application/json');
 
-// 2. Include Database Connection
-require_once __DIR__ . '/db_connect.php'; 
-
-// Ensure we use the active connection variable
-$db = $conn_proc ?? $conn;
-
-if (!isset($db) || $db->connect_error) {
+// 2. Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
     ob_clean();
     echo json_encode(['success' => false, 'message' => 'Database connection failed']);
     exit;
 }
+$conn->set_charset("utf8mb4");
 
 // 3. Get Input
-// FIX: Using 'po_id' to match your database schema and JS
 $po_id = isset($_POST['po_id']) ? intval($_POST['po_id']) : 0;
 
 if ($po_id <= 0) {
@@ -36,13 +33,12 @@ if ($po_id <= 0) {
 }
 
 // 4. Start Transaction
-$db->begin_transaction();
+$conn->begin_transaction();
 
 try {
     // A. Check if the Purchase Order exists 
-    // FIX: Table name is 'purchase_orders' (with underscore)
-    $check_sql = "SELECT po_reference, status FROM purchase_orders WHERE po_id = ?";
-    $check_stmt = $db->prepare($check_sql);
+    $check_sql = "SELECT po_reference, status FROM procurement_purchase_orders WHERE po_id = ?";
+    $check_stmt = $conn->prepare($check_sql);
     $check_stmt->bind_param("i", $po_id);
     $check_stmt->execute();
     $result = $check_stmt->get_result();
@@ -55,9 +51,8 @@ try {
     $check_stmt->close();
     
     // B. Delete Line Items first
-    // FIX: Table name is 'purchase_order_items'
-    $delete_items_sql = "DELETE FROM purchase_order_items WHERE po_id = ?";
-    $delete_items_stmt = $db->prepare($delete_items_sql);
+    $delete_items_sql = "DELETE FROM procurement_purchase_order_items WHERE po_id = ?";
+    $delete_items_stmt = $conn->prepare($delete_items_sql);
     $delete_items_stmt->bind_param("i", $po_id);
     
     if (!$delete_items_stmt->execute()) {
@@ -66,9 +61,8 @@ try {
     $delete_items_stmt->close();
     
     // C. Delete the Purchase Order Header
-    // FIX: Table name is 'purchase_orders'
-    $delete_header_sql = "DELETE FROM purchase_orders WHERE po_id = ?";
-    $delete_header_stmt = $db->prepare($delete_header_sql);
+    $delete_header_sql = "DELETE FROM procurement_purchase_orders WHERE po_id = ?";
+    $delete_header_stmt = $conn->prepare($delete_header_sql);
     $delete_header_stmt->bind_param("i", $po_id);
     
     if (!$delete_header_stmt->execute()) {
@@ -77,7 +71,7 @@ try {
     $delete_header_stmt->close();
     
     // D. Commit transaction
-    $db->commit();
+    $conn->commit();
     
     ob_clean(); // Clear any invisible buffer text before JSON output
     echo json_encode([
@@ -86,7 +80,7 @@ try {
     ]);
     
 } catch (Exception $e) {
-    $db->rollback();
+    $conn->rollback();
     ob_clean(); // Clear buffer on error too
     echo json_encode([
         'success' => false,
@@ -94,5 +88,5 @@ try {
     ]);
 }
 
-$db->close();
+$conn->close();
 ?>

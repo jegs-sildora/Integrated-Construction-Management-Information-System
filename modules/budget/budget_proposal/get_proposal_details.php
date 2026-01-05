@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Include config for database connection
-require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../../config/config.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -39,10 +39,12 @@ if ($proposal_id <= 0) {
 }
 
 try {
-    // Fetch proposal details with project information
-    $sql = "SELECT bp.*, p.project_name, p.project_code 
+    // Fetch proposal details with project, phase, and user information
+    $sql = "SELECT bp.*, p.project_name, p.project_code, pp.phase_name, COALESCE(u.full_name, 'System') as user_name 
             FROM budget_proposals bp 
-            LEFT JOIN projects p ON bp.project_id = p.project_id 
+            LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
+            LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
+            LEFT JOIN icmis_users u ON bp.created_by = u.user_id
             WHERE bp.proposal_id = ?";
     
     $stmt = $conn->prepare($sql);

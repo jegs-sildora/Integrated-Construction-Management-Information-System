@@ -455,9 +455,9 @@
         <div class="absolute top-0 left-0 right-0 h-1 phase-modal-border"></div>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-linear-to-br from-[#e9922c] to-[#d17f1f] rounded-lg flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-              I
-            </div>
+              <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-gray-100 p-2">
+                  <img src="/icmis/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+              </div>
             <div>
               <h3 class="text-2xl font-bold text-white">Phase Budget Details</h3>
               <p class="text-gray-300 text-sm" id="phase-modal-project">Project Details</p>
@@ -475,9 +475,9 @@
         <div id="receipt-content" class="bg-white rounded-xl border-t-4 phase-border shadow-lg">
           <div class="border-b-2 border-dashed border-gray-300 p-6 text-center">
             <div class="flex justify-center mb-3">
-              <div class="w-16 h-16 bg-linear-to-br from-[#e9922c] to-[#d17f1f] rounded-xl flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                I
-              </div>
+                <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-gray-100 p-2">
+                  <img src="/icmis/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+                </div>
             </div>
             <h2 class="text-2xl font-bold text-gray-900">ICMIS</h2>
             <p class="text-sm text-gray-600">Integrated Construction Management Information System</p>

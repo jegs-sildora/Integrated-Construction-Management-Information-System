@@ -38,7 +38,7 @@ $root_path = '/icmis/';
 $budget_path = '/icmis/modules/budget/';
 $procurement_path = '/icmis/modules/procurement/';
 $workforce_path = '/icmis/modules/workforce/';
-$project_path = '/icmis/modules/project/frontend/projects/'; 
+$project_path = '/icmis/modules/project/'; 
 
 // ------------------------------------------------------------------
 // ACTIVE STATE LOGIC
@@ -49,10 +49,10 @@ $is_main_dashboard = ($current_page === 'dashboard.php' &&
                       strpos($current_uri, '/modules/budget/') === false && 
                       strpos($current_uri, '/modules/procurement/') === false && 
                       strpos($current_uri, '/modules/workforce/') === false && 
-                      strpos($current_uri, '/modules/project/frontend/projects') === false);
+                      strpos($current_uri, '/modules/project/') === false);
 
 // 2. PROJECT MANAGEMENT
-$is_projects = ($current_page === 'projects.php' && strpos($current_uri, '/modules/project/frontend/projects') !== false);
+$is_projects = (strpos($current_uri, '/modules/project/') !== false);
 
 // 3. SYSTEM ADMIN
 $is_admin = ($current_page === 'admin.php');

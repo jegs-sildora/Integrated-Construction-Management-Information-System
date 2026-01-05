@@ -40,17 +40,17 @@ async function fetchSuppliers() {
 
             let row = `
                 <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors">
-                    <td class="px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${sup.supplierID}</td>
-                    <td class="px-6 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">${sup.supplierName}</td>
-                    <td class="px-6 py-4 text-slate-600 text-sm whitespace-nowrap">${sup.contactPerson}</td>
-                    <td class="px-6 py-4 text-slate-600 text-sm font-mono whitespace-nowrap">${sup.contactNumber}</td>
+                    <td class="px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${sup.supplier_id}</td>
+                    <td class="px-6 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">${sup.supplier_name}</td>
+                    <td class="px-6 py-4 text-slate-600 text-sm whitespace-nowrap">${sup.contact_person}</td>
+                    <td class="px-6 py-4 text-slate-600 text-sm font-mono whitespace-nowrap">${sup.contact_number}</td>
                     <td class="px-6 py-4 text-primary text-sm whitespace-nowrap">${sup.email}</td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass}">${sup.status}</span>
                     </td>
                     <td class="px-6 py-4 flex gap-3 text-slate-400">
                         <i class="fa-regular fa-pen-to-square hover:text-green-500 cursor-pointer transition-colors" onclick='openEditModal(${JSON.stringify(sup)})' title="Edit"></i>
-                        <i class="fa-regular fa-trash-can hover:text-red-500 cursor-pointer transition-colors" onclick="deleteSupplier(${sup.supplierID})" title="Delete"></i>
+                        <i class="fa-regular fa-trash-can hover:text-red-500 cursor-pointer transition-colors" onclick="deleteSupplier(${sup.supplier_id})" title="Delete"></i>
                     </td>
                 </tr>
             `;
@@ -100,10 +100,10 @@ function openEditModal(sup) {
     isEditMode = true;
     document.querySelector("#supplierModal h2").textContent = "Edit Supplier";
     
-    document.getElementById("sup_id").value = sup.supplierID;
-    document.getElementById("sup_name").value = sup.supplierName;
-    document.getElementById("sup_person").value = sup.contactPerson;
-    document.getElementById("sup_phone").value = sup.contactNumber;
+    document.getElementById("sup_id").value = sup.supplier_id;
+    document.getElementById("sup_name").value = sup.supplier_name;
+    document.getElementById("sup_person").value = sup.contact_person;
+    document.getElementById("sup_phone").value = sup.contact_number;
     document.getElementById("sup_email").value = sup.email;
     document.getElementById("sup_address").value = sup.address;
     document.getElementById("sup_status").value = sup.status || 'Active';

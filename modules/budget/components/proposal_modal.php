@@ -247,10 +247,10 @@
         // Populate basic info
         document.getElementById('modal-code').textContent = proposal.code;
         document.getElementById('modal-date').textContent = proposal.created_at;
-        document.getElementById('modal-user').textContent = proposal.user_name;
+        document.getElementById('modal-user').textContent = proposal.user_name || 'System';
         document.getElementById('modal-project').textContent = proposal.project_name;
         document.getElementById('modal-title').textContent = proposal.title;
-        document.getElementById('modal-phase').textContent = proposal.phase || '-';
+        document.getElementById('modal-phase').textContent = proposal.phase_name || '-';
         document.getElementById('modal-total').textContent = '₱' + formatPeso(parseFloat(proposal.total_amount));
 
         // Populate status badge

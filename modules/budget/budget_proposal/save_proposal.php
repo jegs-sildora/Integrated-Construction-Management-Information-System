@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Include config for database connection
-require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../../config/config.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -106,14 +106,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn->begin_transaction();
     
     try {
-        // FIX: TEMPORARILY DISABLE FOREIGN KEY CHECKS
-        // This allows us to insert the project_id from the MAIN database (icmis.projects)
-        // into this BUDGET database table, even if the local constraint check fails.
-        $conn->query("SET FOREIGN_KEY_CHECKS=0");
+        // Look up phase_id from phase name if provided
+        $phase_id = null;
+        if (!empty($target_phase)) {
+            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name = ?");
+            $stmt_phase->bind_param("is", $project_id, $target_phase);
+            $stmt_phase->execute();
+            $result_phase = $stmt_phase->get_result();
+            if ($row_phase = $result_phase->fetch_assoc()) {
+                $phase_id = $row_phase['phase_id'];
+            }
+            $stmt_phase->close();
+        }
 
-        // Insert budget proposal
-        $stmt = $conn->prepare("INSERT INTO budget_proposals (project_id, code, title, description, target_phase, phase_start_date, phase_end_date, scope_description, total_amount, status, user_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
-        $stmt->bind_param("isssssssdss", $project_id, $code, $title, $description, $target_phase, $phase_start_date, $phase_end_date, $scope_description, $total_amount, $status, $user_name);
+        // Get current user from session
+        $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
+
+        // Insert budget proposal (matching new schema with created_by)
+        $stmt = $conn->prepare("INSERT INTO budget_proposals (project_id, phase_id, code, title, description, total_amount, status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("iisssdsi", $project_id, $phase_id, $code, $title, $description, $total_amount, $status, $created_by);
         
         if (!$stmt->execute()) {
             throw new Exception("Failed to insert budget proposal: " . $stmt->error);

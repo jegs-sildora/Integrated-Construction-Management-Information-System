@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 // Include config for database connection
-require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../../config/config.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -19,24 +19,24 @@ try {
     }
 
     $project_id = intval($_GET['project_id']);
-    $phase = trim($_GET['phase']);
+    $phase_name = trim($_GET['phase']);
 
-    // Validate phase
-    $valid_phases = ['Phase 1: Mobilization', 'Phase 2: Structural', 'Phase 3: MEPFS', 'Phase 4: Finishing'];
-    if (!in_array($phase, $valid_phases)) {
-        throw new Exception('Invalid phase');
-    }
-
-    // Fetch expenses for the phase
+    // Fetch expenses for the phase by joining with icmis_project_phases
     $sql = "SELECT e.expense_id, e.expense_date, e.category, e.description, e.amount, e.status,
-                   s.supplier_name
+                   s.supplier_name,
+                   pp.phase_name as phase
             FROM budget_expenses e
-            LEFT JOIN suppliers s ON e.supplier_id = s.supplier_id
-            WHERE e.project_id = ? AND e.phase = ?
+            LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
+            LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
+            WHERE e.project_id = ? AND pp.phase_name = ?
             ORDER BY e.expense_date DESC, e.expense_id DESC";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("is", $project_id, $phase);
+    if (!$stmt) {
+        throw new Exception("Query preparation failed: " . $conn->error);
+    }
+    
+    $stmt->bind_param("is", $project_id, $phase_name);
     $stmt->execute();
     $result = $stmt->get_result();
 

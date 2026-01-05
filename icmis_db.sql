@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 05, 2026 at 12:16 PM
+-- Generation Time: Jan 05, 2026 at 03:05 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -30,20 +30,22 @@ SET time_zone = "+00:00";
 CREATE TABLE `budget_expenses` (
   `expense_id` int NOT NULL,
   `project_id` int NOT NULL,
+  `phase_id` int DEFAULT NULL,
   `supplier_id` int DEFAULT NULL,
   `category` enum('MATERIALS','LABOR','EQUIPMENT') DEFAULT NULL,
   `description` varchar(500) DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
   `expense_date` date NOT NULL,
-  `status` enum('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING'
+  `status` enum('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING',
+  `created_by` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `budget_expenses`
 --
 
-INSERT INTO `budget_expenses` (`expense_id`, `project_id`, `supplier_id`, `category`, `description`, `amount`, `expense_date`, `status`) VALUES
-(1, 1, 1, 'MATERIALS', 'Purchase of Cement for Fence base', 11500.00, '2025-01-16', 'APPROVED');
+INSERT INTO `budget_expenses` (`expense_id`, `project_id`, `phase_id`, `supplier_id`, `category`, `description`, `amount`, `expense_date`, `status`, `created_by`) VALUES
+(1, 1, NULL, 1, 'MATERIALS', 'Purchase of Cement for Fence base', 11500.00, '2025-01-16', 'APPROVED', NULL);
 
 -- --------------------------------------------------------
 
@@ -80,6 +82,7 @@ CREATE TABLE `budget_line_items` (
   `item_name` varchar(255) NOT NULL,
   `quantity` decimal(10,2) DEFAULT NULL,
   `unit_cost` decimal(15,2) DEFAULT NULL,
+  `duration` decimal(10,2) DEFAULT '1.00',
   `subtotal` decimal(15,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -87,9 +90,9 @@ CREATE TABLE `budget_line_items` (
 -- Dumping data for table `budget_line_items`
 --
 
-INSERT INTO `budget_line_items` (`line_item_id`, `proposal_id`, `category`, `item_name`, `quantity`, `unit_cost`, `subtotal`) VALUES
-(1, 1, 'MATERIAL', 'Temporary Fence', 100.00, 450.00, 45000.00),
-(2, 1, 'LABOR', 'Labor for Fencing', 1.00, 15000.00, 15000.00);
+INSERT INTO `budget_line_items` (`line_item_id`, `proposal_id`, `category`, `item_name`, `quantity`, `unit_cost`, `duration`, `subtotal`) VALUES
+(1, 1, 'MATERIAL', 'Temporary Fence', 100.00, 450.00, 1.00, 45000.00),
+(2, 1, 'LABOR', 'Labor for Fencing', 1.00, 15000.00, 1.00, 15000.00);
 
 -- --------------------------------------------------------
 
@@ -100,11 +103,13 @@ INSERT INTO `budget_line_items` (`line_item_id`, `proposal_id`, `category`, `ite
 CREATE TABLE `budget_proposals` (
   `proposal_id` int NOT NULL,
   `project_id` int NOT NULL,
+  `phase_id` int DEFAULT NULL,
   `code` varchar(20) DEFAULT NULL,
   `title` varchar(255) NOT NULL,
   `description` text,
   `total_amount` decimal(15,2) NOT NULL,
   `status` enum('DRAFT','PENDING','APPROVED','REJECTED') DEFAULT 'DRAFT',
+  `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -112,9 +117,9 @@ CREATE TABLE `budget_proposals` (
 -- Dumping data for table `budget_proposals`
 --
 
-INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `code`, `title`, `description`, `total_amount`, `status`, `created_at`) VALUES
-(1, 1, 'BP-001', 'Mobilization Fund', 'Budget for temp facilities', 250000.00, 'APPROVED', '2026-01-05 12:13:38'),
-(2, 2, 'BP-002', 'Initial Survey', 'Budget for land survey', 50000.00, 'PENDING', '2026-01-05 12:13:38');
+INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`, `title`, `description`, `total_amount`, `status`, `created_by`, `created_at`) VALUES
+(1, 1, 1, 'BP-001', 'Mobilization Fund', 'Budget for temp facilities', 250000.00, 'APPROVED', NULL, '2026-01-05 12:13:38'),
+(2, 2, 1, 'BP-002', 'Initial Survey', 'Budget for land survey', 50000.00, 'PENDING', NULL, '2026-01-05 12:13:38');
 
 -- --------------------------------------------------------
 
@@ -157,6 +162,7 @@ CREATE TABLE `icmis_project_phases` (
   `description` text,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
+  `duration` int DEFAULT '0' COMMENT 'Duration in days',
   `status` enum('Not Started','In Progress','Completed') DEFAULT 'Not Started'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -164,10 +170,10 @@ CREATE TABLE `icmis_project_phases` (
 -- Dumping data for table `icmis_project_phases`
 --
 
-INSERT INTO `icmis_project_phases` (`phase_id`, `project_id`, `phase_name`, `description`, `start_date`, `end_date`, `status`) VALUES
-(1, 1, 'Phase 1: Mobilization', 'Site prep and fencing', '2025-01-15', NULL, 'Completed'),
-(2, 1, 'Phase 2: Structural', 'Foundation and framing', '2025-02-15', NULL, 'In Progress'),
-(3, 2, 'Phase 1: Planning', 'Blueprints and permits', '2025-06-01', NULL, 'Not Started');
+INSERT INTO `icmis_project_phases` (`phase_id`, `project_id`, `phase_name`, `description`, `start_date`, `end_date`, `duration`, `status`) VALUES
+(1, 1, 'Phase 1: Mobilization', 'Site prep and fencing', '2025-01-15', '2025-02-14', 30, 'Completed'),
+(2, 1, 'Phase 2: Structural', 'Foundation and framing', '2025-02-15', '2026-06-30', 500, 'In Progress'),
+(3, 2, 'Phase 1: Planning', 'Blueprints and permits', '2025-06-01', '2026-03-01', 273, 'Not Started');
 
 -- --------------------------------------------------------
 
@@ -220,7 +226,8 @@ INSERT INTO `icmis_users` (`user_id`, `full_name`, `email`, `password`, `role`, 
 (1, 'Admin System', 'admin@icmis.com', '$2y$10$hash', 'Admin', NULL, '2026-01-05 12:13:38'),
 (2, 'Engr. Antonio Reyes', 'antonio.reyes@icmis.com', '$2y$10$hash', 'Manager', NULL, '2026-01-05 12:13:38'),
 (3, 'Maria Santos', 'maria.santos@icmis.com', '$2y$10$hash', 'Budget_Officer', NULL, '2026-01-05 12:13:38'),
-(4, 'Juan Cruz', 'juan.cruz@icmis.com', '$2y$10$hash', 'Staff', NULL, '2026-01-05 12:13:38');
+(4, 'Juan Cruz', 'juan.cruz@icmis.com', '$2y$10$hash', 'Staff', NULL, '2026-01-05 12:13:38'),
+(5, 'John Doe', 'john.doe@icmis.com', '$2y$12$TOFbSmvIu1gf4smOHNKQxuV2vshzPpklWmNmesmRODc4PfFJHCJbK', 'Admin', NULL, '2026-01-05 12:17:43');
 
 -- --------------------------------------------------------
 
@@ -730,7 +737,9 @@ INSERT INTO `workforce_skills` (`skill_id`, `skill_name`, `category`, `descripti
 ALTER TABLE `budget_expenses`
   ADD PRIMARY KEY (`expense_id`),
   ADD KEY `project_id` (`project_id`),
-  ADD KEY `supplier_id` (`supplier_id`);
+  ADD KEY `supplier_id` (`supplier_id`),
+  ADD KEY `fk_expense_phase` (`phase_id`),
+  ADD KEY `created_by` (`created_by`);
 
 --
 -- Indexes for table `budget_generated_reports`
@@ -751,7 +760,9 @@ ALTER TABLE `budget_line_items`
 --
 ALTER TABLE `budget_proposals`
   ADD PRIMARY KEY (`proposal_id`),
-  ADD KEY `project_id` (`project_id`);
+  ADD KEY `project_id` (`project_id`),
+  ADD KEY `fk_budget_phase` (`phase_id`),
+  ADD KEY `created_by` (`created_by`);
 
 --
 -- Indexes for table `icmis_projects`
@@ -959,13 +970,13 @@ ALTER TABLE `budget_generated_reports`
 -- AUTO_INCREMENT for table `budget_line_items`
 --
 ALTER TABLE `budget_line_items`
-  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `budget_proposals`
 --
 ALTER TABLE `budget_proposals`
-  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `icmis_projects`
@@ -989,7 +1000,7 @@ ALTER TABLE `icmis_tasks`
 -- AUTO_INCREMENT for table `icmis_users`
 --
 ALTER TABLE `icmis_users`
-  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `procurement_inventory`
@@ -1126,7 +1137,9 @@ ALTER TABLE `workforce_skills`
 --
 ALTER TABLE `budget_expenses`
   ADD CONSTRAINT `budget_expenses_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`),
-  ADD CONSTRAINT `budget_expenses_ibfk_2` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`);
+  ADD CONSTRAINT `budget_expenses_ibfk_2` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`),
+  ADD CONSTRAINT `budget_expenses_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_expense_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `budget_generated_reports`
@@ -1144,7 +1157,9 @@ ALTER TABLE `budget_line_items`
 -- Constraints for table `budget_proposals`
 --
 ALTER TABLE `budget_proposals`
-  ADD CONSTRAINT `budget_proposals_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`);
+  ADD CONSTRAINT `budget_proposals_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`),
+  ADD CONSTRAINT `budget_proposals_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_budget_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `icmis_projects`

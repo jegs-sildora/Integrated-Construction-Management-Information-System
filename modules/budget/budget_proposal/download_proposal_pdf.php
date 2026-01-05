@@ -15,11 +15,14 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $proposal_id = intval($_GET['id']);
 
-// Fetch proposal details
+// Fetch proposal details with user info
 $sql = "SELECT bp.*, p.project_name, p.project_code, p.location,
-        bp.user_name as creator_name
+        pp.phase_name, pp.start_date as phase_start_date, pp.end_date as phase_end_date,
+        COALESCE(u.full_name, 'Authorized Staff') as creator_name
         FROM budget_proposals bp 
-        LEFT JOIN projects p ON bp.project_id = p.project_id 
+        LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
+        LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
+        LEFT JOIN icmis_users u ON bp.created_by = u.user_id
         WHERE bp.proposal_id = ?";
 
 $stmt = $conn->prepare($sql);
@@ -235,7 +238,7 @@ $statusColor = match($proposal['status']) {
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-500 uppercase mb-12">Prepared By:</p>
                     <div class="border-b border-slate-800 w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase"><?php echo htmlspecialchars($proposal['creator_name'] ?? 'Authorized Staff'); ?></p>
+                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase"><?php echo htmlspecialchars($proposal['creator_name']); ?></p>
                     <p class="text-xs text-slate-500">Requestor</p>
                 </div>
 

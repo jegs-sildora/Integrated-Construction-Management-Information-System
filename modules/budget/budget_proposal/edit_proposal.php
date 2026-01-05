@@ -40,7 +40,7 @@
 		// Fetch proposal details
 		$sql = "SELECT bp.*, p.project_code, p.project_name 
 				FROM budget_proposals bp 
-				LEFT JOIN projects p ON bp.project_id = p.project_id 
+				LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
 				WHERE bp.proposal_id = ?";
 		$stmt = $conn->prepare($sql);
 		$stmt->bind_param("i", $proposal_id);
@@ -68,7 +68,7 @@
 		$stmt_items->close();
 
 		// Fetch all projects for dropdown
-		$sql_projects = "SELECT project_id, project_code, project_name, status FROM projects ORDER BY project_id DESC";
+		$sql_projects = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
 		$result_projects = $conn->query($sql_projects);
 		$projects = [];
 		if ($result_projects && $result_projects->num_rows > 0) {
@@ -86,10 +86,9 @@
 				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
 				</svg>
-				Back to Budget Proposal Dashboard
 			</a>
 
-			<div class="mb-8">
+			<div class="mb-8 text-center">
 				<h1 class="text-3xl font-bold text-gray-900 mb-2">Edit Budget Proposal</h1>
 				<p class="text-gray-600">Proposal Code: <span class="font-semibold text-[#e9922c]"><?php echo htmlspecialchars($proposal['code']); ?></span></p>
 			</div>
@@ -112,21 +111,17 @@
 					</div>
 
 					<div class="mb-6">
+							<label for="targetPhase" class="block text-sm text-gray-700 mb-2">Target Milestone / Phase</label>
+							<select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
+									<option value="">Loading phases...</option>
+							</select>
+					</div>
+
+					<div class="mb-6">
 						<label for="proposalTitle" class="block text-sm text-gray-700 mb-2">Proposal Title</label>
 						<input type="text" id="proposalTitle" placeholder="e.g., Q1 2025 Construction Materials Budget" 
 							value="<?php echo htmlspecialchars($proposal['title']); ?>"
 							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
-					</div>
-
-					<div class="mb-6">
-						<label for="targetPhase" class="block text-sm text-gray-700 mb-2">Target Milestone / Phase</label>
-						<select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
-							<option value="">Select Phase...</option>
-							<option value="Phase 1: Mobilization" <?php echo (isset($proposal['target_phase']) && $proposal['target_phase'] == 'Phase 1: Mobilization') ? 'selected' : ''; ?>>Phase 1: Mobilization</option>
-							<option value="Phase 2: Structural" <?php echo (isset($proposal['target_phase']) && $proposal['target_phase'] == 'Phase 2: Structural') ? 'selected' : ''; ?>>Phase 2: Structural</option>
-							<option value="Phase 3: MEPFS" <?php echo (isset($proposal['target_phase']) && $proposal['target_phase'] == 'Phase 3: MEPFS') ? 'selected' : ''; ?>>Phase 3: MEPFS</option>
-							<option value="Phase 4: Finishing" <?php echo (isset($proposal['target_phase']) && $proposal['target_phase'] == 'Phase 4: Finishing') ? 'selected' : ''; ?>>Phase 4: Finishing</option>
-						</select>
 					</div>
 
 					<div class="mb-6 grid grid-cols-2 gap-4">
@@ -415,587 +410,442 @@
 			</div>
 		</div>
 	</main>
+<script>
+    // ==========================================
+    // 1. STATE MANAGEMENT & INITIALIZATION
+    // ==========================================
+    let items = [];
+    let activeTab = 'materials';
+    let editingItemId = null;
+    const proposalId = <?php echo $proposal_id; ?>;
 
-	<script>
-		// State Management
-		let items = [];
-		let activeTab = 'materials';
-		let editingItemId = null; // Track which item is being edited
-		const proposalId = <?php echo $proposal_id; ?>;
+    // CAPTURE SAVED DATA FROM PHP
+    const savedProjectId = "<?php echo $proposal['project_id']; ?>";
+    
+    // --- CHANGED: Capture the ID, not the name, for reliable matching ---
+    const savedPhaseId = "<?php echo $proposal['phase_id'] ?? ''; ?>";
 
-		// Load existing line items
-		const existingItems = <?php echo json_encode($line_items); ?>;
-		existingItems.forEach(item => {
-			const categoryMap = {
-				'MATERIAL': 'materials',
-				'LABOR': 'labor',
-				'EQUIPMENT': 'equipment'
-			};
-			items.push({
-				id: Date.now() + Math.random(), // Generate unique ID
-				category: categoryMap[item.category] || item.category.toLowerCase(),
-				name: item.item_name,
-				quantity: parseFloat(item.quantity),
-				unitCost: parseFloat(item.unit_cost),
-				subtotal: parseFloat(item.subtotal)
-			});
-		});
+    // Load existing line items
+    const existingItems = <?php echo json_encode($line_items); ?>;
+    if (existingItems) {
+        existingItems.forEach(item => {
+            const categoryMap = {
+                'MATERIAL': 'materials',
+                'LABOR': 'labor',
+                'EQUIPMENT': 'equipment'
+            };
+            items.push({
+                id: Date.now() + Math.random(),
+                category: categoryMap[item.category] || item.category.toLowerCase(),
+                name: item.item_name,
+                quantity: parseFloat(item.quantity),
+                unitCost: parseFloat(item.unit_cost),
+                subtotal: parseFloat(item.subtotal)
+            });
+        });
+    }
 
-		// Initial render
-		renderItems();
-		updateGrandTotal();
+    // ==========================================
+    // 2. PHASE AUTOMATION LOGIC
+    // ==========================================
 
-		// Tab Switching
-		const tabs = ['materials', 'labor', 'equipment'];
-		tabs.forEach(tab => {
-			document.getElementById(`tab-${tab}`).addEventListener('click', () => {
-				switchTab(tab);
-			});
-		});
+    // Function: Load Phases from API
+   // Function: Load Phases from API
+    function loadPhases(projectId, preSelectId = null) {
+        const phaseSelect = document.getElementById('targetPhase');
+        phaseSelect.innerHTML = '<option value="">Loading...</option>';
+        phaseSelect.disabled = true;
 
-		function switchTab(tab) {
-			activeTab = tab;
-			
-			// Update tab buttons
-			tabs.forEach(t => {
-				const tabBtn = document.getElementById(`tab-${t}`);
-				const panel = document.getElementById(`panel-${t}`);
-				
-				if (t === tab) {
-					tabBtn.classList.remove('border-transparent', 'text-gray-500');
-					tabBtn.classList.add('border-[#e9922c]', 'text-[#e9922c]');
-					panel.classList.remove('hidden');
-				} else {
-					tabBtn.classList.remove('border-[#e9922c]', 'text-[#e9922c]');
-					tabBtn.classList.add('border-transparent', 'text-gray-500');
-					panel.classList.add('hidden');
-				}
-			});
-		}
+        if (!projectId) {
+            phaseSelect.innerHTML = '<option value="">-- Select a Project First --</option>';
+            phaseSelect.disabled = false;
+            return;
+        }
 
-		// Add Item Functions
-		document.getElementById('add-material').addEventListener('click', () => {
-			const name = document.getElementById('material-name').value.trim();
-			const quantity = parseFloat(document.getElementById('material-quantity').value) || 0;
-			const cost = parseFloat(document.getElementById('material-cost').value) || 0;
+        fetch(`get_project_phases.php?project_id=${projectId}`) 
+            .then(response => {
+                if (!response.ok) throw new Error("API Not Found (404)");
+                return response.json();
+            })
+            .then(data => {
+                phaseSelect.innerHTML = '<option value="">-- Select Target Phase --</option>';
+                
+                if (data.success && data.phases.length > 0) {
+                    data.phases.forEach(phase => {
+                        const option = document.createElement('option');
+                        
+                        option.value = phase.id; 
+                        option.textContent = phase.name;
+                        
+                        // Store metadata for auto-fill
+                        option.dataset.start = phase.start_date || '';
+                        option.dataset.end = phase.end_date || '';
+                        option.dataset.duration = phase.duration;
+                        
+                        // CHECK FOR SAVED ID
+                        // We use loose equality (==) in case types differ (string vs int)
+                        if (preSelectId && phase.id == preSelectId) {
+                            option.selected = true;
+                            
+                            // 1. Fill dates
+                            autoFillPhaseDetails(option);
+                            
+                            // 2. FIX: Force update the Preview Card Text immediately
+                            const previewPhaseEl = document.getElementById('preview-phase');
+                            if(previewPhaseEl) {
+                                previewPhaseEl.textContent = phase.name;
+                                // Remove gray/italic styling if present
+                                previewPhaseEl.classList.remove('text-gray-400', 'italic');
+                                previewPhaseEl.classList.add('text-gray-900');
+                            }
+                        }
+                        
+                        phaseSelect.appendChild(option);
+                    });
+                } else {
+                    phaseSelect.innerHTML = '<option value="">No phases found</option>';
+                }
+                phaseSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                phaseSelect.innerHTML = '<option value="">Error loading phases</option>';
+                phaseSelect.disabled = false;
+            });
+    }
 
-			if (name && quantity > 0 && cost > 0) {
-				if (editingItemId !== null) {
-					// Update existing item
-					updateItem(editingItemId, 'materials', name, quantity, cost);
-					showToast('Material item updated successfully', 'success');
-				} else {
-					// Add new item
-					addItem('materials', name, quantity, cost);
-					showToast('Material item added successfully', 'success');
-				}
-				// Clear inputs and reset editing state
-				document.getElementById('material-name').value = '';
-				document.getElementById('material-quantity').value = '';
-				document.getElementById('material-cost').value = '';
-				editingItemId = null;
-				updateButtonText();
-			} else {
-				showToast('Please fill in all fields with valid values', 'warning');
-			}
-		});
+    // Function: Auto-Fill Dates & Title
+    function autoFillPhaseDetails(selectedOption) {
+        if (!selectedOption.value) return;
 
-		document.getElementById('add-labor').addEventListener('click', () => {
-			const laborTypeSelect = document.getElementById('labor-type');
-			const name = laborTypeSelect.value.trim();
-			const quantity = parseFloat(document.getElementById('labor-quantity').value) || 0;
-			const cost = parseFloat(document.getElementById('labor-rate').value) || 0;
+        const startDate = selectedOption.dataset.start;
+        const endDate = selectedOption.dataset.end;
+        // const phaseName = selectedOption.textContent; // Use textContent if you need name
 
-			if (name && quantity > 0 && cost > 0) {
-				if (editingItemId !== null) {
-					// Update existing item
-					updateItem(editingItemId, 'labor', name, quantity, cost);
-					showToast('Labor item updated successfully', 'success');
-				} else {
-					// Add new item
-					addItem('labor', name, quantity, cost);
-					showToast('Labor item added successfully', 'success');
-				}
-				// Clear inputs and reset editing state
-				laborTypeSelect.selectedIndex = 0;
-				document.getElementById('labor-quantity').value = '';
-				document.getElementById('labor-rate').value = '';
-				editingItemId = null;
-				updateButtonText();
-			} else {
-				showToast('Please fill in all fields with valid values', 'warning');
-			}
-		});
+        // Auto-fill dates if available
+        if(startDate) document.getElementById('phaseStartDate').value = startDate;
+        if(endDate) document.getElementById('phaseEndDate').value = endDate;
 
-		document.getElementById('add-equipment').addEventListener('click', () => {
-			const name = document.getElementById('equipment-name').value.trim();
-			const quantity = parseFloat(document.getElementById('equipment-quantity').value) || 0;
-			const cost = parseFloat(document.getElementById('equipment-rate').value) || 0;
+        // Trigger visual updates
+        document.getElementById('proposalTitle').dispatchEvent(new Event('input'));
+        updateTimeline(); 
+    }
 
-			if (name && quantity > 0 && cost > 0) {
-				if (editingItemId !== null) {
-					// Update existing item
-					updateItem(editingItemId, 'equipment', name, quantity, cost);
-					showToast('Equipment item updated successfully', 'success');
-				} else {
-					// Add new item
-					addItem('equipment', name, quantity, cost);
-					showToast('Equipment item added successfully', 'success');
-				}
-				// Clear inputs and reset editing state
-				document.getElementById('equipment-name').value = '';
-				document.getElementById('equipment-quantity').value = '';
-				document.getElementById('equipment-rate').value = '';
-				editingItemId = null;
-				updateButtonText();
-			} else {
-				showToast('Please fill in all fields with valid values', 'warning');
-			}
-		});
+    // ==========================================
+    // 3. CORE FUNCTIONS
+    // ==========================================
 
-		function addItem(category, name, quantity, unitCost) {
-			const subtotal = quantity * unitCost;
-			const item = {
-				id: Date.now() + Math.random(),
-				category: category,
-				name: name,
-				quantity: quantity,
-				unitCost: unitCost,
-				subtotal: subtotal
-			};
+    // Function: Update Timeline Preview
+    function updateTimeline() {
+        const startDate = document.getElementById('phaseStartDate').value;
+        const endDate = document.getElementById('phaseEndDate').value;
+        const previewTimeline = document.getElementById('preview-timeline');
+        
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            const options = { month: 'short', day: '2-digit', year: 'numeric' };
+            const formattedStart = start.toLocaleDateString('en-US', options);
+            const formattedEnd = end.toLocaleDateString('en-US', options);
+            
+            previewTimeline.textContent = `${formattedStart} - ${formattedEnd}`;
+            previewTimeline.className = 'text-sm font-medium text-gray-900 mt-1';
+        } else {
+            previewTimeline.textContent = 'No timeline set';
+            previewTimeline.className = 'text-sm font-medium text-gray-400 mt-1 italic';
+        }
+    }
 
-			items.push(item);
-			renderItems();
-			updateGrandTotal();
-		}
+    function formatPeso(amount) {
+        return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
 
-		function updateItem(id, category, name, quantity, unitCost) {
-			const subtotal = quantity * unitCost;
-			const itemIndex = items.findIndex(item => item.id === id);
-			
-			if (itemIndex !== -1) {
-				items[itemIndex] = {
-					id: id,
-					category: category,
-					name: name,
-					quantity: quantity,
-					unitCost: unitCost,
-					subtotal: subtotal
-				};
-				renderItems();
-				updateGrandTotal();
-			}
-		}
+    function updateGrandTotal() {
+        const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+        document.getElementById('grand-total').textContent = '₱' + formatPeso(total);
+    }
 
-		function editItem(id) {
-			const item = items.find(i => i.id === id);
-			if (!item) return;
+    // ==========================================
+    // 4. EVENT LISTENERS
+    // ==========================================
 
-			// Set editing state
-			editingItemId = id;
-			
-			// Switch to the appropriate tab
-			switchTab(item.category);
-			
-			// Populate form fields based on category
-			if (item.category === 'materials') {
-				document.getElementById('material-name').value = item.name;
-				document.getElementById('material-quantity').value = item.quantity;
-				document.getElementById('material-cost').value = item.unitCost;
-			} else if (item.category === 'labor') {
-				document.getElementById('labor-type').value = item.name;
-				document.getElementById('labor-quantity').value = item.quantity;
-				document.getElementById('labor-rate').value = item.unitCost;
-			} else if (item.category === 'equipment') {
-				document.getElementById('equipment-name').value = item.name;
-				document.getElementById('equipment-quantity').value = item.quantity;
-				document.getElementById('equipment-rate').value = item.unitCost;
-			}
-			
-			// Update button text
-			updateButtonText();
-		}
+    // INITIAL LOAD
+    renderItems();
+    updateGrandTotal();
+    
+    // --- CHANGED: Pass the ID to loadPhases
+    if (savedProjectId) {
+        loadPhases(savedProjectId, savedPhaseId);
+    }
 
-		function updateButtonText() {
-			const materialBtn = document.getElementById('add-material');
-			const laborBtn = document.getElementById('add-labor');
-			const equipmentBtn = document.getElementById('add-equipment');
-			
-			if (editingItemId !== null) {
-				materialBtn.innerHTML = `
-					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-					</svg>
-					Update Material Item
-				`;
-				laborBtn.innerHTML = `
-					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-					</svg>
-					Update Labor Item
-				`;
-				equipmentBtn.innerHTML = `
-					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-					</svg>
-					Update Equipment Item
-				`;
-			} else {
-				materialBtn.innerHTML = `
-					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-					</svg>
-					Add Material Item
-				`;
-				laborBtn.innerHTML = `
-					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-					</svg>
-					Add Labor Item
-				`;
-				equipmentBtn.innerHTML = `
-					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-					</svg>
-					Add Equipment Item
-				`;
-			}
-		}
+    // Project Changed
+    document.getElementById('project').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const projectId = selectedOption.getAttribute('data-id');
+        
+        // Reset fields
+        document.getElementById('phaseStartDate').value = '';
+        document.getElementById('phaseEndDate').value = '';
+        
+        loadPhases(projectId, null);
+    });
 
-		function removeItem(id) {
-			items = items.filter(item => item.id !== id);
-			renderItems();
-			updateGrandTotal();
-			showToast('Item removed successfully', 'error');
-		}
+    // Phase Changed
+    document.getElementById('targetPhase').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        autoFillPhaseDetails(selectedOption);
+        
+        // Update Preview Text immediately
+        document.getElementById('preview-phase').textContent = selectedOption.textContent;
+    });
 
-		function renderItems() {
-			const emptyState = document.getElementById('empty-state');
-			const materialsSection = document.getElementById('materials-section');
-			const laborSection = document.getElementById('labor-section');
-			const equipmentSection = document.getElementById('equipment-section');
-			const materialsList = document.getElementById('materials-list');
-			const laborList = document.getElementById('labor-list');
-			const equipmentList = document.getElementById('equipment-list');
+    // Date Changes
+    document.getElementById('phaseStartDate').addEventListener('change', updateTimeline);
+    document.getElementById('phaseEndDate').addEventListener('change', updateTimeline);
 
-			if (items.length === 0) {
-				emptyState.style.display = 'block';
-				materialsSection.style.display = 'none';
-				laborSection.style.display = 'none';
-				equipmentSection.style.display = 'none';
-				return;
-			}
+    // Tab Switching
+    const tabs = ['materials', 'labor', 'equipment'];
+    tabs.forEach(tab => {
+        document.getElementById(`tab-${tab}`).addEventListener('click', () => {
+            activeTab = tab;
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const panel = document.getElementById(`panel-${t}`);
+                if (t === tab) {
+                    btn.classList.remove('border-transparent', 'text-gray-500');
+                    btn.classList.add('border-[#e9922c]', 'text-[#e9922c]');
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('border-[#e9922c]', 'text-[#e9922c]');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                    panel.classList.add('hidden');
+                }
+            });
+        });
+    });
 
-			emptyState.style.display = 'none';
+    // Add Item Listeners
+    function handleAddItem(category, nameInputId, qtyInputId, costInputId) {
+        const nameInput = document.getElementById(nameInputId);
+        const qtyInput = document.getElementById(qtyInputId);
+        const costInput = document.getElementById(costInputId);
+        
+        let name = nameInput.value;
+        if(nameInput.tagName === 'SELECT') name = nameInput.value; 
+        
+        name = name.trim();
+        const quantity = parseFloat(qtyInput.value) || 0;
+        const cost = parseFloat(costInput.value) || 0;
 
-			// Separate items by category
-			const materialItems = items.filter(item => item.category === 'materials');
-			const laborItems = items.filter(item => item.category === 'labor');
-			const equipmentItems = items.filter(item => item.category === 'equipment');
+        if (name && quantity > 0 && cost > 0) {
+            const subtotal = quantity * cost;
+            
+            if (editingItemId !== null) {
+                // Update
+                const index = items.findIndex(i => i.id === editingItemId);
+                if (index !== -1) {
+                    items[index] = { id: editingItemId, category, name, quantity, unitCost: cost, subtotal };
+                }
+                showToast('Item updated successfully', 'success');
+                editingItemId = null;
+            } else {
+                // Add
+                items.push({ id: Date.now(), category, name, quantity, unitCost: cost, subtotal });
+                showToast('Item added successfully', 'success');
+            }
+            
+            // Reset UI
+            if(nameInput.tagName === 'INPUT') nameInput.value = '';
+            else nameInput.selectedIndex = 0;
+            
+            qtyInput.value = '';
+            costInput.value = '';
+            renderItems();
+            updateGrandTotal();
+            updateButtonText();
+        } else {
+            showToast('Please fill all fields', 'warning');
+        }
+    }
 
-			// Render Materials
-			if (materialItems.length > 0) {
-				materialsSection.style.display = 'block';
-				materialsList.innerHTML = '';
-				materialItems.forEach((item) => {
-					const element = createItemElement(item);
-					materialsList.appendChild(element);
-				});
-			} else {
-				materialsSection.style.display = 'none';
-			}
+    document.getElementById('add-material').addEventListener('click', () => 
+        handleAddItem('materials', 'material-name', 'material-quantity', 'material-cost'));
+        
+    document.getElementById('add-labor').addEventListener('click', () => 
+        handleAddItem('labor', 'labor-type', 'labor-quantity', 'labor-rate'));
+        
+    document.getElementById('add-equipment').addEventListener('click', () => 
+        handleAddItem('equipment', 'equipment-name', 'equipment-quantity', 'equipment-rate'));
 
-			// Render Labor
-			if (laborItems.length > 0) {
-				laborSection.style.display = 'block';
-				laborList.innerHTML = '';
-				laborItems.forEach((item) => {
-					const element = createItemElement(item);
-					laborList.appendChild(element);
-				});
-			} else {
-				laborSection.style.display = 'none';
-			}
+    // Render Helpers
+    function renderItems() {
+        const emptyState = document.getElementById('empty-state');
+        const materialsSection = document.getElementById('materials-section');
+        const laborSection = document.getElementById('labor-section');
+        const equipmentSection = document.getElementById('equipment-section');
+        const materialsList = document.getElementById('materials-list');
+        const laborList = document.getElementById('labor-list');
+        const equipmentList = document.getElementById('equipment-list');
 
-			// Render Equipment
-			if (equipmentItems.length > 0) {
-				equipmentSection.style.display = 'block';
-				equipmentList.innerHTML = '';
-				equipmentItems.forEach((item) => {
-					const element = createItemElement(item);
-					equipmentList.appendChild(element);
-				});
-			} else {
-				equipmentSection.style.display = 'none';
-			}
-		}
+        if (items.length === 0) {
+            if(emptyState) emptyState.style.display = 'block';
+            materialsSection.style.display = 'none';
+            laborSection.style.display = 'none';
+            equipmentSection.style.display = 'none';
+            return;
+        }
 
-		function createItemElement(item) {
-			const div = document.createElement('div');
-			div.className = 'bg-gray-50 rounded-lg p-3 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors';
-			
-			const flexContainer = document.createElement('div');
-			flexContainer.className = 'flex justify-between items-start mb-2';
-			
-			const leftContent = document.createElement('div');
-			leftContent.className = 'flex-1';
-			leftContent.onclick = () => editItem(item.id);
-			
-			const itemName = document.createElement('p');
-			itemName.className = 'text-sm font-medium text-gray-900';
-			itemName.textContent = item.name;
-			
-			const itemDetails = document.createElement('p');
-			itemDetails.className = 'text-xs text-gray-500';
-			itemDetails.textContent = `${item.quantity} × ₱${formatPeso(item.unitCost)}`;
-			
-			leftContent.appendChild(itemName);
-			leftContent.appendChild(itemDetails);
-			
-			const removeBtn = document.createElement('button');
-			removeBtn.className = 'text-red-500 hover:text-red-700 transition-colors ml-2';
-			removeBtn.onclick = () => removeItem(item.id);
-			removeBtn.innerHTML = `
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-				</svg>
-			`;
-			
-			flexContainer.appendChild(leftContent);
-			flexContainer.appendChild(removeBtn);
-			
-			const totalDiv = document.createElement('div');
-			totalDiv.className = 'text-right';
-			totalDiv.innerHTML = `<span class="text-sm font-semibold text-gray-900">₱${formatPeso(item.subtotal)}</span>`;
-			
-			div.appendChild(flexContainer);
-			div.appendChild(totalDiv);
-			
-			return div;
-		}
+        if(emptyState) emptyState.style.display = 'none';
 
-		function updateGrandTotal() {
-			const total = items.reduce((sum, item) => sum + item.subtotal, 0);
-			document.getElementById('grand-total').textContent = '₱' + formatPeso(total);
-		}
+        const materialItems = items.filter(item => item.category === 'materials');
+        const laborItems = items.filter(item => item.category === 'labor');
+        const equipmentItems = items.filter(item => item.category === 'equipment');
 
-		function formatPeso(amount) {
-			return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-		}
+        renderCategoryList(materialItems, materialsSection, materialsList);
+        renderCategoryList(laborItems, laborSection, laborList);
+        renderCategoryList(equipmentItems, equipmentSection, equipmentList);
+    }
 
-		// Live Preview Updates
-		document.getElementById('project').addEventListener('change', (e) => {
-			const previewProject = document.getElementById('preview-project');
-			const text = e.target.value || 'No project selected';
-			previewProject.textContent = text;
-			previewProject.className = text === 'No project selected' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-400 mt-1';
-		});
+    function renderCategoryList(categoryItems, section, listContainer) {
+        if (categoryItems.length > 0) {
+            section.style.display = 'block';
+            listContainer.innerHTML = '';
+            categoryItems.forEach(item => {
+                listContainer.appendChild(createItemElement(item));
+            });
+        } else {
+            section.style.display = 'none';
+        }
+    }
 
-		document.getElementById('proposalTitle').addEventListener('input', (e) => {
-			const previewTitle = document.getElementById('preview-title');
-			const text = e.target.value.trim() || 'No title entered';
-			previewTitle.textContent = text;
-			previewTitle.className = text === 'No title entered' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-900 mt-1';
-		});
+    function createItemElement(item) {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-50 rounded-lg p-3 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors';
+        div.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex-1" onclick="editItem(${item.id})">
+                    <p class="text-sm font-medium text-gray-900">${item.name}</p>
+                    <p class="text-xs text-gray-500">${item.quantity} × ₱${formatPeso(item.unitCost)}</p>
+                </div>
+                <button onclick="removeItem(${item.id})" class="text-red-500 hover:text-red-700 ml-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="text-right">
+                <span class="text-sm font-semibold text-gray-900">₱${formatPeso(item.subtotal)}</span>
+            </div>
+        `;
+        return div;
+    }
 
-		document.getElementById('targetPhase').addEventListener('change', (e) => {
-			const previewPhase = document.getElementById('preview-phase');
-			const text = e.target.value || 'No phase specified';
-			previewPhase.textContent = text;
-			previewPhase.className = text === 'No phase specified' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-900 mt-1';
-		});
+    function editItem(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        editingItemId = id;
+        
+        document.getElementById(`tab-${item.category}`).click();
+        
+        if (item.category === 'materials') {
+            document.getElementById('material-name').value = item.name;
+            document.getElementById('material-quantity').value = item.quantity;
+            document.getElementById('material-cost').value = item.unitCost;
+        } else if (item.category === 'labor') {
+            document.getElementById('labor-type').value = item.name;
+            document.getElementById('labor-quantity').value = item.quantity;
+            document.getElementById('labor-rate').value = item.unitCost;
+        } else if (item.category === 'equipment') {
+            document.getElementById('equipment-name').value = item.name;
+            document.getElementById('equipment-quantity').value = item.quantity;
+            document.getElementById('equipment-rate').value = item.unitCost;
+        }
+        updateButtonText();
+    }
 
-		function updateTimeline() {
-			const startDate = document.getElementById('phaseStartDate').value;
-			const endDate = document.getElementById('phaseEndDate').value;
-			const previewTimeline = document.getElementById('preview-timeline');
-			
-			if (startDate && endDate) {
-				const start = new Date(startDate);
-				const end = new Date(endDate);
-				const formattedStart = start.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-				const formattedEnd = end.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-				previewTimeline.textContent = `${formattedStart} - ${formattedEnd}`;
-				previewTimeline.className = 'text-sm font-medium text-gray-900 mt-1';
-			} else {
-				previewTimeline.textContent = 'No timeline set';
-				previewTimeline.className = 'text-sm font-medium text-gray-400 mt-1 italic';
-			}
-		}
+    function updateButtonText() {
+        const action = editingItemId !== null ? 'Update' : 'Add';
+        const icon = editingItemId !== null ? '<i class="fas fa-save mr-2"></i>' : '<i class="fas fa-plus mr-2"></i>';
+        
+        document.getElementById('add-material').innerHTML = `${icon} ${action} Material Item`;
+        document.getElementById('add-labor').innerHTML = `${icon} ${action} Labor Item`;
+        document.getElementById('add-equipment').innerHTML = `${icon} ${action} Equipment Item`;
+    }
 
-		document.getElementById('phaseStartDate').addEventListener('change', updateTimeline);
-		document.getElementById('phaseEndDate').addEventListener('change', updateTimeline);
+    function removeItem(id) {
+        items = items.filter(item => item.id !== id);
+        renderItems();
+        updateGrandTotal();
+    }
 
-		document.getElementById('scopeDescription').addEventListener('input', (e) => {
-			const previewScope = document.getElementById('preview-scope');
-			const previewScopeContainer = document.getElementById('preview-scope-container');
-			const text = e.target.value.trim();
-			
-			if (text) {
-				previewScope.textContent = text;
-				previewScopeContainer.style.display = 'block';
-			} else {
-				previewScopeContainer.style.display = 'none';
-			}
-		});
+    // Live Preview
+    document.getElementById('proposalTitle').addEventListener('input', function(e) {
+        document.getElementById('preview-title').textContent = e.target.value || 'No title entered';
+    });
 
-		// Update status preview when radio buttons change
-		document.querySelectorAll('input[name="proposalStatus"]').forEach(radio => {
-			radio.addEventListener('change', (e) => {
-				const previewStatus = document.getElementById('preview-status');
-				const status = e.target.value;
-				const statusColors = {
-					'DRAFT': 'text-gray-700',
-					'PENDING': 'text-amber-700',
-					'APPROVED': 'text-green-700',
-					'REJECTED': 'text-red-700'
-				};
-				const colorClass = statusColors[status] || 'text-gray-700';
-				previewStatus.innerHTML = `<span class="${colorClass}">${status}</span>`;
-			});
-		});
+    // Form Submission
+    document.getElementById('save-draft').addEventListener('click', () => {
+        if (validateForm()) submitProposal('DRAFT');
+    });
 
-		// Form Submission
-		document.getElementById('save-draft').addEventListener('click', () => {
-			if (validateForm()) {
-				updateProposal('DRAFT');
-			}
-		});
+    document.getElementById('update-proposal').addEventListener('click', () => {
+        if (validateForm()) {
+            const status = document.querySelector('input[name="proposalStatus"]:checked')?.value || 'PENDING';
+            submitProposal(status);
+        }
+    });
 
-		document.getElementById('update-proposal').addEventListener('click', () => {
-			if (validateForm()) {
-				const status = document.querySelector('input[name="proposalStatus"]:checked').value;
-				updateProposal(status);
-			}
-		});
+    function validateForm() {
+        if (items.length === 0) {
+            showToast('Please add at least one line item', 'warning');
+            return false;
+        }
+        if (!document.getElementById('project').value) {
+            showToast('Please select a project', 'warning');
+            return false;
+        }
+        return true;
+    }
 
-		function validateForm() {
-			const project = document.getElementById('project').value;
-			const title = document.getElementById('proposalTitle').value.trim();
-			const targetPhase = document.getElementById('targetPhase').value;
-			const startDate = document.getElementById('phaseStartDate').value;
-			const endDate = document.getElementById('phaseEndDate').value;
-			const scopeDescription = document.getElementById('scopeDescription').value.trim();
+    function submitProposal(status) {
+        const projectSelect = document.getElementById('project');
+        const projectId = projectSelect.options[projectSelect.selectedIndex].getAttribute('data-id');
+        
+        // --- CHANGED: Renamed 'target_phase' to 'phase_id' and send the ID value ---
+        const data = {
+            proposal_id: proposalId,
+            project_id: projectId,
+            phase_id: document.getElementById('targetPhase').value, // This is now the ID
+            title: document.getElementById('proposalTitle').value,
+            phase_start_date: document.getElementById('phaseStartDate').value,
+            phase_end_date: document.getElementById('phaseEndDate').value,
+            scope_description: document.getElementById('scopeDescription').value,
+            items: items,
+            status: status,
+            total_amount: items.reduce((sum, item) => sum + item.subtotal, 0)
+        };
 
-			if (!project) {
-				showToast('Please select a project', 'warning');
-				return false;
-			}
+        fetch('update_proposal.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showToast('Proposal updated successfully!', 'success');
+                setTimeout(() => window.location.href = '../proposals.php', 1000);
+            } else {
+                showToast('Error: ' + result.message, 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Network error occurred', 'error');
+        });
+    }
 
-			if (!title) {
-				showToast('Please enter a proposal title', 'warning');
-				return false;
-			}
-
-			if (!targetPhase) {
-				showToast('Please select a target phase', 'warning');
-				return false;
-			}
-
-			if (!startDate) {
-				showToast('Please set phase start date', 'warning');
-				return false;
-			}
-
-			if (!endDate) {
-				showToast('Please set phase end date', 'warning');
-				return false;
-			}
-
-			if (new Date(endDate) <= new Date(startDate)) {
-				showToast('End date must be after start date', 'warning');
-				return false;
-			}
-
-			if (!scopeDescription) {
-				showToast('Please provide scope description', 'warning');
-				return false;
-			}
-
-			if (items.length === 0) {
-				showToast('Please add at least one item to the proposal', 'warning');
-				return false;
-			}
-
-			return true;
-		}
-
-		function updateProposal(status) {
-			const projectSelect = document.getElementById('project');
-			const selectedOption = projectSelect.options[projectSelect.selectedIndex];
-			const projectId = selectedOption.getAttribute('data-id');
-			const title = document.getElementById('proposalTitle').value.trim();
-			const targetPhase = document.getElementById('targetPhase').value;
-			const startDate = document.getElementById('phaseStartDate').value;
-			const endDate = document.getElementById('phaseEndDate').value;
-			const scopeDescription = document.getElementById('scopeDescription').value.trim();
-			const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
-
-			const data = {
-				proposal_id: proposalId,
-				project_id: projectId,
-				title: title,
-				target_phase: targetPhase,
-				phase_start_date: startDate,
-				phase_end_date: endDate,
-				scope_description: scopeDescription,
-				items: items,
-				status: status,
-				total_amount: totalAmount
-			};
-
-			// Disable buttons during submission
-			document.getElementById('save-draft').disabled = true;
-			document.getElementById('update-proposal').disabled = true;
-
-			console.log('Updating proposal:', data);
-
-			fetch('http://localhost/icmis/modules/budget/budget_proposal/update_proposal.php', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(data)
-			})
-			.then(response => {
-				console.log('Response status:', response.status);
-				return response.text();
-			})
-			.then(text => {
-				console.log('Response text:', text);
-			try {
-				const result = JSON.parse(text);
-				if (result.success) {
-					showToast(result.message, 'success', true);
-					// Redirect to proposals page after a short delay
-					setTimeout(() => {
-						window.location.href = '../proposals.php';
-					}, 300);
-					} else {
-						showToast('Error: ' + result.message, 'error');
-						// Re-enable buttons
-						document.getElementById('save-draft').disabled = false;
-						document.getElementById('update-proposal').disabled = false;
-					}
-				} catch (e) {
-					console.error('JSON parse error:', e);
-					showToast('Server returned invalid response', 'error');
-					document.getElementById('save-draft').disabled = false;
-					document.getElementById('update-proposal').disabled = false;
-				}
-			})
-			.catch(error => {
-				console.error('Fetch error:', error);
-				showToast('Error updating proposal: ' + error.message, 'error');
-				// Re-enable buttons
-				document.getElementById('save-draft').disabled = false;
-				document.getElementById('update-proposal').disabled = false;
-			});
-		}
-
-		// Make functions available globally
-		window.removeItem = removeItem;
-		window.editItem = editItem;
-	</script>
+    window.editItem = editItem;
+    window.removeItem = removeItem;
+</script>
 </body>
 </html>

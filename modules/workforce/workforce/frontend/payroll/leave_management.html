@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Management - Workforce Management System</title>
+  <link rel="stylesheet" href="../common/style.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="toggle-sidebar">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </div>
+    <div class="logo">
+      <div class="logo-icon">I</div>
+      <div class="logo-text">ICMIS</div>
+    </div>
+
+    <div class="module-title">Workforce & Labor Management</div>
+
+    <ul class="menu">
+      <li>
+        <span class="material-symbols-outlined icon">dashboard</span>
+        <a href="../dashboard/dashboard.html" style="text-decoration: none; color: inherit;">Dashboard</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">group</span>
+        <a href="../employees/employees.html" style="text-decoration: none; color: inherit;">Employees</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">event_available</span>
+        <a href="../attendance/attendance.html" style="text-decoration: none; color: inherit;">Attendance</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">assignment</span>
+        <a href="../assignments/assignments.html" style="text-decoration: none; color: inherit;">Assignments</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">apartment</span>
+        <a href="../projects/projects.html" style="text-decoration: none; color: inherit;">Projects</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">schedule</span>
+        <a href="../payroll/time_payroll.html" style="text-decoration: none; color: inherit;">Time & Payroll</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">bar_chart</span>
+        <a href="../reports/reports.html" style="text-decoration: none; color: inherit;">Reports</a>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="dashboard-container">
+    <header class="top-header">
+      <div class="welcome-text">
+        <h2>Leave Management</h2>
+        <p>Manage employee leave requests and balances.</p>
+      </div>
+      <div class="user-info">
+        <span class="material-symbols-outlined">search</span>
+        <span class="material-symbols-outlined">notifications</span>
+        <div>
+          <p style="margin: 0; font-weight: bold; font-size: 14px; text-align: right;">Manager</p>
+          <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: right;">Admin</p>
+        </div>
+        <div class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #e0e7ff; display: flex; align-items: center; justify-content: center; color: #4f46e5; font-weight: bold;">
+          M
+        </div>
+      </div>
+    </header>
+
+    <!-- Leave Summary Cards -->
+    <div class="summary-cards">
+      <!-- Pending Requests Card -->
+      <div class="summary-card card-total">
+        <div class="card-icon">
+          <span class="material-symbols-outlined">pending_actions</span>
+        </div>
+        <h3>Pending Requests</h3>
+        <h2>5</h2>
+        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Requires Approval</p>
+      </div>
+      
+      <!-- Approved This Month Card -->
+      <div class="summary-card card-project">
+        <div class="card-icon">
+          <span class="material-symbols-outlined">check_circle</span>
+        </div>
+        <h3>Approved This Month</h3>
+        <h2>12</h2>
+        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Leave Days</p>
+      </div>
+      
+      <!-- Upcoming Leaves Card -->
+      <div class="summary-card card-attendance">
+        <div class="card-icon">
+          <span class="material-symbols-outlined">event</span>
+        </div>
+        <h3>Upcoming Leaves</h3>
+        <h2>8</h2>
+        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Scheduled Next Week</p>
+      </div>
+      
+      <!-- Leave Balance Card -->
+      <div class="summary-card card-assignments">
+        <div class="card-icon">
+          <span class="material-symbols-outlined">balance</span>
+        </div>
+        <h3>Avg. Leave Balance</h3>
+        <h2>8.5</h2>
+        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Days Per Employee</p>
+      </div>
+    </div>
+    
+    <!-- Leave Requests Section -->
+    <div class="card performance-list">
+      <div class="table-header">
+        <h3>Leave Requests</h3>
+        <div class="controls">
+          <button class="filter-btn">
+            <span class="material-symbols-outlined">filter_list</span>
+            Filter
+          </button>
+          <button class="btn btn-primary" id="newLeaveRequest">
+            <span class="material-symbols-outlined">add</span>
+            New Request
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Leave Type</th>
+              <th>Dates</th>
+              <th>Duration</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar">JS</div>
+                  <div>
+                    <div class="employee-name">John Smith</div>
+                    <div class="employee-id">ID: EMP001</div>
+                  </div>
+                </div>
+              </td>
+              <td>Vacation</td>
+              <td>Dec 20 - Dec 27, 2025</td>
+              <td>5 days</td>
+              <td><span class="status-badge status-pending">Pending</span></td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn approve-btn" title="Approve Leave">
+                    <span class="material-symbols-outlined">check</span>
+                  </button>
+                  <button class="action-btn reject-btn" title="Reject Leave">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                  <button class="action-btn view-btn" title="View Details">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar" style="background: #8b5cf6;">SJ</div>
+                  <div>
+                    <div class="employee-name">Sarah Johnson</div>
+                    <div class="employee-id">ID: EMP002</div>
+                  </div>
+                </div>
+              </td>
+              <td>Sick Leave</td>
+              <td>Dec 18, 2025</td>
+              <td>1 day</td>
+              <td><span class="status-badge status-approved">Approved</span></td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn view-btn" title="View Details">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar" style="background: #ec4899;">MB</div>
+                  <div>
+                    <div class="employee-name">Michael Brown</div>
+                    <div class="employee-id">ID: EMP003</div>
+                  </div>
+                </div>
+              </td>
+              <td>Personal</td>
+              <td>Dec 22, 2025</td>
+              <td>1 day</td>
+              <td><span class="status-badge status-rejected">Rejected</span></td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn view-btn" title="View Details">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar" style="background: #22c55e;">ED</div>
+                  <div>
+                    <div class="employee-name">Emily Davis</div>
+                    <div class="employee-id">ID: EMP004</div>
+                  </div>
+                </div>
+              </td>
+              <td>Vacation</td>
+              <td>Jan 5 - Jan 12, 2026</td>
+              <td>5 days</td>
+              <td><span class="status-badge status-pending">Pending</span></td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn approve-btn" title="Approve Leave">
+                    <span class="material-symbols-outlined">check</span>
+                  </button>
+                  <button class="action-btn reject-btn" title="Reject Leave">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                  <button class="action-btn view-btn" title="View Details">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Leave Balances Section -->
+    <div class="card performance-list">
+      <div class="table-header">
+        <h3>Employee Leave Balances</h3>
+        <div class="controls">
+          <button class="filter-btn">
+            <span class="material-symbols-outlined">filter_list</span>
+            Filter
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Vacation</th>
+              <th>Sick Leave</th>
+              <th>Personal</th>
+              <th>Total Used</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar">JS</div>
+                  <div>
+                    <div class="employee-name">John Smith</div>
+                    <div class="employee-id">ID: EMP001</div>
+                  </div>
+                </div>
+              </td>
+              <td>5/15 days</td>
+              <td>2/10 days</td>
+              <td>1/5 days</td>
+              <td>8 days</td>
+              <td>22 days</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar" style="background: #8b5cf6;">SJ</div>
+                  <div>
+                    <div class="employee-name">Sarah Johnson</div>
+                    <div class="employee-id">ID: EMP002</div>
+                  </div>
+                </div>
+              </td>
+              <td>3/15 days</td>
+              <td>1/10 days</td>
+              <td>0/5 days</td>
+              <td>4 days</td>
+              <td>26 days</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar" style="background: #ec4899;">MB</div>
+                  <div>
+                    <div class="employee-name">Michael Brown</div>
+                    <div class="employee-id">ID: EMP003</div>
+                  </div>
+                </div>
+              </td>
+              <td>7/15 days</td>
+              <td>3/10 days</td>
+              <td>2/5 days</td>
+              <td>12 days</td>
+              <td>18 days</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="employee-info">
+                  <div class="employee-avatar" style="background: #22c55e;">ED</div>
+                  <div>
+                    <div class="employee-name">Emily Davis</div>
+                    <div class="employee-id">ID: EMP004</div>
+                  </div>
+                </div>
+              </td>
+              <td>2/15 days</td>
+              <td>0/10 days</td>
+              <td>1/5 days</td>
+              <td>3 days</td>
+              <td>27 days</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script src="../common/main.js"></script>
+  <script>
+    $(document).ready(function() {
+      // Initialize DataTables
+      $('.data-table').DataTable({
+        "pageLength": 10,
+        "ordering": true,
+        "info": true,
+        "lengthChange": false
+      });
+      
+      // Approve leave request
+      $(document).on('click', '.approve-btn', function() {
+        const row = $(this).closest('tr');
+        const employeeName = row.find('.employee-name').text();
+        
+        if (confirm(`Approve leave request for ${employeeName}?`)) {
+          // Update status badge
+          row.find('.status-badge').removeClass('status-pending').addClass('status-approved').text('Approved');
+          
+          // Remove action buttons except view
+          row.find('.approve-btn, .reject-btn').remove();
+          
+          alert(`Leave request for ${employeeName} has been approved.`);
+        }
+      });
+      
+      // Reject leave request
+      $(document).on('click', '.reject-btn', function() {
+        const row = $(this).closest('tr');
+        const employeeName = row.find('.employee-name').text();
+        
+        if (confirm(`Reject leave request for ${employeeName}?`)) {
+          // Update status badge
+          row.find('.status-badge').removeClass('status-pending').addClass('status-rejected').text('Rejected');
+          
+          // Remove action buttons except view
+          row.find('.approve-btn, .reject-btn').remove();
+          
+          alert(`Leave request for ${employeeName} has been rejected.`);
+        }
+      });
+      
+      // New leave request button
+      $('#newLeaveRequest').on('click', function() {
+        alert('Opening new leave request form...');
+        // In a real application, this would open a modal or redirect to a form
+      });
+    });
+  </script>
+</body>
+</html>

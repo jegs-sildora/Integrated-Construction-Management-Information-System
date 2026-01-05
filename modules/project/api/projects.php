@@ -1,0 +1,161 @@
+<?php
+/**
+ * ========================= API: Projects =========================
+ * Purpose: Handle CRUD operations for projects.
+ * Table: icmis_projects
+ * ============================================================================ 
+ */
+
+// Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+header('Content-Type: application/json');
+
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+    exit;
+}
+$conn->set_charset("utf8mb4");
+
+try {
+    // -------------------- DELETE PROJECT --------------------
+    if (isset($_POST['delete_id'])) {
+        $project_id = intval($_POST['delete_id']);
+        
+        // Delete related records first
+        $conn->query("DELETE FROM icmis_tasks WHERE project_id = $project_id");
+        $conn->query("DELETE FROM icmis_project_phases WHERE project_id = $project_id");
+        
+        $stmt = $conn->prepare("DELETE FROM icmis_projects WHERE project_id = ?");
+        $stmt->bind_param("i", $project_id);
+        $stmt->execute();
+
+        echo json_encode([
+            'success' => $stmt->affected_rows > 0,
+            'message' => $stmt->affected_rows > 0 ? 'Project deleted successfully' : 'Project not found'
+        ]);
+        $stmt->close();
+        exit;
+    }
+
+    // -------------------- GET NEXT PROJECT CODE --------------------
+    if (isset($_GET['get_next_id'])) {
+        $year = date('Y');
+        $result = $conn->query("SELECT project_code FROM icmis_projects WHERE project_code LIKE 'PRJ-$year-%' ORDER BY project_id DESC LIMIT 1");
+        $row = $result->fetch_assoc();
+
+        if ($row) {
+            $num = intval(substr($row['project_code'], -3)) + 1;
+        } else {
+            $num = 1;
+        }
+        $nextCode = "PRJ-$year-" . str_pad($num, 3, "0", STR_PAD_LEFT);
+
+        echo json_encode(['success' => true, 'project_code' => $nextCode]);
+        exit;
+    }
+
+    // -------------------- FETCH SINGLE PROJECT --------------------
+    if (isset($_GET['fetch_id'])) {
+        $project_id = intval($_GET['fetch_id']);
+        $stmt = $conn->prepare("
+            SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
+            FROM icmis_projects p
+            LEFT JOIN workforce_employees e ON p.project_manager_id = e.employee_id
+            WHERE p.project_id = ?
+            LIMIT 1
+        ");
+        $stmt->bind_param("i", $project_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $project = $result->fetch_assoc();
+        $stmt->close();
+
+        echo json_encode([
+            'success' => (bool)$project,
+            'project' => $project ?: null,
+            'message' => $project ? 'Project fetched successfully' : 'Project not found'
+        ]);
+        exit;
+    }
+
+    // -------------------- ADD / EDIT PROJECT --------------------
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_id'])) {
+        $project_id = isset($_POST['project_id']) ? intval($_POST['project_id']) : 0;
+        $project_code = trim($_POST['project_code'] ?? '');
+        $project_name = trim($_POST['project_name'] ?? '');
+        $project_manager = !empty($_POST['project_manager_id']) ? intval($_POST['project_manager_id']) : null;
+        $description = trim($_POST['description'] ?? '');
+        $location = trim($_POST['location'] ?? '');
+        $start_date = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
+        $end_date = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
+        $status = $_POST['status'] ?? 'Planning';
+        $total_budget = floatval($_POST['total_budget'] ?? 0);
+
+        // Check if project exists
+        $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM icmis_projects WHERE project_id = ?");
+        $stmt->bind_param("i", $project_id);
+        $stmt->execute();
+        $exists = $stmt->get_result()->fetch_assoc()['cnt'] > 0;
+        $stmt->close();
+
+        if ($exists) {
+            // UPDATE
+            $sql = "UPDATE icmis_projects SET 
+                        project_code = ?,
+                        project_name = ?,
+                        project_manager_id = ?,
+                        description = ?,
+                        location = ?,
+                        start_date = ?,
+                        end_date = ?,
+                        status = ?,
+                        total_budget = ?
+                    WHERE project_id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("ssissssdi", $project_code, $project_name, $project_manager, $description, $location, $start_date, $end_date, $status, $total_budget, $project_id);
+            $stmt->execute();
+            $stmt->close();
+
+            echo json_encode(['success' => true, 'message' => 'Project updated successfully']);
+        } else {
+            // INSERT
+            $sql = "INSERT INTO icmis_projects
+                        (project_code, project_name, project_manager_id, description, location, start_date, end_date, status, total_budget)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("ssisssssd", $project_code, $project_name, $project_manager, $description, $location, $start_date, $end_date, $status, $total_budget);
+            $stmt->execute();
+            $new_id = $conn->insert_id;
+            $stmt->close();
+
+            echo json_encode(['success' => true, 'message' => 'Project added successfully', 'project_id' => $new_id]);
+        }
+        exit;
+    }
+
+    // -------------------- FETCH ALL PROJECTS --------------------
+    $sql = "SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
+            FROM icmis_projects p
+            LEFT JOIN workforce_employees e ON p.project_manager_id = e.employee_id
+            ORDER BY p.start_date DESC";
+    $result = $conn->query($sql);
+    
+    $projects = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = $row;
+        }
+    }
+
+    echo json_encode([
+        'success' => true,
+        'projects' => $projects
+    ]);
+
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+}
+
+$conn->close();
+?>

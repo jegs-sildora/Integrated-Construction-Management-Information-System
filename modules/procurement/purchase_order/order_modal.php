@@ -148,12 +148,12 @@
     function populateOrderData(order, items) {
         // 1. Text Fields
         document.getElementById('modal-po-ref').textContent = order.po_reference;
-        document.getElementById('modal-date').textContent = new Date(order.created_at).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
-        document.getElementById('modal-supplier').textContent = order.supplierName;
+        document.getElementById('modal-date').textContent = new Date(order.order_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+        document.getElementById('modal-supplier').textContent = order.supplier_name;
         document.getElementById('modal-project').textContent = order.project_name;
         document.getElementById('modal-title').textContent = order.order_title;
         document.getElementById('modal-phase').textContent = order.phase;
-        document.getElementById('modal-creator').textContent = order.created_by_name;
+        document.getElementById('modal-creator').textContent = order.created_by_name || 'N/A';
         document.getElementById('modal-total').textContent = '₱' + parseFloat(order.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2});
 
         // 2. Status Badge

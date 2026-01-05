@@ -1,15 +1,13 @@
 <?php
 // modules/procurement/purchase_order/edit_order.php
 
-// 1. Establish Isolated Connections
-require_once __DIR__ . '/../../../config/database.php';
-$icmis_conn = $conn; // Main icmis DB
-
-include __DIR__ . '/../php/db_connect.php'; 
-$procurement_conn = $conn_proc ?? $conn; // Procurement DB
-
-include __DIR__ . '/../../budget/connection.php';
-$budget_conn = $conn; // icmis_budget DB
+// 1. Use centralized config for single database connection
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    die("Database connection failed: " . $conn->connect_error);
+}
+$conn->set_charset("utf8mb4");
 
 // 2. Validate ID
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -18,7 +16,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $po_id = intval($_GET['id']);
 
 // 3. Fetch Existing Purchase Order Data
-$stmt = $procurement_conn->prepare("SELECT po.*, s.supplierName FROM purchase_orders po LEFT JOIN suppliers s ON po.supplier_id = s.supplierID WHERE po.po_id = ?");
+$stmt = $conn->prepare("SELECT po.*, s.supplier_name FROM procurement_purchase_orders po LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id WHERE po.po_id = ?");
 $stmt->bind_param("i", $po_id);
 $stmt->execute();
 $result_po = $stmt->get_result();
@@ -29,14 +27,14 @@ $po_data = $result_po->fetch_assoc();
 $stmt->close();
 
 // 4. Fetch Existing Items for this PO
-$stmt_items = $procurement_conn->prepare("SELECT * FROM purchase_order_items WHERE po_id = ?");
+$stmt_items = $conn->prepare("SELECT * FROM procurement_purchase_order_items WHERE po_id = ?");
 $stmt_items->bind_param("i", $po_id);
 $stmt_items->execute();
 $result_items = $stmt_items->get_result();
 $existing_items = [];
 while ($row = $result_items->fetch_assoc()) {
     $existing_items[] = [
-        'id' => $row['id'], // Use DB ID to distinguish saved items
+        'id' => $row['po_item_id'], // Use DB ID to distinguish saved items
         'name' => $row['item_name'],
         'qty' => floatval($row['quantity']),
         'price' => floatval($row['unit_cost']),
@@ -46,17 +44,16 @@ while ($row = $result_items->fetch_assoc()) {
 $stmt_items->close();
 
 // 5. Fetch Dropdown Data
-// FIX: Changed 'name' to 'project_name' to match icmis.sql
-$result_projects = $icmis_conn->query("SELECT project_id, project_code, project_name FROM projects ORDER BY project_name ASC");
+$result_projects = $conn->query("SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_name ASC");
 
-// Fetch Phases (From Budget DB)
-$result_phases = mysqli_query($budget_conn, "SELECT DISTINCT phase FROM budget_proposals WHERE status = 'APPROVED' ORDER BY phase ASC");
+// Fetch Phases
+$result_phases = $conn->query("SELECT DISTINCT phase FROM budget_proposals WHERE status = 'APPROVED' ORDER BY phase ASC");
 
-// Fetch Suppliers (From Procurement DB)
-$result_suppliers = $procurement_conn->query("SELECT supplierID, supplierName FROM suppliers ORDER BY supplierName ASC");
+// Fetch Suppliers
+$result_suppliers = $conn->query("SELECT supplier_id, supplier_name FROM procurement_suppliers ORDER BY supplier_name ASC");
 
-// Fetch Budget Items (From Budget DB)
-$result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.quantity, bli.unit_cost FROM budget_line_items bli JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id WHERE bp.status = 'APPROVED' ORDER BY bli.item_name ASC");
+// Fetch Budget Items
+$result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.unit_cost FROM budget_line_items bli JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id WHERE bp.status = 'APPROVED' ORDER BY bli.item_name ASC");
 
 ?>
 
@@ -115,7 +112,7 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
                         <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Target Phase</label>
                         <select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                             <option value="">Select Approved Phase...</option>
-                            <?php if ($result_phases): while($phase = mysqli_fetch_assoc($result_phases)): ?>
+                            <?php if ($result_phases): while($phase = $result_phases->fetch_assoc()): ?>
                                 <option value="<?= htmlspecialchars($phase['phase']) ?>"
                                         <?= ($phase['phase'] == $po_data['phase']) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($phase['phase']) ?>
@@ -127,7 +124,7 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
                     <div class="mb-6">
                         <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Supplier</label>
                         <input type="text" id="supplier" list="suppliers-list" 
-                               value="<?= htmlspecialchars($po_data['supplierName']) ?>"
+                               value="<?= htmlspecialchars($po_data['supplier_name'] ?? '') ?>"
                                placeholder="Search or select a supplier..." 
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                         
@@ -135,7 +132,7 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
                             <?php if ($result_suppliers): 
                                 $result_suppliers->data_seek(0); 
                                 while($sup = $result_suppliers->fetch_assoc()): ?>
-                                    <option value="<?= htmlspecialchars($sup['supplierName']) ?>">
+                                    <option value="<?= htmlspecialchars($sup['supplier_name']) ?>">
                             <?php endwhile; endif; ?>
                         </datalist>
                     </div>
@@ -174,8 +171,8 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
                                 <select id="item-name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
                                     <option value="">-- Select Approved Item --</option>
                                     <?php if ($result_budget_items): 
-                                        mysqli_data_seek($result_budget_items, 0); 
-                                        while($item = mysqli_fetch_assoc($result_budget_items)): ?>
+                                        $result_budget_items->data_seek(0); 
+                                        while($item = $result_budget_items->fetch_assoc()): ?>
                                             <option value="<?= htmlspecialchars($item['item_name']) ?>"
                                                     data-qty="<?= $item['quantity'] ?>" 
                                                     data-price="<?= $item['unit_cost'] ?>">
@@ -230,7 +227,7 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
                         <div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg p-4">
                             <span class="text-xs font-bold text-green-700 uppercase tracking-widest">Vendor</span>
                             <p id="preview-supplier" class="text-sm font-bold text-gray-900 mt-1 italic">
-                                <?= htmlspecialchars($po_data['supplierName']) ?>
+                                <?= htmlspecialchars($po_data['supplier_name'] ?? '') ?>
                             </p>
                         </div>
                     </div>

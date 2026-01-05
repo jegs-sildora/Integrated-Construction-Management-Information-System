@@ -17,7 +17,7 @@ $project_id = intval($_GET['project_id']);
 $phase_name = urldecode($_GET['phase']);
 
 // Fetch project details
-$sql_project = "SELECT project_id, project_code, project_name FROM projects WHERE project_id = ?";
+$sql_project = "SELECT project_id, project_code, project_name FROM icmis_projects WHERE project_id = ?";
 $stmt_project = $conn->prepare($sql_project);
 $stmt_project->bind_param("i", $project_id);
 $stmt_project->execute();
@@ -31,13 +31,14 @@ $project = $result_project->fetch_assoc();
 
 // Fetch phase data
 $sql_phase = "SELECT
-                bp.phase,
+                pp.phase_name as phase,
                 COALESCE(SUM(bp.total_amount), 0) as allocated,
-                MIN(bp.phase_start_date) as phase_start_date,
-                MAX(bp.phase_end_date) as phase_end_date
+                MIN(pp.start_date) as phase_start_date,
+                MAX(pp.end_date) as phase_end_date
              FROM budget_proposals bp
-             WHERE bp.project_id = ? AND bp.status = 'APPROVED' AND bp.phase = ?
-             GROUP BY bp.phase";
+             LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
+             WHERE bp.project_id = ? AND bp.status = 'APPROVED' AND pp.phase_name = ?
+             GROUP BY pp.phase_id";
 $stmt_phase = $conn->prepare($sql_phase);
 $stmt_phase->bind_param("is", $project_id, $phase_name);
 $stmt_phase->execute();
@@ -57,7 +58,10 @@ if ($result_phase->num_rows > 0) {
     }
 
     // Get expenses for this phase
-    $sql_expenses = "SELECT COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0) as spent FROM budget_expenses WHERE project_id = ? AND phase = ?";
+    $sql_expenses = "SELECT COALESCE(SUM(CASE WHEN e.status = 'APPROVED' THEN e.amount ELSE 0 END), 0) as spent 
+                     FROM budget_expenses e
+                     LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
+                     WHERE e.project_id = ? AND pp.phase_name = ?";
     $stmt_expenses = $conn->prepare($sql_expenses);
     $stmt_expenses->bind_param("is", $project_id, $phase_name);
     $stmt_expenses->execute();
@@ -80,10 +84,12 @@ if ($result_phase->num_rows > 0) {
     }
 }
 
-// Fetch budget proposals for this phase
-$sql_proposals = "SELECT bp.*, bp.user_name
+// Fetch budget proposals for this phase with user info
+$sql_proposals = "SELECT bp.*, COALESCE(u.full_name, 'System') as user_name
                   FROM budget_proposals bp
-                  WHERE bp.project_id = ? AND bp.phase = ? AND bp.status = 'APPROVED'
+                  LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
+                  LEFT JOIN icmis_users u ON bp.created_by = u.user_id
+                  WHERE bp.project_id = ? AND pp.phase_name = ? AND bp.status = 'APPROVED'
                   ORDER BY bp.created_at DESC";
 $stmt_proposals = $conn->prepare($sql_proposals);
 $stmt_proposals->bind_param("is", $project_id, $phase_name);
@@ -98,8 +104,9 @@ while ($row = $result_proposals->fetch_assoc()) {
 // Fetch expenses for this phase
 $sql_expenses_list = "SELECT e.*, s.supplier_name
                       FROM budget_expenses e
-                      LEFT JOIN suppliers s ON e.supplier_id = s.supplier_id
-                      WHERE e.project_id = ? AND e.phase = ?
+                      LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
+                      LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
+                      WHERE e.project_id = ? AND pp.phase_name = ?
                       ORDER BY e.expense_date DESC";
 $stmt_expenses_list = $conn->prepare($sql_expenses_list);
 $stmt_expenses_list->bind_param("is", $project_id, $phase_name);

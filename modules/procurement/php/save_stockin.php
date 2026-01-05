@@ -1,9 +1,15 @@
 <?php
-// modules/inventory/php/save_stockin.php
+// modules/procurement/php/save_stockin.php
 header('Content-Type: application/json');
-require_once __DIR__ . '/db_connect.php';
 
-$db = $conn_proc ?? $conn;
+// Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+    exit;
+}
+$conn->set_charset("utf8mb4");
 
 function sendJson($success, $message) {
     echo json_encode(['success' => $success, 'message' => $message]);
@@ -20,34 +26,21 @@ $data = json_decode($input, true);
 if (!$data) sendJson(false, 'Invalid JSON data');
 
 $po_id = intval($data['po_id'] ?? 0);
-$received_by = intval($data['received_by'] ?? 1);
 $items = $data['items'] ?? [];
 
 if ($po_id <= 0 || empty($items)) sendJson(false, 'Missing PO ID or Items');
 
-$db->begin_transaction();
+$conn->begin_transaction();
 
 try {
-    // 1. Prepare Inventory & Log Statements
-    $stmt_log = $db->prepare("INSERT INTO inventory_receiving_logs (po_id, item_id_ref, item_name, quantity_received, received_by, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-
-    // UPSERT: Update inventory if exists, Insert if new
-    $stmt_inventory = $db->prepare("INSERT INTO inventory (item_name, quantity, unit_cost, unit, category) 
-        VALUES (?, ?, ?, ?, 'General') 
-        ON DUPLICATE KEY UPDATE 
-        quantity = quantity + VALUES(quantity), 
-        unit_cost = VALUES(unit_cost),
-        unit = VALUES(unit),
-        last_updated = NOW()");
-
     // Helper to get unit cost from original PO item
-    $stmt_details = $db->prepare("SELECT unit_cost FROM purchase_order_items WHERE id = ?");
+    $stmt_details = $conn->prepare("SELECT unit_cost, item_name FROM procurement_purchase_order_items WHERE po_item_id = ?");
 
-    // 2. Process Each Item
+    // 1. Process Each Item - Insert into stock_in and update inventory
     foreach ($items as $item) {
         $po_item_id = intval($item['item_db_id']);
         $name = trim($item['item_name']);
-        $qty = floatval($item['received_qty']);
+        $qty = intval($item['received_qty']);
 
         if ($qty > 0) {
             // Fetch Cost
@@ -56,79 +49,94 @@ try {
             $res_details = $stmt_details->get_result();
             $row_details = $res_details->fetch_assoc();
             $cost = $row_details['unit_cost'] ?? 0;
-            $unit = 'pcs'; // Default unit
 
-            // Insert Log
-            $stmt_log->bind_param("iisdi", $po_id, $po_item_id, $name, $qty, $received_by);
-            if (!$stmt_log->execute()) throw new Exception("Failed to log item: " . $stmt_log->error);
+            // Insert into procurement_stock_in
+            $stmt_stockin = $conn->prepare("INSERT INTO procurement_stock_in (po_id, item_name, quantity_received, date_received) VALUES (?, ?, ?, CURDATE())");
+            $stmt_stockin->bind_param("isi", $po_id, $name, $qty);
+            if (!$stmt_stockin->execute()) throw new Exception("Failed to log stock in: " . $stmt_stockin->error);
+            $stmt_stockin->close();
 
-            // Update Master Inventory
-            $stmt_inventory->bind_param("sdds", $name, $qty, $cost, $unit);
+            // Update Master Inventory (UPSERT)
+            $stmt_inventory = $conn->prepare("INSERT INTO procurement_inventory (item_name, quantity, unit_cost, unit, category) 
+                VALUES (?, ?, ?, 'pcs', 'General') 
+                ON DUPLICATE KEY UPDATE 
+                quantity = quantity + VALUES(quantity), 
+                unit_cost = VALUES(unit_cost),
+                last_updated = NOW()");
+            $stmt_inventory->bind_param("sdd", $name, $qty, $cost);
             if (!$stmt_inventory->execute()) throw new Exception("Failed to update inventory: " . $stmt_inventory->error);
+            $stmt_inventory->close();
         }
     }
+    $stmt_details->close();
 
-    // 3. Check for PO Completion
-    // Compare total ordered vs total received
+    // 2. Check for PO Completion - Compare total ordered vs total received
     $sql_check = "
         SELECT 
-            (SELECT SUM(quantity) FROM purchase_order_items WHERE po_id = ?) as total_ordered,
-            (SELECT SUM(quantity_received) FROM inventory_receiving_logs WHERE po_id = ?) as total_received
+            (SELECT SUM(quantity) FROM procurement_purchase_order_items WHERE po_id = ?) as total_ordered,
+            (SELECT SUM(quantity_received) FROM procurement_stock_in WHERE po_id = ?) as total_received
     ";
-    $stmt_check = $db->prepare($sql_check);
+    $stmt_check = $conn->prepare($sql_check);
     $stmt_check->bind_param("ii", $po_id, $po_id);
     $stmt_check->execute();
     $res_check = $stmt_check->get_result();
     $status_row = $res_check->fetch_assoc();
+    $stmt_check->close();
 
     // If Received >= Ordered, mark as COMPLETED and Push to Expenses
     if ($status_row['total_received'] >= $status_row['total_ordered']) {
         
         // A. Update PO Status
-        $db->query("UPDATE purchase_orders SET status = 'COMPLETED' WHERE po_id = $po_id");
+        $conn->query("UPDATE procurement_purchase_orders SET status = 'COMPLETED' WHERE po_id = $po_id");
 
         // B. Fetch PO Data required for Expenses
-        $po_stmt = $db->prepare("SELECT project_id, phase, supplier_id, total_amount, order_title, po_reference FROM purchase_orders WHERE po_id = ?");
+        $po_stmt = $conn->prepare("SELECT project_id, phase, supplier_id, total_amount, order_title, po_reference FROM procurement_purchase_orders WHERE po_id = ?");
         $po_stmt->bind_param("i", $po_id);
         $po_stmt->execute();
         $po_result = $po_stmt->get_result();
         
         if ($po_data = $po_result->fetch_assoc()) {
             
-            // C. Insert into Budget Expenses (Cross-Database Insert)
-            // We use 'icmis_budget' prefix to target the other database
-            
-            $description = $po_data['po_reference'] . " - " . $po_data['order_title'];
+            // C. Insert into Budget Expenses (Same database now)
+            $description = $po_data['po_reference'] . " - " . ($po_data['order_title'] ?? 'Purchase Order');
             $project_id = $po_data['project_id'];
             $phase = $po_data['phase'];
-            $supplier_id = $po_data['supplier_id']; // Assumes supplier IDs are synced or shared
+            $supplier_id = $po_data['supplier_id'];
             $amount = $po_data['total_amount'];
             
-            $expense_sql = "INSERT INTO icmis_budget.budget_expenses 
-                            (project_id, phase, category, description, supplier_id, amount, status, expense_date, created_at, updated_at) 
-                            VALUES (?, ?, 'MATERIALS', ?, ?, ?, 'APPROVED', NOW(), NOW(), NOW())";
-            
-            $stmt_exp = $db->prepare($expense_sql);
-            
-            if ($stmt_exp) {
-                $stmt_exp->bind_param("issid", $project_id, $phase, $description, $supplier_id, $amount);
-                if (!$stmt_exp->execute()) {
-                    throw new Exception("Stock received, but failed to record Expense: " . $stmt_exp->error);
-                }
-                $stmt_exp->close();
-            } else {
-                // If icmis_budget database doesn't exist or permissions denied
-                throw new Exception("Failed to access Budget Database. Please check configuration.");
+            // Look up phase_id from phase name
+            $phase_id = null;
+            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name LIKE ?");
+            $phase_search = '%' . $phase . '%';
+            $stmt_phase->bind_param("is", $project_id, $phase_search);
+            $stmt_phase->execute();
+            $result_phase = $stmt_phase->get_result();
+            if ($row_phase = $result_phase->fetch_assoc()) {
+                $phase_id = $row_phase['phase_id'];
             }
+            $stmt_phase->close();
+            
+            $expense_sql = "INSERT INTO budget_expenses 
+                            (project_id, phase_id, category, description, supplier_id, amount, status, expense_date) 
+                            VALUES (?, ?, 'MATERIALS', ?, ?, ?, 'APPROVED', CURDATE())";
+            
+            $stmt_exp = $conn->prepare($expense_sql);
+            $stmt_exp->bind_param("iisid", $project_id, $phase_id, $description, $supplier_id, $amount);
+            if (!$stmt_exp->execute()) {
+                throw new Exception("Stock received, but failed to record Expense: " . $stmt_exp->error);
+            }
+            $stmt_exp->close();
         }
         $po_stmt->close();
     }
 
-    $db->commit();
+    $conn->commit();
     sendJson(true, 'Stock received successfully!');
 
 } catch (Exception $e) {
-    $db->rollback();
+    $conn->rollback();
     sendJson(false, $e->getMessage());
 }
+
+$conn->close();
 ?>

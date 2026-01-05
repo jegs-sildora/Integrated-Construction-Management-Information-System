@@ -1,24 +1,31 @@
 <?php
-// modules/inventory/php/fetch_stockout.php
+// modules/procurement/php/fetch_stockout.php
 header('Content-Type: application/json');
-require_once 'db_connect.php';
 
-$db = $conn_proc ?? $conn;
+// Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode([]);
+    exit;
+}
+$conn->set_charset("utf8mb4");
 
 // Join stock_out with inventory to get the Item Name and Unit
 $sql = "SELECT 
-            so.refNo, 
-            i.item_name as itemName, 
+            so.stock_out_id, 
+            pi.item_name, 
             so.quantity, 
-            i.unit, 
-            so.issuedTo, 
-            DATE_FORMAT(so.dateIssued, '%b %d, %Y') as dateIssued, 
-            so.notes 
-        FROM stock_out so 
-        JOIN inventory i ON so.itemID = i.itemID 
-        ORDER BY so.dateIssued DESC, so.id DESC";
+            pi.unit, 
+            so.issued_to, 
+            DATE_FORMAT(so.date_issued, '%b %d, %Y') as date_issued, 
+            p.project_name 
+        FROM procurement_stock_out so 
+        JOIN procurement_inventory pi ON so.item_id = pi.item_id 
+        LEFT JOIN icmis_projects p ON so.project_id = p.project_id
+        ORDER BY so.date_issued DESC, so.stock_out_id DESC";
 
-$result = $db->query($sql);
+$result = $conn->query($sql);
 
 $data = [];
 if ($result) {
@@ -28,4 +35,5 @@ if ($result) {
 }
 
 echo json_encode($data);
+$conn->close();
 ?>

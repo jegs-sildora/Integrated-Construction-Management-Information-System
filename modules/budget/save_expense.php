@@ -114,7 +114,7 @@ try {
         throw new Exception('Total amount does not match line items sum');
     }
 
-    $stmt = $conn->prepare("SELECT project_id FROM projects WHERE project_id = ?");
+    $stmt = $conn->prepare("SELECT project_id FROM icmis_projects WHERE project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -168,7 +168,7 @@ try {
 
     // Check if supplier exists, if not create one
     $supplier_id = null;
-    $stmt = $conn->prepare("SELECT supplier_id FROM budget_suppliers WHERE name = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT supplier_id FROM procurement_suppliers WHERE supplier_name = ? LIMIT 1");
     $stmt->bind_param("s", $supplier_name);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -177,7 +177,7 @@ try {
         $supplier_id = $result->fetch_assoc()['supplier_id'];
     } else {
         // Create new supplier
-        $stmt_insert = $conn->prepare("INSERT INTO budget_suppliers (name, status) VALUES (?, 'ACTIVE')");
+        $stmt_insert = $conn->prepare("INSERT INTO procurement_suppliers (supplier_name, status) VALUES (?, 'Active')");
         $stmt_insert->bind_param("s", $supplier_name);
         if (!$stmt_insert->execute()) {
             throw new Exception('Failed to create supplier record');
@@ -191,40 +191,42 @@ try {
     $conn->begin_transaction();
 
     try {
-        // FIX: Disable Foreign Key Checks temporarily
-        // This allows us to insert a project_id from Main DB into Budget DB
-        $conn->query("SET FOREIGN_KEY_CHECKS=0");
+        // Look up phase_id from phase name
+        $phase_id = null;
+        $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name = ?");
+        $stmt_phase->bind_param("is", $project_id, $phase);
+        $stmt_phase->execute();
+        $result_phase = $stmt_phase->get_result();
+        if ($row_phase = $result_phase->fetch_assoc()) {
+            $phase_id = $row_phase['phase_id'];
+        }
+        $stmt_phase->close();
 
-        // Insert each line item as a separate expense record
-        $sql = "INSERT INTO budget_expenses (project_id, supplier_id, phase, expense_date, category, description, quantity, unit_cost, amount, receipt_path, status, notes) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Get current user from session
+        $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
+
+        // Insert each line item as a separate expense record (matching new schema with created_by)
+        $sql = "INSERT INTO budget_expenses (project_id, phase_id, supplier_id, expense_date, category, description, amount, status, created_by) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $conn->prepare($sql);
         $expense_ids = [];
         
         foreach ($line_items as $index => $item) {
-            // ... [Binding logic remains the same] ...
             $category = $item['category'];
             $description = $item['description'];
-            $quantity = $item['quantity'];
-            $unit_cost = $item['unitCost'];
             $subtotal = $item['subtotal'];
             
-            $item_receipt_path = ($index === 0) ? $receipt_path : null;
-            
-            $stmt->bind_param("iissssddssss", 
+            $stmt->bind_param("iiisssdsi", 
                 $project_id, 
+                $phase_id,
                 $supplier_id, 
-                $phase,
                 $expense_date, 
                 $category, 
                 $description, 
-                $quantity,
-                $unit_cost,
                 $subtotal, 
-                $item_receipt_path, 
-                $status, 
-                $notes
+                $status,
+                $created_by
             );
 
             if (!$stmt->execute()) {
@@ -235,9 +237,6 @@ try {
         }
         
         $stmt->close();
-        
-        // FIX: Re-enable Foreign Key Checks
-        $conn->query("SET FOREIGN_KEY_CHECKS=1");
 
         // Commit transaction
         $conn->commit();
@@ -245,13 +244,6 @@ try {
     } catch (Exception $e) {
         // Rollback transaction on error
         $conn->rollback();
-        // Ensure checks are back on
-        $conn->query("SET FOREIGN_KEY_CHECKS=1");
-        
-        // ... [File cleanup logic remains the same] ...
-        if ($receipt_path && file_exists(__DIR__ . '/' . $receipt_path)) {
-            unlink(__DIR__ . '/' . $receipt_path);
-        }
         
         throw $e;
     }

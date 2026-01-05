@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 // Include config for database connection
-require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../../config/config.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -24,8 +24,8 @@ try {
     $sql = "SELECT e.*, s.supplier_name, s.contact_number as phone, s.email, s.address,
             p.project_name, p.project_code
             FROM budget_expenses e
-            LEFT JOIN suppliers s ON e.supplier_id = s.supplier_id
-            LEFT JOIN projects p ON e.project_id = p.project_id
+            LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
+            LEFT JOIN icmis_projects p ON e.project_id = p.project_id
             WHERE e.expense_id = ?";
     
     $stmt = $conn->prepare($sql);

@@ -14,16 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// 2. Connect to Procurement Database
-include __DIR__ . '/../php/db_connect.php'; 
-
-// Ensure we have the correct connection variable
-$db = $conn_proc ?? $conn; 
-
-if (!isset($db) || $db->connect_error) {
+// 2. Use centralized config
+require_once __DIR__ . '/../../../config/config.php';
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
     echo json_encode(['success' => false, 'message' => 'Database connection failed']);
     exit;
 }
+$conn->set_charset("utf8mb4");
 
 // 3. Process the Request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -59,12 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $supplier_id = intval($supplier_input);
         } else {
             // Look up ID by Name
-            $stmt_sup = $db->prepare("SELECT supplierID FROM suppliers WHERE supplierName = ? LIMIT 1");
+            $stmt_sup = $conn->prepare("SELECT supplier_id FROM procurement_suppliers WHERE supplier_name = ? LIMIT 1");
             $stmt_sup->bind_param("s", $supplier_input);
             $stmt_sup->execute();
             $res_sup = $stmt_sup->get_result();
             if ($row_sup = $res_sup->fetch_assoc()) {
-                $supplier_id = $row_sup['supplierID'];
+                $supplier_id = $row_sup['supplier_id'];
             } else {
                 throw new Exception("Supplier '$supplier_input' not found in database.");
             }
@@ -78,20 +76,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // --- Begin Transaction ---
-        $db->begin_transaction();
+        $conn->begin_transaction();
 
         // A. Update Header Table
-        $sql_header = "UPDATE purchase_orders 
+        $sql_header = "UPDATE procurement_purchase_orders 
                        SET project_id = ?, 
                            supplier_id = ?, 
                            phase = ?, 
                            order_title = ?, 
                            status = ?, 
-                           total_amount = ?,
-                           updated_at = NOW()
+                           total_amount = ?
                        WHERE po_id = ?";
         
-        $stmt = $db->prepare($sql_header);
+        $stmt = $conn->prepare($sql_header);
         // Types: i (proj), i (sup), s (phase), s (title), s (status), d (total), i (po_id)
         $stmt->bind_param("iisssdi", $project_id, $supplier_id, $phase, $order_title, $status, $grand_total, $po_id);
         
@@ -104,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // This handles additions, deletions, and edits simultaneously.
         
         // 1. Delete existing items
-        $stmt_del = $db->prepare("DELETE FROM purchase_order_items WHERE po_id = ?");
+        $stmt_del = $conn->prepare("DELETE FROM procurement_purchase_order_items WHERE po_id = ?");
         $stmt_del->bind_param("i", $po_id);
         if (!$stmt_del->execute()) {
             throw new Exception("Failed to clear old items: " . $stmt_del->error);
@@ -112,8 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_del->close();
 
         // 2. Insert current items
-        $sql_item = "INSERT INTO purchase_order_items (po_id, item_name, quantity, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)";
-        $stmt_item = $db->prepare($sql_item);
+        $sql_item = "INSERT INTO procurement_purchase_order_items (po_id, item_name, quantity, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)";
+        $stmt_item = $conn->prepare($sql_item);
 
         foreach ($items as $item) {
             $i_name = trim($item['name']);
@@ -130,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_item->close();
 
         // --- Commit Transaction ---
-        $db->commit();
+        $conn->commit();
 
         echo json_encode([
             'success' => true,
@@ -139,10 +136,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
     } catch (Exception $e) {
-        if (isset($db)) $db->rollback();
+        if (isset($conn)) $conn->rollback();
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
 }
+
+$conn->close();
 ?>
