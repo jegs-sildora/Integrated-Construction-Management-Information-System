@@ -5,7 +5,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<!-- Global project styles -->
 	<link rel="stylesheet" href="../css/output.css">
 	<link rel="stylesheet" href="../css/input.css">
 	<meta charset="UTF-8">
@@ -25,7 +24,8 @@
 <body>
 	<?php 
 		include __DIR__ . '/../../../includes/sidebar.php';
-		include __DIR__ . '/../connection.php';  
+		include __DIR__ . '/../project_context.php';
+		$conn = getBudgetConnection();
 		include __DIR__ . '/../../../includes/header.php'; 
 	?>
 
@@ -38,7 +38,7 @@
 		}
 
 		// Fetch proposal details
-		$sql = "SELECT bp.*, p.project_code, p.name as project_name 
+		$sql = "SELECT bp.*, p.project_code, p.project_name 
 				FROM budget_proposals bp 
 				LEFT JOIN projects p ON bp.project_id = p.project_id 
 				WHERE bp.proposal_id = ?";
@@ -68,7 +68,7 @@
 		$stmt_items->close();
 
 		// Fetch all projects for dropdown
-		$sql_projects = "SELECT project_id, project_code, name, status FROM projects ORDER BY created_at DESC";
+		$sql_projects = "SELECT project_id, project_code, project_name, status FROM projects ORDER BY project_id DESC";
 		$result_projects = $conn->query($sql_projects);
 		$projects = [];
 		if ($result_projects && $result_projects->num_rows > 0) {
@@ -82,7 +82,6 @@
 
 	<main class="ml-56 mt-20 p-6">
 		<div class="max-w-7xl mx-auto">
-			<!-- Back Link -->
 			<a href="../proposals.php" class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors underline">
 				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -90,33 +89,28 @@
 				Back to Budget Proposal Dashboard
 			</a>
 
-			<!-- Page Header -->
 			<div class="mb-8">
 				<h1 class="text-3xl font-bold text-gray-900 mb-2">Edit Budget Proposal</h1>
 				<p class="text-gray-600">Proposal Code: <span class="font-semibold text-[#e9922c]"><?php echo htmlspecialchars($proposal['code']); ?></span></p>
 			</div>
 
-			<!-- 2-Column Grid Layout -->
 			<div class="grid grid-cols-2 gap-6">
 			
-				<!-- LEFT CARD -->
 				<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-[calc(100vh-170px)] overflow-y-auto">
-					<!-- Project Selection -->
 					<div class="mb-6">
 						<label for="project" class="block text-sm text-gray-700 mb-2">Select Project</label>
 						<select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
 							<option value="">-- Select a Project --</option>
 							<?php foreach ($projects as $project): ?>
-							<option value="<?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['name']); ?>" 
+							<option value="<?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['project_name']); ?>" 
 								data-id="<?php echo $project['project_id']; ?>"
 								<?php echo ($project['project_id'] == $proposal['project_id']) ? 'selected' : ''; ?>>
-								<?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['name']); ?>
+								<?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['project_name']); ?>
 							</option>
 							<?php endforeach; ?>
 						</select>
 					</div>
 
-					<!-- Proposal Title -->
 					<div class="mb-6">
 						<label for="proposalTitle" class="block text-sm text-gray-700 mb-2">Proposal Title</label>
 						<input type="text" id="proposalTitle" placeholder="e.g., Q1 2025 Construction Materials Budget" 
@@ -124,7 +118,6 @@
 							class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
 					</div>
 
-					<!-- Target Milestone / Phase -->
 					<div class="mb-6">
 						<label for="targetPhase" class="block text-sm text-gray-700 mb-2">Target Milestone / Phase</label>
 						<select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
@@ -136,7 +129,6 @@
 						</select>
 					</div>
 
-					<!-- Phase Duration -->
 					<div class="mb-6 grid grid-cols-2 gap-4">
 						<div>
 							<label for="phaseStartDate" class="block text-sm text-gray-700 mb-2">Phase Start Date</label>
@@ -152,13 +144,11 @@
 						</div>
 					</div>
 
-					<!-- Scope Description / Justification -->
 					<div class="mb-6">
 						<label for="scopeDescription" class="block text-sm text-gray-700 mb-2">Scope Description / Justification</label>
 						<textarea id="scopeDescription" rows="3" placeholder="Describe what this budget will achieve (e.g., 'Covers all excavation, rebar installation, and concrete pouring for the basement level')" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none resize-none"><?php echo isset($proposal['scope_description']) ? htmlspecialchars($proposal['scope_description']) : ''; ?></textarea>
 					</div>
 
-					<!-- Status -->
 					<div class="mb-6">
 						<label class="block text-sm text-gray-700 mb-3">Status</label>
 						<div class="grid grid-cols-2 gap-3">
@@ -181,7 +171,6 @@
 						</div>
 					</div>
 
-					<!-- Tab Navigation -->
 					<div class="border-b border-gray-200 mb-6">
 						<div class="flex space-x-8">
 							<button id="tab-materials" class="pb-3 border-b-2 border-[#e9922c] text-[#e9922c] font-medium transition-all">
@@ -196,8 +185,6 @@
 						</div>
 					</div>
 
-					<!-- Tab Content Panels -->
-					<!-- Materials Tab -->
 					<div id="panel-materials" class="tab-panel">
 						<div class="space-y-4 mb-6">
 							<div>
@@ -236,7 +223,6 @@
 						</button>
 					</div>
 
-					<!-- Labor Tab -->
 					<div id="panel-labor" class="tab-panel hidden">
 						<div class="space-y-4 mb-6">
 							<div>
@@ -274,7 +260,6 @@
 						</button>
 					</div>
 
-					<!-- Equipment Tab -->
 					<div id="panel-equipment" class="tab-panel hidden">
 						<div class="space-y-4 mb-6">
 							<div>
@@ -313,9 +298,7 @@
 					</div>
 				</div>
 
-				<!-- RIGHT CARD -->
 				<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-[calc(100vh-170px)] overflow-y-auto">
-					<!-- Receipt Header -->
 					<div class="flex items-center mb-6">
 						<div class="w-12 h-12 bg-[#e9922c] rounded-lg flex items-center justify-center text-white text-2xl font-bold mr-4">
 							I
@@ -326,26 +309,21 @@
 						</div>
 					</div>
 
-					<!-- Current Date -->
 					<div class="text-sm text-gray-600 mb-6">
 						<?php echo date('F j, Y'); ?>
 					</div>
 
-					<!-- Project Information Cards -->
 					<div class="mb-6 space-y-3">
-						<!-- Project Card -->
 						<div class="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-lg p-4">
 							<span class="text-xs text-blue-700 uppercase font-semibold">Project</span>
 							<p id="preview-project" class="text-sm font-medium text-gray-900 mt-1"><?php echo htmlspecialchars($proposal['project_code'] . ' - ' . $proposal['project_name']); ?></p>
 						</div>
 
-						<!-- Phase / Milestone Card -->
 						<div class="bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500 rounded-lg p-4">
 							<span class="text-xs text-purple-700 uppercase font-semibold">Phase / Milestone</span>
 							<p id="preview-phase" class="text-sm font-medium <?php echo (isset($proposal['target_phase']) && !empty($proposal['target_phase'])) ? 'text-gray-900' : 'text-gray-400 italic'; ?> mt-1"><?php echo (isset($proposal['target_phase']) && !empty($proposal['target_phase'])) ? htmlspecialchars($proposal['target_phase']) : 'No phase specified'; ?></p>
 						</div>
 
-						<!-- Timeline Card -->
 						<div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg p-4">
 							<span class="text-xs text-green-700 uppercase font-semibold">Timeline</span>
 							<p id="preview-timeline" class="text-sm font-medium <?php echo (isset($proposal['phase_start_date']) && isset($proposal['phase_end_date']) && !empty($proposal['phase_start_date']) && !empty($proposal['phase_end_date'])) ? 'text-gray-900' : 'text-gray-400 italic'; ?> mt-1">
@@ -361,19 +339,16 @@
 							</p>
 						</div>
 
-						<!-- Proposal Title Card -->
 						<div class="bg-gradient-to-r from-amber-50 to-orange-100 border-l-4 border-[#e9922c] rounded-lg p-4">
 							<span class="text-xs text-orange-700 uppercase font-semibold">Proposal Title</span>
 							<p id="preview-title" class="text-sm font-medium text-gray-900 mt-1"><?php echo htmlspecialchars($proposal['title']); ?></p>
 						</div>
 
-						<!-- Scope Description Card (conditional) -->
 						<div id="preview-scope-container" class="bg-gray-50 border border-gray-200 rounded-lg p-4" style="display: <?php echo (isset($proposal['scope_description']) && !empty($proposal['scope_description'])) ? 'block' : 'none'; ?>;">
 							<span class="text-xs text-gray-600 uppercase font-semibold">Scope Description</span>
 							<p id="preview-scope" class="text-sm text-gray-700 mt-1"><?php echo isset($proposal['scope_description']) ? htmlspecialchars($proposal['scope_description']) : ''; ?></p>
 						</div>
 
-						<!-- Status Card -->
 						<div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
 							<span class="text-xs text-gray-600 uppercase font-semibold">Status</span>
 							<p id="preview-status" class="text-sm font-medium mt-1">
@@ -391,17 +366,14 @@
 						</div>
 					</div>
 
-					<!-- Line Items Section -->
 					<div class="mb-6">
 						<h3 class="text-sm font-semibold text-gray-700 uppercase mb-3">Line Items</h3>
 						
-						<!-- Empty State -->
 						<div id="empty-state" class="text-center py-8 text-gray-400" style="display: none;">
 							<p class="text-sm">No items added yet</p>
 							<p class="text-xs mt-1">Add items from the left panel</p>
 						</div>
 
-						<!-- Materials Section -->
 						<div id="materials-section" class="mb-4" style="display: none;">
 							<div class="flex items-center mb-2">
 								<span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded font-semibold">MATERIALS</span>
@@ -409,7 +381,6 @@
 							<div id="materials-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
 						</div>
 
-						<!-- Labor Section -->
 						<div id="labor-section" class="mb-4" style="display: none;">
 							<div class="flex items-center mb-2">
 								<span class="bg-amber-100 text-amber-700 text-xs px-2 py-1 rounded font-semibold">LABOR</span>
@@ -417,7 +388,6 @@
 							<div id="labor-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
 						</div>
 
-						<!-- Equipment Section -->
 						<div id="equipment-section" class="mb-4" style="display: none;">
 							<div class="flex items-center mb-2">
 								<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-semibold">EQUIPMENT</span>
@@ -426,7 +396,6 @@
 						</div>
 					</div>
 
-					<!-- Grand Total -->
 					<div class="border-t-2 border-gray-200 pt-4 mb-6">
 						<div class="flex justify-between items-center">
 							<span class="text-lg font-semibold text-gray-700">GRAND TOTAL</span>
@@ -434,7 +403,6 @@
 						</div>
 					</div>
 
-					<!-- Action Buttons -->
 					<div class="grid grid-cols-2 gap-4">
 						<button id="save-draft" class="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg py-3 px-6 font-medium transition-all">
 							Save as Draft
@@ -820,7 +788,7 @@
 			const previewProject = document.getElementById('preview-project');
 			const text = e.target.value || 'No project selected';
 			previewProject.textContent = text;
-			previewProject.className = text === 'No project selected' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-900 mt-1';
+			previewProject.className = text === 'No project selected' ? 'text-sm font-medium text-gray-400 mt-1 italic' : 'text-sm font-medium text-gray-400 mt-1';
 		});
 
 		document.getElementById('proposalTitle').addEventListener('input', (e) => {

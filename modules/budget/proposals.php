@@ -26,14 +26,10 @@ z
 </head>
 <body class="bg-gray-50">
   <?php 
-    // 1. Connection & Context
-    include __DIR__ . '/connection.php';
+    // 1. Connection & Context - using centralized config
     include __DIR__ . '/project_context.php';
-    
-    // Security: Start Session
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    include __DIR__ . '/../../includes/toast.php';
+    $conn = getBudgetConnection();
 
     // Get selected project ID from global context
     $selected_project_id = getProjectContext($conn);
@@ -42,8 +38,8 @@ z
   <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
   
   <?php
-    // Fetch all projects for dropdown (Explicitly from icmis database)
-    $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
+    // Fetch all projects for dropdown
+    $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     
@@ -63,7 +59,7 @@ z
     
     foreach ($projects as $proj) {
       $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
+      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
     }
     
     $breadcrumbHTML .= '</select>';
@@ -82,7 +78,7 @@ z
   <?php
     // Fetch budget proposals for selected project
     if ($selected_project_id > 0) {
-      $sql = "SELECT bp.*, p.name as project_name, p.project_code 
+      $sql = "SELECT bp.*, p.project_name, p.project_code 
               FROM budget_proposals bp 
               LEFT JOIN projects p ON bp.project_id = p.project_id 
               WHERE bp.project_id = ?

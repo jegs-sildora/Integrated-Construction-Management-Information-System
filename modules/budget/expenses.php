@@ -4,7 +4,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Global project styles -->
   <link rel="stylesheet" href="/css/output.css">
   <link rel="stylesheet" href="/css/input.css">
   <meta charset="UTF-8">
@@ -28,8 +27,9 @@
 </head>
 <body class="bg-gray-50">
   <?php 
-    include __DIR__ . '/connection.php';
+    // 1. Connection & Context - using centralized config
     include __DIR__ . '/project_context.php';
+    $conn = getBudgetConnection();
     
     // Get selected project ID and phase from global context BEFORE sidebar
     $selected_project_id = getProjectContext($conn);
@@ -40,8 +40,8 @@
 
 <?php
 
-    // Fetch all projects for dropdown (Explicitly from icmis database)
-    $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
+    // Fetch all projects for dropdown
+    $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     if ($result_projects && $result_projects->num_rows > 0) {
@@ -73,7 +73,8 @@
     
     foreach ($projects as $proj) {
       $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
+      // FIX: Use project_name to match DB column
+      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
     }
     
     $breadcrumbHTML .= '</select>';
@@ -101,14 +102,14 @@
     // Fetch selected project details with budget data
     if ($selected_project_id > 0) {
       // Get project basic info with total approved budget proposals
-      $sql_project = "SELECT p.project_id, p.project_code, p.name,
+      $sql_project = "SELECT p.project_id, p.project_code, p.project_name,
                       (SELECT COALESCE(SUM(bp.total_amount), 0) 
                        FROM budget_proposals bp 
                        WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
                       (SELECT COALESCE(SUM(e.amount), 0) 
                        FROM budget_expenses e 
                        WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                      FROM icmis.projects p
+                      FROM projects p
                       WHERE p.project_id = ?";
       $stmt = $conn->prepare($sql_project);
       $stmt->bind_param("i", $selected_project_id);
@@ -117,7 +118,7 @@
       
       if ($result && $result->num_rows > 0) {
         $project = $result->fetch_assoc();
-        $project_name = $project['name'];
+        $project_name = $project['project_name']; 
         $total_budget = floatval($project['total_budget']);
         $actual_spending = floatval($project['actual_spending']);
         $remaining_budget = $total_budget - $actual_spending;

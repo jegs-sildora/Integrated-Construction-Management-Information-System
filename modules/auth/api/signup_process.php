@@ -25,7 +25,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['signup']))
     }
 
     // A. Check if email already exists
-    $check = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
+    $check = $conn->prepare("SELECT user_id FROM icmis_users WHERE email = ?");
     if ($check === false) {
         // Redirect with DB error instead of white screen
         header("Location: " . BASE_URL . "index.php?error=Database error: " . urlencode($conn->error));
@@ -46,7 +46,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['signup']))
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
     $role = 'Admin'; // Default role for new signups
 
-    $stmt = $conn->prepare("INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO icmis_users (full_name, email, password, role) VALUES (?, ?, ?, ?)");
     if ($stmt === false) {
         header("Location: " . BASE_URL . "index.php?error=Database error: " . urlencode($conn->error));
         exit();

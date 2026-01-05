@@ -1,20 +1,13 @@
 <?php 
-  // 1. Connection & Context
-  // Assuming connection.php is in the same directory as dashboard.php
-  include __DIR__ . '/connection.php';
-  include __DIR__ . '/project_context.php'; 
-  require_once __DIR__ . '/../../config/config.php';
-
+  // 1. Connection & Context - using centralized config
+  include __DIR__ . '/project_context.php';
+  $conn = getBudgetConnection();
   
-  if (session_status() === PHP_SESSION_NONE) {
-      session_start();
-  }
-
   // Get selected project ID
   $selected_project_id = getProjectContext($conn);
   
-    // Fetch all projects for dropdown (Explicitly from icmis database)
-    $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
+    // Fetch all projects for dropdown
+    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     
@@ -34,7 +27,7 @@
     
     foreach ($projects as $proj) {
       $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
+      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
     }
     
     $breadcrumbHTML .= '</select>';
@@ -58,14 +51,14 @@
 
   if ($selected_project_id > 0) {
     // ... (Your existing budget calculation logic) ...
-    $sql_project = "SELECT p.project_id, p.project_code, p.name,
+    $sql_project = "SELECT p.project_id, p.project_code, p.project_name,
                     (SELECT COALESCE(SUM(bp.total_amount), 0) 
                      FROM budget_proposals bp 
                      WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
                     (SELECT COALESCE(SUM(e.amount), 0) 
                      FROM budget_expenses e 
                      WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                    FROM projects p
+                    FROM icmis_projects p
                     WHERE p.project_id = ?";
     $stmt = $conn->prepare($sql_project);
     $stmt->bind_param("i", $selected_project_id);
@@ -74,7 +67,7 @@
     
     if ($result && $result->num_rows > 0) {
       $project = $result->fetch_assoc();
-      $project_name = $project['name'];
+      $project_name = $project['project_name'];
       $total_budget = floatval($project['total_budget']);
       $actual_spending = floatval($project['actual_spending']);
       $remaining_budget = $total_budget - $actual_spending;
@@ -102,53 +95,98 @@
       'Phase 4: Finishing' => ['color' => 'green', 'icon' => 'check-circle-2']
     ];
 
-    // Get Allocations
-    $sql_phases = "SELECT bp.phase, COALESCE(SUM(bp.total_amount), 0) as allocated, MIN(bp.phase_start_date) as phase_start_date, MAX(bp.phase_end_date) as phase_end_date FROM budget_proposals bp WHERE bp.project_id = ? AND bp.status = 'APPROVED' GROUP BY bp.phase ORDER BY bp.phase";
+    // REFACTORED QUERY: Joins Budget Proposals with Project Phases
+    $sql_phases = "SELECT 
+                    pp.phase_name as phase, 
+                    COALESCE(SUM(bp.total_amount), 0) as allocated, 
+                    -- We now pull dates from the Master Phase table, ensuring consistency
+                    MIN(pp.start_date) as phase_start_date, 
+                    MAX(pp.end_date) as phase_end_date 
+                  FROM budget_proposals bp 
+                  -- JOIN connects the budget to the phase info
+                  LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
+                  WHERE bp.project_id = ? AND bp.status = 'APPROVED' 
+                  GROUP BY pp.phase_id 
+                  ORDER BY pp.start_date ASC";
+
     $stmt_phases = $conn->prepare($sql_phases);
     $stmt_phases->bind_param("i", $selected_project_id);
     $stmt_phases->execute();
     $result_phases = $stmt_phases->get_result();
-    
+
     while ($row = $result_phases->fetch_assoc()) {
-      $phase_name = $row['phase'];
-      if (isset($phase_definitions[$phase_name])) {
-        $date_range = (!empty($row['phase_start_date']) && !empty($row['phase_end_date'])) 
-            ? (new DateTime($row['phase_start_date']))->format('M j') . ' - ' . (new DateTime($row['phase_end_date']))->format('M j, Y') 
-            : 'No dates set';
+        $phase_name = $row['phase'];
+        
+        // Safety check: ensure phase name exists (handles proposals with no phase assigned)
+        if ($phase_name && isset($phase_definitions[$phase_name])) {
             
-        $phases_data[$phase_name] = [
-          'phase' => $phase_name,
-          'color' => $phase_definitions[$phase_name]['color'],
-          'icon' => $phase_definitions[$phase_name]['icon'],
-          'date_range' => $date_range,
-          'allocated' => floatval($row['allocated']),
-          'spent' => 0, 'remaining' => floatval($row['allocated']), 'utilization' => 0, 'expense_count' => 0, 'status' => 'Active'
-        ];
-      }
+            // Date formatting logic
+            $start_date = $row['phase_start_date'] ? new DateTime($row['phase_start_date']) : null;
+            $end_date = $row['phase_end_date'] ? new DateTime($row['phase_end_date']) : null;
+            
+            $date_range = ($start_date && $end_date) 
+                ? $start_date->format('M j') . ' - ' . $end_date->format('M j, Y') 
+                : 'No dates set';
+                
+            $phases_data[$phase_name] = [
+              'phase' => $phase_name,
+              'color' => $phase_definitions[$phase_name]['color'],
+              'icon' => $phase_definitions[$phase_name]['icon'],
+              'date_range' => $date_range,
+              'allocated' => floatval($row['allocated']),
+              'spent' => 0, 
+              'remaining' => floatval($row['allocated']), 
+              'utilization' => 0, 
+              'expense_count' => 0, 
+              'status' => 'Active'
+            ];
+        }
     }
     $stmt_phases->close();
 
-    // Get Expenses
-    $sql_expenses = "SELECT phase, COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0) as spent, COUNT(expense_id) as expense_count FROM budget_expenses WHERE project_id = ? GROUP BY phase";
-    $stmt_expenses = $conn->prepare($sql_expenses);
-    $stmt_expenses->bind_param("i", $selected_project_id);
-    $stmt_expenses->execute();
-    $result_expenses = $stmt_expenses->get_result();
+      // REFACTORED QUERY: Join Expenses with Master Phases
+      $sql_expenses = "SELECT 
+                          pp.phase_name as phase, 
+                          COALESCE(SUM(CASE WHEN e.status = 'APPROVED' THEN e.amount ELSE 0 END), 0) as spent, 
+                          COUNT(e.expense_id) as expense_count 
+                      FROM budget_expenses e
+                      -- JOIN connects the expense to the master phase info
+                      LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
+                      WHERE e.project_id = ? 
+                      GROUP BY pp.phase_id"; // We group by ID to be precise
 
-    while ($row = $result_expenses->fetch_assoc()) {
-      $phase_name = $row['phase'];
-      if (isset($phases_data[$phase_name])) {
-        $spent = floatval($row['spent']);
-        $phases_data[$phase_name]['spent'] = $spent;
-        $phases_data[$phase_name]['remaining'] = $phases_data[$phase_name]['allocated'] - $spent;
-        $phases_data[$phase_name]['utilization'] = $phases_data[$phase_name]['allocated'] > 0 ? ($spent / $phases_data[$phase_name]['allocated']) * 100 : 0;
-        $phases_data[$phase_name]['expense_count'] = intval($row['expense_count']);
-        
-        if ($phases_data[$phase_name]['utilization'] > 100) $phases_data[$phase_name]['status'] = 'Over Budget';
-        elseif ($phases_data[$phase_name]['utilization'] >= 99) $phases_data[$phase_name]['status'] = 'Completed';
+      $stmt_expenses = $conn->prepare($sql_expenses);
+      $stmt_expenses->bind_param("i", $selected_project_id);
+      $stmt_expenses->execute();
+      $result_expenses = $stmt_expenses->get_result();
+
+      while ($row = $result_expenses->fetch_assoc()) {
+          $phase_name = $row['phase'];
+          
+          // Safety Check: Ensure the phase exists in our definitions array
+          if ($phase_name && isset($phases_data[$phase_name])) {
+              $spent = floatval($row['spent']);
+              
+              // Update the array we built in the previous loop
+              $phases_data[$phase_name]['spent'] = $spent;
+              $phases_data[$phase_name]['remaining'] = $phases_data[$phase_name]['allocated'] - $spent;
+              
+              // Prevent division by zero
+              $phases_data[$phase_name]['utilization'] = ($phases_data[$phase_name]['allocated'] > 0) 
+                  ? ($spent / $phases_data[$phase_name]['allocated']) * 100 
+                  : 0;
+                  
+              $phases_data[$phase_name]['expense_count'] = intval($row['expense_count']);
+              
+              // Set Status based on spending
+              if ($phases_data[$phase_name]['utilization'] > 100) {
+                  $phases_data[$phase_name]['status'] = 'Over Budget';
+              } elseif ($phases_data[$phase_name]['utilization'] >= 99) {
+                  $phases_data[$phase_name]['status'] = 'Completed';
+              }
+          }
       }
-    }
-    $stmt_expenses->close();
+      $stmt_expenses->close();
 
     // Fill missing phases
     foreach ($phase_definitions as $phase_name => $phase_info) {

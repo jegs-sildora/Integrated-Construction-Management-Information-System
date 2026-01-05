@@ -3,14 +3,9 @@
 ?>
 
 <?php
-    // reports.php
-    include __DIR__ . '/connection.php';
+    // reports.php - using centralized config
     include __DIR__ . '/project_context.php';
-    
-    // Start session if not started
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    $conn = getBudgetConnection();
 
     // 1. Get selected project ID from global context
     $selected_project_id = getProjectContext($conn);
@@ -20,12 +15,12 @@
     $current_project_code = "";
     
     if ($selected_project_id) {
-        $stmt = $conn->prepare("SELECT name, project_code FROM projects WHERE project_id = ?");
+        $stmt = $conn->prepare("SELECT project_name, project_code FROM projects WHERE project_id = ?");
         $stmt->bind_param("i", $selected_project_id);
         $stmt->execute();
         $res = $stmt->get_result();
         if ($row = $res->fetch_assoc()) {
-            $current_project_name = $row['name'];
+            $current_project_name = $row['project_name'];
             $current_project_code = $row['project_code'];
         }
         $stmt->close();
@@ -33,10 +28,11 @@
 
     // 3. Fetch Real Reports from Database
     $recent_reports = [];
-    $tableExists = $conn->query("SHOW TABLES LIKE 'generated_reports'");
+    // Note: budget_budget_generated_reports is in icmis_budget, so no prefix needed if $conn defaults to it
+    $tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
     
     if ($tableExists && $tableExists->num_rows > 0 && $selected_project_id) {
-        $report_sql = "SELECT * FROM generated_reports 
+        $report_sql = "SELECT * FROM budget_generated_reports 
                        WHERE project_id = ? 
                        ORDER BY created_at DESC 
                        LIMIT 50"; 
@@ -151,7 +147,7 @@
 
       <?php
         // Fetch all projects for dropdown
-        $sql_projects = "SELECT project_id, project_code, name FROM icmis.projects ORDER BY created_at DESC";
+        $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
         $result_projects = $conn->query($sql_projects);
         $projects = [];
         
@@ -171,7 +167,7 @@
         
         foreach ($projects as $proj) {
           $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-          $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['name']) . '</option>';
+          $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
         }
         
         $breadcrumbHTML .= '</select>';
@@ -185,7 +181,7 @@
         include __DIR__ . '/../../includes/header.php';
       ?>
   </div>
-
+  
   <main class="ml-56 mt-20 p-6 transition-all duration-300">
     
     <div class="print-only hidden mb-6">

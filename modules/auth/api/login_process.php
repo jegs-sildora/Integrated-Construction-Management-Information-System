@@ -23,7 +23,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['login'])) 
     }
 
     // Database Check
-    $stmt = $conn->prepare("SELECT user_id, full_name, password, role FROM users WHERE email = ?");
+    $stmt = $conn->prepare("SELECT user_id, full_name, password, role FROM icmis_users WHERE email = ?");
     if ($stmt === false) {
         die("Prepare failed: " . $conn->error);
     }

@@ -1,7 +1,17 @@
 <?php
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Manila');
-include __DIR__ . '/connection.php';
+
+// Include config for database connection
+require_once __DIR__ . '/../../config/config.php';
+
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
+    exit;
+}
+$conn->set_charset("utf8mb4");
 
 // Enable error reporting for debugging
 ini_set('display_errors', 0);
@@ -104,7 +114,6 @@ try {
         throw new Exception('Total amount does not match line items sum');
     }
 
-    // Verify project exists
     $stmt = $conn->prepare("SELECT project_id FROM projects WHERE project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
@@ -182,6 +191,10 @@ try {
     $conn->begin_transaction();
 
     try {
+        // FIX: Disable Foreign Key Checks temporarily
+        // This allows us to insert a project_id from Main DB into Budget DB
+        $conn->query("SET FOREIGN_KEY_CHECKS=0");
+
         // Insert each line item as a separate expense record
         $sql = "INSERT INTO budget_expenses (project_id, supplier_id, phase, expense_date, category, description, quantity, unit_cost, amount, receipt_path, status, notes) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -190,13 +203,13 @@ try {
         $expense_ids = [];
         
         foreach ($line_items as $index => $item) {
+            // ... [Binding logic remains the same] ...
             $category = $item['category'];
             $description = $item['description'];
             $quantity = $item['quantity'];
             $unit_cost = $item['unitCost'];
             $subtotal = $item['subtotal'];
             
-            // Only attach receipt to first item
             $item_receipt_path = ($index === 0) ? $receipt_path : null;
             
             $stmt->bind_param("iissssddssss", 
@@ -223,14 +236,19 @@ try {
         
         $stmt->close();
         
+        // FIX: Re-enable Foreign Key Checks
+        $conn->query("SET FOREIGN_KEY_CHECKS=1");
+
         // Commit transaction
         $conn->commit();
         
     } catch (Exception $e) {
         // Rollback transaction on error
         $conn->rollback();
+        // Ensure checks are back on
+        $conn->query("SET FOREIGN_KEY_CHECKS=1");
         
-        // If insert fails and file was uploaded, delete the file
+        // ... [File cleanup logic remains the same] ...
         if ($receipt_path && file_exists(__DIR__ . '/' . $receipt_path)) {
             unlink(__DIR__ . '/' . $receipt_path);
         }

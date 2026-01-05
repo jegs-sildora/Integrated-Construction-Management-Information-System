@@ -1,9 +1,15 @@
 <?php
 // modules/procurement/purchase_order/save_order.php
 
-// 1. Setup Headers & Error Reporting
+// 1. Start Session & Output Buffering
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+ob_start();
+
+// Setup Headers & Error Reporting
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Turn off display to ensure JSON is valid
+ini_set('display_errors', 0); 
 
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -15,11 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // 2. Connect to Procurement Database
-// Adjust this path to match your procurement DB connection file
-// Based on your create_order.php, it seems to be:
 include __DIR__ . '/../php/db_connect.php'; 
 
 if (!isset($conn_proc) || $conn_proc->connect_error) {
+    ob_clean();
     echo json_encode(['success' => false, 'message' => 'Database connection failed']);
     exit;
 }
@@ -44,20 +49,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $project_id = intval($data['project_id']);
         $phase = trim($data['phase']);
-        $supplier_input = trim($data['supplier']); // This might be Name or ID
+        $supplier_input = trim($data['supplier']); 
         $order_title = isset($data['title']) ? trim($data['title']) : 'Untitled Order';
         $items = $data['items'];
-        $created_by = 1; // Default User ID (Replace with session ID in production)
+        
+        // FIX: Use Logged-in User ID from Session
+        $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 1; 
 
         // --- Resolve Supplier ID ---
-        // Since the datalist sends the Name, we need to look up the ID
         $supplier_id = 0;
-        
-        // Check if input is numeric (ID) or string (Name)
         if (is_numeric($supplier_input)) {
             $supplier_id = intval($supplier_input);
         } else {
-            // Look up ID by Name
             $stmt_sup = $conn_proc->prepare("SELECT supplierID FROM suppliers WHERE supplierName = ? LIMIT 1");
             $stmt_sup->bind_param("s", $supplier_input);
             $stmt_sup->execute();
@@ -70,14 +73,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_sup->close();
         }
 
-        // --- Generate PO Reference (PO-YYYY-XXXX) ---
+        // --- Generate PO Reference ---
         $year = date('Y');
         $stmt_count = $conn_proc->query("SELECT COUNT(*) as total FROM purchase_orders WHERE YEAR(created_at) = '$year'");
         $row_count = $stmt_count->fetch_assoc();
         $next_num = $row_count['total'] + 1;
         $po_reference = sprintf("PO-%s-%04d", $year, $next_num);
 
-        // --- Calculate Total Amount ---
+        // --- Calculate Total ---
         $grand_total = 0;
         foreach ($items as $item) {
             $grand_total += (floatval($item['qty']) * floatval($item['price']));
@@ -121,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // --- Commit ---
         $conn_proc->commit();
 
+        ob_clean(); 
         echo json_encode([
             'success' => true,
             'message' => 'Purchase Order created successfully!',
@@ -130,9 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } catch (Exception $e) {
         if (isset($conn_proc)) $conn_proc->rollback();
+        ob_clean(); 
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } else {
+    ob_clean();
     echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
 }
 ?>

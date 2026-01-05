@@ -21,20 +21,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Clear any output buffer before including connection
 ob_clean();
 
-// Include database connection
-@require_once __DIR__ . '/../connection.php';
+// Include config for database connection
+require_once __DIR__ . '/../../config/config.php';
 
-// Check database connection
-if (!isset($conn) || !$conn) {
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
     ob_clean();
     echo json_encode([
         'success' => false,
         'message' => 'Database connection failed',
-        'error_details' => ['error' => 'Cannot connect to database']
+        'error_details' => ['error' => $conn->connect_error]
     ]);
     ob_end_flush();
     exit();
 }
+$conn->set_charset("utf8mb4");
 
 // Initialize response array
 $response = [

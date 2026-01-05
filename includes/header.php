@@ -6,115 +6,167 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Get User Info from Session (with fallbacks)
 $userName = $_SESSION['user_name'] ?? 'Guest User';
 $userRole = $_SESSION['user_role'] ?? 'Staff';
-$notificationCount = 0; 
-
-// Calculate Initials
 $nameParts = explode(' ', $userName);
 $userInitials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
 
-// ------------------------------------------------------------------
-// 2. DYNAMIC BREADCRUMB LOGIC
-// ------------------------------------------------------------------
+// ==================================================================
+// 2. CONTEXT SWITCHER VISIBILITY LOGIC
+// ==================================================================
 
 $current_uri = $_SERVER['REQUEST_URI'];
 $current_file = basename($_SERVER['PHP_SELF']);
 
-// Define defaults if not set by the parent page
-if (!isset($pageSection) || !isset($pageTitle)) {
+// Define where the Project Dropdown should appear
+$show_project_selector = (
+    strpos($current_uri, '/modules/budget/') !== false ||
+    strpos($current_uri, '/modules/procurement/') !== false ||
+    strpos($current_uri, '/modules/workforce/') !== false ||
+    $current_file === 'dashboard.php' // Main Dashboard
+);
+
+// Explicitly hide for Project Module
+if (strpos($current_uri, '/modules/project/') !== false) {
+    $show_project_selector = false;
+}
+
+// ==================================================================
+// 3. GLOBAL PROJECT CONTEXT LOGIC
+// ==================================================================
+
+$header_projects = [];
+$header_project_id = 0;
+
+if ($show_project_selector) {
+    // FIX: Robust Connection Handling
+    // 1. Check if $conn is valid and open
+    $db_connection_valid = (isset($conn) && $conn instanceof mysqli && !$conn->connect_error);
     
-    // A. PROCUREMENT MODULE
+    if (!$db_connection_valid) {
+        // 2. Try to include database.php
+        $db_path = __DIR__ . '/../config/database.php';
+        if (file_exists($db_path)) {
+            require_once $db_path;
+        }
+        
+        // 3. Re-check: If require_once didn't give us a valid $conn (e.g., included previously but var unset)
+        // We manually create a connection if config constants are available
+        if ((!isset($conn) || !($conn instanceof mysqli)) && defined('DB_HOST')) {
+             $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+             if ($conn->connect_error) {
+                 error_log("Header DB Connection Failed: " . $conn->connect_error);
+             }
+        }
+    }
+
+    // Handle Context Switch (URL param overrides session)
+    if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
+        $_SESSION['selected_project_id'] = intval($_GET['project_id']);
+    }
+
+    // Get Current ID
+    $header_project_id = $_SESSION['selected_project_id'] ?? 0;
+
+    // Fetch Projects for Dropdown
+    // Only proceed if we have a valid connection object
+    if (isset($conn) && $conn instanceof mysqli) {
+        // FIX: Explicitly target 'icmis.projects' to handle cross-database contexts
+        $h_sql = "SELECT project_id, project_code, project_name FROM icmis.projects ORDER BY created_at DESC";
+        $h_result = $conn->query($h_sql);
+
+        if ($h_result && $h_result->num_rows > 0) {
+            while ($row = $h_result->fetch_assoc()) {
+                $header_projects[] = $row;
+                // Default to first if 0
+                if ($header_project_id == 0) {
+                    $header_project_id = $row['project_id'];
+                    $_SESSION['selected_project_id'] = $header_project_id;
+                }
+            }
+        }
+    }
+}
+
+// ==================================================================
+// 4. PAGE TITLES & BREADCRUMBS
+// ==================================================================
+
+// Define defaults if not set by parent
+if (!isset($pageSection) || !isset($pageTitle)) {
     if (strpos($current_uri, '/procurement/') !== false) {
         $pageSection = 'Procurement & Inventory';
-        
-        switch ($current_file) {
-            case 'inventory.php':       $pageTitle = 'Inventory Masterlist'; break;
-            case 'purchase_orders.php': $pageTitle = 'Purchase Orders'; break;
-            case 'stock_in.php':        $pageTitle = 'Stock In'; break;
-            case 'stock_out.php':       $pageTitle = 'Stock Out'; break;
-            case 'suppliers.php':       $pageTitle = 'Supplier Management'; break;
-            case 'create_po.php':       $pageTitle = 'Create Purchase Order'; break;
-            default:                    $pageTitle = 'Procurement Dashboard';
-        }
-    } 
-    // B. BUDGET MODULE
-    elseif (strpos($current_uri, '/budget/') !== false) {
-        $pageSection = 'Budgeting & Cost Control';
-        
-        switch ($current_file) {
-            case 'dashboard.php':       $pageTitle = 'Budget Dashboard'; break;
-            case 'proposals.php':       $pageTitle = 'Budget Proposals'; break;
-            case 'expenses.php':        $pageTitle = 'Expense Tracker'; break;
-            case 'reports.php':         $pageTitle = 'Financial Reports'; break;
-            default:                    $pageTitle = 'Budget Overview';
-        }
-    }
-    // C. LABOR MODULE
-    elseif (strpos($current_uri, '/labor/') !== false) {
-        $pageSection = 'Labor & Workforce';
-        
-        switch ($current_file) {
-            case 'dashboard.php':       $pageTitle = 'Labor Dashboard'; break;
-            case 'employees.php':       $pageTitle = 'Employee List'; break;
-            case 'attendance.php':      $pageTitle = 'Attendance Record'; break;
-            case 'payroll.php':         $pageTitle = 'Payroll Processing'; break;
-            default:                    $pageTitle = 'Labor Management';
-        }
-    }
-    // D. MAIN SYSTEM
-    elseif ($current_file === 'projects.php') {
-        $pageSection = 'Project Management';
-        $pageTitle = 'All Projects';
-    }
-    elseif ($current_file === 'dashboard.php') {
-        $pageSection = 'Overview';
-        $pageTitle = 'Main Dashboard';
-    }
-    // E. FALLBACK
-    else {
+        $pageTitle = 'Overview';
+    } elseif (strpos($current_uri, '/budget/') !== false) {
+        $pageSection = 'Budget';
+        $pageTitle = 'Overview';
+    } elseif (strpos($current_uri, '/workforce/') !== false) {
+        $pageSection = 'Workforce';
+        $pageTitle = 'Overview';
+    } elseif (strpos($current_uri, '/project/') !== false) {
+        $pageSection = 'Projects';
+        $pageTitle = 'Management';
+    } else {
         $pageSection = 'System';
-        $pageTitle = 'Page';
+        $pageTitle = 'Dashboard';
     }
 }
 ?>
 
-<header class="bg-white border-b border-gray-200 shadow-sm px-6 py-7 fixed top-0 left-56 right-0 z-50 h-23">
-    <div class="flex items-center justify-between">
+<header class="bg-white border-b border-gray-200 shadow-sm px-6 py-4 fixed top-0 left-56 right-0 z-50 h-20 flex items-center justify-between">
+    
+    <div class="flex items-center gap-4">
         
-        <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500 font-medium"><?php echo htmlspecialchars($pageSection); ?></span>
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-            <span class="text-sm font-bold text-navy-dark"><?php echo htmlspecialchars($pageTitle); ?></span>
-            <?php if (!empty($pageSubTitle)): ?>
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                <span class="text-sm text-gray-600"><?php echo $pageSubTitle; ?></span>
-            <?php endif; ?>
+        <div class="flex flex-col">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider"><?php echo htmlspecialchars($pageSection); ?></span>
+            <div class="flex items-center gap-2">
+                <span class="text-lg font-bold text-navy-dark"><?php echo htmlspecialchars($pageTitle); ?></span>
+                
+                <?php if ($show_project_selector): ?>
+                    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    
+                    <div class="relative group">
+                        <select onchange="changeHeaderProject(this.value)" class="appearance-none bg-slate-50 border border-gray-200 hover:border-[#e9922c] text-gray-700 text-sm font-semibold rounded-lg pl-3 pr-8 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#e9922c] focus:border-transparent transition-all shadow-sm">
+                            <?php foreach ($header_projects as $proj): ?>
+                                <option value="<?php echo $proj['project_id']; ?>" <?php echo ($proj['project_id'] == $header_project_id) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($proj['project_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+            </div>
         </div>
+    </div>
 
-        <div class="flex items-center gap-4">
-            <button class="p-2 rounded-lg hover:bg-gray-100 transition-colors"><svg class="w-5 h-5 text-gray-500" stroke-width="1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></button>
-            <button class="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"><svg class="w-5 h-5 text-gray-500" stroke-width="1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg></button>
+    <div class="flex items-center gap-4">
+        <button class="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+        </button>
 
-            <div class="relative inline-block text-left">
-                <div id="userDropdownTrigger" class="flex items-center gap-3 pl-4 border-l border-gray-100 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div class="text-right hidden md:block">
-                        <div class="text-sm font-bold text-gray-900 leading-tight"><?php echo htmlspecialchars($userName); ?></div>
-                        <div class="text-xs text-gray-500"><?php echo htmlspecialchars($userRole); ?></div>
-                    </div>
-                    <div class="w-9 h-9 bg-slate-800 text-white rounded-lg flex items-center justify-center shadow-sm">
-                        <span class="text-xs font-bold tracking-widest"><?php echo $userInitials; ?></span>
-                    </div>
+        <div class="relative inline-block text-left">
+            <div id="userDropdownTrigger" class="flex items-center gap-3 pl-4 border-l border-gray-200 cursor-pointer hover:opacity-80 transition-opacity">
+                <div class="text-right hidden md:block">
+                    <div class="text-sm font-bold text-gray-900 leading-tight"><?php echo htmlspecialchars($userName); ?></div>
+                    <div class="text-xs text-gray-500 font-medium"><?php echo htmlspecialchars($userRole); ?></div>
                 </div>
-
-                <div id="userDropdownMenu" class="hidden absolute right-0 mt-3 w-28 bg-white border border-gray-200 rounded-xl shadow-xl z-50 animate-fade-in overflow-hidden">
-                    <div class="py-1">
-                        <a href="<?php echo BASE_URL; ?>/modules/auth/api/logout.php" class="flex items-center gap-2 px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            Log Out
-                        </a>
-                    </div>
+                <div class="w-10 h-10 bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-md border-2 border-white ring-1 ring-gray-100">
+                    <span class="text-sm font-bold tracking-widest"><?php echo $userInitials; ?></span>
+                </div>
+            </div>
+            
+            <div id="userDropdownMenu" class="hidden absolute right-0 mt-3 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 animate-fade-in overflow-hidden">
+                <div class="py-1">
+                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Profile Settings</a>
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <a href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>modules/auth/api/logout.php" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i> Log Out
+                    </a>
                 </div>
             </div>
         </div>
@@ -122,24 +174,18 @@ if (!isset($pageSection) || !isset($pageTitle)) {
 </header>
 
 <script>
+    function changeHeaderProject(id) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('project_id', id);
+        window.location.href = url.toString();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const trigger = document.getElementById('userDropdownTrigger');
         const menu = document.getElementById('userDropdownMenu');
-
         if (trigger && menu) {
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menu.classList.toggle('hidden');
-            });
-
-            // Close dropdown when clicking outside
-            window.addEventListener('click', (e) => {
-                if (!trigger.contains(e.target)) {
-                    menu.classList.add('hidden');
-                }
-            });
+            trigger.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
+            window.addEventListener('click', (e) => { if (!trigger.contains(e.target)) menu.classList.add('hidden'); });
         }
     });
 </script>
-
-<?php include_once __DIR__ . '/toast.php'; ?>

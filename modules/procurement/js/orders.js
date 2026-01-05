@@ -4,13 +4,12 @@
 let orderIdToDelete = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. CHECK FOR URL PARAMETERS (From Redirects)
+    // 1. CHECK FOR URL PARAMETERS
     const urlParams = new URLSearchParams(window.location.search);
     const msg = urlParams.get('msg');
 
     if (msg === 'updated') {
         showToast('Purchase Order updated successfully!', 'success');
-        // Clean URL (remove ?msg=updated) without refreshing
         window.history.replaceState(null, null, window.location.pathname);
     } 
     else if (msg === 'created') {
@@ -18,40 +17,34 @@ document.addEventListener("DOMContentLoaded", () => {
         window.history.replaceState(null, null, window.location.pathname);
     }
 
-    // 2. Initialize existing handlers
+    // 2. Initialize handlers
     setupDeleteHandler();
 });
+
 /* =========================================
    2. DELETE MODAL LOGIC
    ========================================= */
 
-// Called by the button in the PHP table loop
 function openDeleteModal(id, reference) {
     orderIdToDelete = id;
     
-    // Update the modal text
     const displayEl = document.getElementById('delete_id_display');
     if (displayEl) displayEl.textContent = reference;
 
-    // Update the hidden input if it exists (for safety)
     const inputEl = document.getElementById('delete_po_id');
     if (inputEl) inputEl.value = id;
 
-    // Show the modal
     const modal = document.getElementById('deleteModal');
     if (modal) {
         modal.classList.remove('hidden');
-        modal.style.display = 'flex'; // Ensure flex layout for centering
     }
 }
 
-// Called by Cancel button or Backdrop click
 function closeDeleteModal() {
     orderIdToDelete = null;
     const modal = document.getElementById('deleteModal');
     if (modal) {
         modal.classList.add('hidden');
-        modal.style.display = 'none';
     }
 }
 
@@ -60,33 +53,45 @@ function setupDeleteHandler() {
     
     if (deleteForm) {
         deleteForm.addEventListener('submit', function(e) {
-            e.preventDefault(); // Stop standard form submission
+            e.preventDefault(); 
             
-            if (!orderIdToDelete) return;
+            // FIX: Get ID directly from input to avoid variable conflicts
+            const inputEl = document.getElementById('delete_po_id');
+            const idToDelete = inputEl && inputEl.value ? inputEl.value : orderIdToDelete;
+
+            if (!idToDelete) {
+                showToast("Error: No Order ID found to delete.", "error");
+                return;
+            }
 
             const btn = deleteForm.querySelector('button[type="submit"]');
             const originalText = btn.innerHTML;
             
-            // UI Feedback
             btn.disabled = true;
             btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Deleting...`;
 
-            // Prepare Data
             const formData = new FormData();
-            formData.append('po_id', orderIdToDelete);
+            formData.append('po_id', idToDelete);
 
-            // Send Request
             fetch('php/delete_order.php', { 
                 method: 'POST', 
                 body: formData 
             }) 
-            .then(res => res.json())
+            .then(res => {
+                // Check if response is valid JSON
+                const contentType = res.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    return res.json();
+                } else {
+                    // If not JSON, it's likely a PHP Fatal Error (DB connection, etc.)
+                    return res.text().then(text => { throw new Error(text || "Invalid Server Response"); });
+                }
+            })
             .then(data => {
                 if(data.success) {
                     showToast("Order deleted successfully", "success");
                     closeDeleteModal();
-                    // Reload the page to reflect changes since table is PHP-rendered
-                    setTimeout(() => window.location.reload(), 1000);
+                    setTimeout(() => window.location.reload(), 500);
                 } else {
                     showToast(data.message || "Failed to delete order", "error");
                     btn.disabled = false;
@@ -95,7 +100,9 @@ function setupDeleteHandler() {
             })
             .catch(err => {
                 console.error("Delete Error:", err);
-                showToast("Server connection error", "error");
+                // Clean up error message if it's a long HTML string
+                let msg = err.message.length > 50 ? "Server connection error (Check console)" : err.message;
+                showToast(msg, "error");
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             });
@@ -117,15 +124,12 @@ window.onclick = function(event) {
    4. TOAST NOTIFICATION HELPER
    ========================================= */
 function showToast(message, type = 'success') {
-    // Remove existing toasts
     const existingToast = document.querySelector('.toast-notification');
-    if (existingToast) existingToast.remove();
+    if (existingToast) existingToast.remove(); 
 
-    // Create container
     const toast = document.createElement('div');
     toast.className = `toast-notification fixed bottom-5 right-5 px-6 py-4 rounded-xl shadow-2xl text-white font-bold transform transition-all duration-300 translate-y-20 opacity-0 z-50 flex items-center gap-3`;
     
-    // Style based on type
     if (type === 'success') {
         toast.classList.add('bg-green-600');
         toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`;
@@ -139,12 +143,10 @@ function showToast(message, type = 'success') {
 
     document.body.appendChild(toast);
 
-    // Animate In
     requestAnimationFrame(() => {
         toast.classList.remove('translate-y-20', 'opacity-0');
     });
 
-    // Animate Out
     setTimeout(() => {
         toast.classList.add('translate-y-20', 'opacity-0');
         setTimeout(() => toast.remove(), 300);

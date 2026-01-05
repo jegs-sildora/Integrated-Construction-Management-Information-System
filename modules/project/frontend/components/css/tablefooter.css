@@ -1,0 +1,75 @@
+/* =========================================
+   Table Footer Styling
+   ========================================= */
+.table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background-color: var(--white);
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+.footer-left {
+    color: var(--text-light);
+}
+
+.footer-right {
+    display: flex;
+    align-items: center;
+    gap: 5px; 
+}
+
+.page-btn {
+    padding: 6px 12px; 
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--white);
+    color: var(--text-dark);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.page-btn:hover {
+    background-color: var(--primary-orange-light);
+    border-color: var(--primary-orange);
+    color: var(--primary-orange);
+}
+
+
+.page-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  margin: 0 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  background: #f3f4f6;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.page-number:hover {
+  background: #e5e7eb;
+}
+
+.page-number.active {
+  background: var(--primary-orange);
+  color: #fff;
+  font-weight: 600;
+}
+
+.page-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+

@@ -15,13 +15,15 @@ function jsonErrorHandler($errno, $errstr, $errfile, $errline) {
 set_error_handler("jsonErrorHandler");
 
 try {
-    // FIX: Correct path to connection.php (One level up from budget_expenses to budget)
-    $connection_path = __DIR__ . '/../connection.php';
+    // Include config for database connection
+    require_once __DIR__ . '/../../config/config.php';
     
-    if (!file_exists($connection_path)) {
-        throw new Exception("Database connection file not found at: $connection_path");
+    // Create database connection
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if ($conn->connect_error) {
+        throw new Exception("Database connection failed: " . $conn->connect_error);
     }
-    require_once $connection_path;
+    $conn->set_charset("utf8mb4");
 
     if (!isset($_POST['project_id']) || empty($_POST['project_id'])) {
         throw new Exception('Project ID is required');
@@ -68,7 +70,7 @@ try {
     // ==========================================
 
     // Fetch Common Project Details
-    $sql_project = "SELECT p.project_id, p.project_code, p.name, p.location,
+    $sql_project = "SELECT p.project_id, p.project_code, p.project_name, p.location,
                     (SELECT COALESCE(SUM(bp.total_amount), 0) FROM budget_proposals bp WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
                     (SELECT COALESCE(SUM(e.amount), 0) FROM budget_expenses e WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
                     FROM projects p WHERE p.project_id = ?";

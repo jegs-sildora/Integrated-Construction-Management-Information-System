@@ -1,6 +1,16 @@
 <?php
 header('Content-Type: application/json');
-include __DIR__ . '/../connection.php';
+
+// Include config for database connection
+require_once __DIR__ . '/../../config/config.php';
+
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
+    exit;
+}
+$conn->set_charset("utf8mb4");
 
 try {
     // Validate inputs
@@ -19,8 +29,8 @@ try {
 
     // Fetch expenses for the phase
     $sql = "SELECT e.expense_id, e.expense_date, e.category, e.description, e.amount, e.status,
-                   s.name as supplier_name
-            FROM expenses e
+                   s.supplier_name
+            FROM budget_expenses e
             LEFT JOIN suppliers s ON e.supplier_id = s.supplier_id
             WHERE e.project_id = ? AND e.phase = ?
             ORDER BY e.expense_date DESC, e.expense_id DESC";

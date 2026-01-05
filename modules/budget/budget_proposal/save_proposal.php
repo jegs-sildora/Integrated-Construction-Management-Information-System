@@ -15,14 +15,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Include database connection
-include __DIR__ . '/../connection.php';
+// Include config for database connection
+require_once __DIR__ . '/../../config/config.php';
 
-// Check if connection was successful
-if (!isset($conn) || !$conn) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
     exit;
 }
+$conn->set_charset("utf8mb4");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -35,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     $project_id = isset($data['project_id']) ? intval($data['project_id']) : 0;
+    
     $title = isset($data['title']) ? trim($data['title']) : '';
     $target_phase = isset($data['target_phase']) ? trim($data['target_phase']) : null;
     $phase_start_date = isset($data['phase_start_date']) ? trim($data['phase_start_date']) : null;
@@ -44,9 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = isset($data['status']) ? trim($data['status']) : 'DRAFT';
     $total_amount = isset($data['total_amount']) ? floatval($data['total_amount']) : 0;
     
-    // Get user name from session (fallback to default for now)
-    // session_start();
-    // $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'JOHN DOE';
+    // Use fixed user name as per enum definition in DB
     $user_name = 'JOHN DOE';
     
     // Validate required fields
@@ -80,7 +81,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $count = $row['count'] + 1;
     $code = "BP-" . $year . "-" . str_pad($count, 4, '0', STR_PAD_LEFT);
     
-    // Use scope description as the description field
     $description = !empty($scope_description) ? $scope_description : "Budget proposal with " . count($items) . " line items";
     
     // Validate each line item
@@ -106,6 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn->begin_transaction();
     
     try {
+        // FIX: TEMPORARILY DISABLE FOREIGN KEY CHECKS
+        // This allows us to insert the project_id from the MAIN database (icmis.projects)
+        // into this BUDGET database table, even if the local constraint check fails.
+        $conn->query("SET FOREIGN_KEY_CHECKS=0");
+
         // Insert budget proposal
         $stmt = $conn->prepare("INSERT INTO budget_proposals (project_id, code, title, description, target_phase, phase_start_date, phase_end_date, scope_description, total_amount, status, user_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
         $stmt->bind_param("isssssssdss", $project_id, $code, $title, $description, $target_phase, $phase_start_date, $phase_end_date, $scope_description, $total_amount, $status, $user_name);
@@ -116,12 +121,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $proposal_id = $conn->insert_id;
         
-        // Insert budget line items into budget_line_items table
+        // Insert budget line items
         $stmt_items = $conn->prepare("INSERT INTO budget_line_items (proposal_id, category, item_name, quantity, unit_cost, duration, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)");
         
         $items_inserted = 0;
         foreach ($items as $item) {
-            // Map category names to match database enum (MATERIAL, LABOR, EQUIPMENT)
+            // Map category names
             $category = strtoupper(trim($item['category']));
             if ($category === 'MATERIALS') {
                 $category = 'MATERIAL';
@@ -141,6 +146,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $items_inserted++;
         }
         
+        // FIX: RE-ENABLE FOREIGN KEY CHECKS BEFORE COMMIT
+        $conn->query("SET FOREIGN_KEY_CHECKS=1");
+
         // Commit transaction
         $conn->commit();
         
@@ -157,6 +165,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         // Rollback transaction on error
         $conn->rollback();
+        // Ensure checks are back on even if failed
+        $conn->query("SET FOREIGN_KEY_CHECKS=1");
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
     

@@ -19,9 +19,12 @@
   </style>
 </head>
 <body class="bg-gray-50">
-  <?php include __DIR__ . '/../components/sidebar.php'; ?>
-  <?php include __DIR__ . '/connection.php'; ?>
-  <?php include __DIR__ . '/project_context.php'; ?>
+  <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
+  <?php 
+    // Connection & Context - using centralized config
+    include __DIR__ . '/project_context.php';
+    $conn = getBudgetConnection();
+  ?>
   
   <?php 
     $pageTitle = "Edit Expense";
@@ -30,7 +33,7 @@
     $userName = "John Doe";
     $userRole = "Financial Manager";
     $notificationCount = 0;
-    include __DIR__ . '/../components/header.php'; 
+    include __DIR__ . '/../../includes/header.php'; 
   ?>
 
   <?php
@@ -42,8 +45,8 @@
 
     $expense_id = intval($_GET['id']);
 
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
+    // Fetch projects from main database
+    $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     if ($result_projects && $result_projects->num_rows > 0) {
@@ -96,11 +99,11 @@
               <label for="project" class="block text-sm text-gray-700 mb-2">Select Project <span class="text-red-500">*</span></label>
               <select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                 <option value="">Select a project</option>
-                <?php foreach ($projects as $proj): ?>
-                  <option value="<?php echo $proj['project_id']; ?>" data-code="<?php echo htmlspecialchars($proj['project_code']); ?>" data-name="<?php echo htmlspecialchars($proj['name']); ?>">
-                    <?php echo htmlspecialchars($proj['name']); ?>
-                  </option>
-                <?php endforeach; ?>
+                  <?php foreach ($projects as $proj): ?>
+                    <option value="<?php echo $proj['project_id']; ?>" 
+                            data-code="<?php echo htmlspecialchars($proj['project_code']); ?>" 
+                            data-name="<?php echo htmlspecialchars($proj['project_name']); ?>"> <?php echo htmlspecialchars($proj['project_name']); ?> </option>
+                  <?php endforeach; ?>
               </select>
             </div>
 

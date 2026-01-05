@@ -45,10 +45,17 @@ while ($row = $result_items->fetch_assoc()) {
 }
 $stmt_items->close();
 
-// 5. Fetch Dropdown Data (Same as Create)
-$result_projects = $icmis_conn->query("SELECT project_id, project_code, name FROM projects ORDER BY name ASC");
+// 5. Fetch Dropdown Data
+// FIX: Changed 'name' to 'project_name' to match icmis.sql
+$result_projects = $icmis_conn->query("SELECT project_id, project_code, project_name FROM projects ORDER BY project_name ASC");
+
+// Fetch Phases (From Budget DB)
 $result_phases = mysqli_query($budget_conn, "SELECT DISTINCT phase FROM budget_proposals WHERE status = 'APPROVED' ORDER BY phase ASC");
+
+// Fetch Suppliers (From Procurement DB)
 $result_suppliers = $procurement_conn->query("SELECT supplierID, supplierName FROM suppliers ORDER BY supplierName ASC");
+
+// Fetch Budget Items (From Budget DB)
 $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.quantity, bli.unit_cost FROM budget_line_items bli JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id WHERE bp.status = 'APPROVED' ORDER BY bli.item_name ASC");
 
 ?>
@@ -96,9 +103,9 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
                             <option value="">-- Select Project --</option>
                             <?php if ($result_projects): while($proj = $result_projects->fetch_assoc()): ?>
                                 <option value="<?= $proj['project_id'] ?>" 
-                                        data-name="<?= htmlspecialchars($proj['name']) ?>"
+                                        data-name="<?= htmlspecialchars($proj['project_name']) ?>"
                                         <?= ($proj['project_id'] == $po_data['project_id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($proj['project_code'] . " - " . $proj['name']) ?>
+                                    <?= htmlspecialchars($proj['project_code'] . " - " . $proj['project_name']) ?>
                                 </option>
                             <?php endwhile; endif; ?>
                         </select>
@@ -248,6 +255,37 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
     </main>
 
     <script>
+    // --- 0. Helper: Toast Notification (ADDED MISSING FUNCTION) ---
+    function showToast(message, type = 'success') {
+        const existingToast = document.querySelector('.toast-notification');
+        if (existingToast) existingToast.remove();
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification fixed bottom-5 right-5 px-6 py-4 rounded-xl shadow-2xl text-white font-bold transform transition-all duration-300 translate-y-20 opacity-0 z-50 flex items-center gap-3`;
+        
+        if (type === 'success') {
+            toast.classList.add('bg-green-600');
+            toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`;
+        } else if (type === 'error') {
+            toast.classList.add('bg-red-600');
+            toast.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> <span>${message}</span>`;
+        } else {
+            toast.classList.add('bg-blue-600');
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${message}</span>`;
+        }
+
+        document.body.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-y-20', 'opacity-0');
+        });
+
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
     // Load existing items from PHP
     let orderItems = <?= json_encode($existing_items) ?>;
     let editingItemId = null; // Track which item is being edited
@@ -263,8 +301,10 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
     function updatePreviews() {
         // Project
         const projectSelect = document.getElementById('project');
-        const selectedProj = projectSelect.options[projectSelect.selectedIndex];
-        document.getElementById('preview-project').innerText = selectedProj.dataset.name || 'No project selected';
+        if (projectSelect.selectedIndex >= 0) {
+            const selectedProj = projectSelect.options[projectSelect.selectedIndex];
+            document.getElementById('preview-project').innerText = selectedProj.dataset.name || 'No project selected';
+        }
         
         // Phase
         const phaseVal = document.getElementById('targetPhase').value;
@@ -304,7 +344,7 @@ $result_budget_items = mysqli_query($budget_conn, "SELECT bli.item_name, bli.qua
         const price = parseFloat(document.getElementById('item-price').value);
 
         if (!name || isNaN(qty) || isNaN(price) || qty <= 0) {
-            showToast('Valid name, quantity, and price are required', 'warning');
+            showToast('Valid name, quantity, and price are required', 'error');
             return;
         }
 

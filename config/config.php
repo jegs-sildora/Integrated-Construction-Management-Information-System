@@ -12,7 +12,7 @@ define('BASE_URL', 'http://localhost/icmis/');
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_NAME', 'icmis');
+define('DB_NAME', 'icmis_db');
 
 // 4. Start Session Globally
 if (session_status() === PHP_SESSION_NONE) {

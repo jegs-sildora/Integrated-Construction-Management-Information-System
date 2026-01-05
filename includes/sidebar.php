@@ -1,4 +1,6 @@
 <?php
+// sidebar.php
+
 // Sidebar Navigation Component for ICMIS
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -9,36 +11,54 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $current_uri = $_SERVER['REQUEST_URI'];
 
 // ------------------------------------------------------------------
+// 1. CONTEXT PERSISTENCE LOGIC (ADDED)
+// ------------------------------------------------------------------
+$active_project_id = 0;
+
+// Priority 1: Check URL
+if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
+    $active_project_id = intval($_GET['project_id']);
+    // Update session to keep it fresh
+    $_SESSION['current_project_id'] = $active_project_id;
+} 
+// Priority 2: Check Session
+elseif (isset($_SESSION['current_project_id']) && !empty($_SESSION['current_project_id'])) {
+    $active_project_id = $_SESSION['current_project_id'];
+}
+
+// Create the Query String to append to links
+$project_qs = ($active_project_id > 0) ? '?project_id=' . $active_project_id : '';
+
+
+// ------------------------------------------------------------------
 // CONFIGURATION: URL PATHS
 // ------------------------------------------------------------------
 
 $root_path = '/icmis/';
 $budget_path = '/icmis/modules/budget/';
 $procurement_path = '/icmis/modules/procurement/';
-$labor_path = '/icmis/modules/labor/';
+$workforce_path = '/icmis/modules/workforce/';
+$project_path = '/icmis/modules/project/frontend/projects/'; 
 
 // ------------------------------------------------------------------
 // ACTIVE STATE LOGIC
 // ------------------------------------------------------------------
 
-// 1. MAIN DASHBOARD (Default Active Tab)
-// Active ONLY if filename is dashboard.php AND we are NOT inside a module folder
+// 1. MAIN DASHBOARD
 $is_main_dashboard = ($current_page === 'dashboard.php' && 
                       strpos($current_uri, '/modules/budget/') === false && 
                       strpos($current_uri, '/modules/procurement/') === false && 
-                      strpos($current_uri, '/modules/labor/') === false);
+                      strpos($current_uri, '/modules/workforce/') === false && 
+                      strpos($current_uri, '/modules/project/frontend/projects') === false);
 
 // 2. PROJECT MANAGEMENT
-$is_projects = ($current_page === 'projects.php');
+$is_projects = ($current_page === 'projects.php' && strpos($current_uri, '/modules/project/frontend/projects') !== false);
 
 // 3. SYSTEM ADMIN
 $is_admin = ($current_page === 'admin.php');
 
 // 4. BUDGET MODULE
-// Parent is active if URI contains /modules/budget/
 $is_budget = strpos($current_uri, '/modules/budget/') !== false;
-
-// Sub-pages Logic (Active = Bold)
 $is_budget_dashboard = ($current_page === 'dashboard.php' && $is_budget);
 $is_proposals = in_array($current_page, ['proposals.php', 'create_proposal.php', 'edit_proposal.php']);
 $is_expenses  = in_array($current_page, ['expenses.php', 'add_expense.php', 'edit_expense.php']);
@@ -52,14 +72,14 @@ $is_stock_in = ($current_page === 'stock_in.php');
 $is_stock_out = ($current_page === 'stock_out.php');
 $is_suppliers = ($current_page === 'suppliers.php');
 
-// 6. LABOR MODULE
-$is_labor = strpos($current_uri, '/modules/labor/') !== false;
-$is_labor_dashboard = ($current_page === 'dashboard.php' && $is_labor);
+// 6. WORKFORCE MODULE
+$is_workforce = strpos($current_uri, '/modules/workforce/') !== false;
+$is_workforce_dashboard = ($current_page === 'dashboard.php' && $is_workforce);
 $is_employees = ($current_page === 'employees.php');
 $is_attendance = ($current_page === 'attendance.php');
 $is_assignments = ($current_page === 'assignments.php');
-$is_labor_payroll = ($current_page === 'payroll.php' && $is_labor);
-$is_labor_reports = ($current_page === 'reports.php' && $is_labor);
+$is_workforce_payroll = ($current_page === 'payroll.php' && $is_workforce);
+$is_workforce_reports = ($current_page === 'reports.php' && $is_workforce);
 ?>
 <aside class="w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
     <div class="px-4 py-6 border-b border-gray-200 ml-10">
@@ -82,7 +102,7 @@ $is_labor_reports = ($current_page === 'reports.php' && $is_labor);
             </li>
 
             <li>
-                <a href="<?php echo $root_path; ?>projects.php" class="flex items-center gap-3 px-3 py-2 <?php echo $is_projects ? 'text-[#e9922c] bg-orange-50 border-r-4 border-[#e9922c] -mr-3' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg transition-colors duration-200 group">
+                <a href="<?php echo $project_path; ?>projects.php" class="flex items-center gap-3 px-3 py-2 <?php echo $is_projects ? 'text-[#e9922c] bg-orange-50 border-r-4 border-[#e9922c] -mr-3' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg transition-colors duration-200 group">
                     <svg class="w-3.5 h-3.5" style="stroke-width: 1.17;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
@@ -102,11 +122,10 @@ $is_labor_reports = ($current_page === 'reports.php' && $is_labor);
                 </button>
                 
                 <ul id="budget-submenu" class="<?php echo $is_budget ? '' : 'hidden'; ?> mt-1 ml-6 space-y-1">
-                    <?php $project_param = isset($_SESSION['selected_project_id']) ? '?project_id=' . $_SESSION['selected_project_id'] : ''; ?>
-                    <li><a href="<?php echo $budget_path; ?>dashboard.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_budget_dashboard ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_budget_dashboard ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Budget Dashboard</span></a></li>
-                    <li><a href="<?php echo $budget_path; ?>proposals.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_proposals ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_proposals ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Budget Proposals</span></a></li>
-                    <li><a href="<?php echo $budget_path; ?>expenses.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_expenses ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_expenses ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Expense Tracker</span></a></li>
-                    <li><a href="<?php echo $budget_path; ?>reports.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_budget_reports ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_budget_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Financial Reports</span></a></li>
+                    <li><a href="<?php echo $budget_path; ?>dashboard.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_budget_dashboard ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_budget_dashboard ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Budget Dashboard</span></a></li>
+                    <li><a href="<?php echo $budget_path; ?>proposals.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_proposals ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_proposals ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Budget Proposals</span></a></li>
+                    <li><a href="<?php echo $budget_path; ?>expenses.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_expenses ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_expenses ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Expense Tracker</span></a></li>
+                    <li><a href="<?php echo $budget_path; ?>reports.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_budget_reports ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_budget_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Financial Reports</span></a></li>
                 </ul>
             </li>
 
@@ -122,34 +141,32 @@ $is_labor_reports = ($current_page === 'reports.php' && $is_labor);
                 </button>
                 
                 <ul id="procurement-submenu" class="<?php echo $is_procurement ? '' : 'hidden'; ?> mt-1 ml-6 space-y-1">
-                    <?php $project_param = isset($_SESSION['selected_project_id']) ? '?project_id=' . $_SESSION['selected_project_id'] : ''; ?>
-                    <li><a href="<?php echo $procurement_path; ?>inventory.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_inventory ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_inventory ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Inventory Masterlist</span></a></li>
-                    <li><a href="<?php echo $procurement_path; ?>orders.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_po ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_po ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Purchase Orders</span></a></li>
-                    <li><a href="<?php echo $procurement_path; ?>stock_in.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_stock_in ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_stock_in ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Stock In</span></a></li>
-                    <li><a href="<?php echo $procurement_path; ?>stock_out.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_stock_out ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_stock_out ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Stock Out</span></a></li>
-                    <li><a href="<?php echo $procurement_path; ?>suppliers.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_suppliers ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_suppliers ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Suppliers</span></a></li>
+                    <li><a href="<?php echo $procurement_path; ?>inventory.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_inventory ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_inventory ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Inventory Masterlist</span></a></li>
+                    <li><a href="<?php echo $procurement_path; ?>orders.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_po ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_po ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Purchase Orders</span></a></li>
+                    <li><a href="<?php echo $procurement_path; ?>stock_in.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_stock_in ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_stock_in ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Stock In</span></a></li>
+                    <li><a href="<?php echo $procurement_path; ?>stock_out.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_stock_out ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_stock_out ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Stock Out</span></a></li>
+                    <li><a href="<?php echo $procurement_path; ?>suppliers.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_suppliers ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_suppliers ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Suppliers</span></a></li>
                 </ul>
             </li>
 
             <li>
-                <button onclick="toggleSubmenu(this, 'labor-submenu')" class="w-full flex items-center gap-3 px-3 py-2 <?php echo $is_labor ? 'text-[#e9922c] bg-orange-50 border-r-4 border-[#e9922c] -mr-3' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg transition-colors duration-200">
+                <button onclick="toggleSubmenu(this, 'workforce-submenu')" class="w-full flex items-center gap-3 px-3 py-2 <?php echo $is_workforce ? 'text-[#e9922c] bg-orange-50 border-r-4 border-[#e9922c] -mr-3' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg transition-colors duration-200">
                     <svg class="w-3.5 h-3.5" style="stroke-width: 1.17;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                     </svg>
                     <span class="font-semibold flex-1 text-left" style="font-size: 11.75px;">Labor & Workforce</span>
-                    <svg class="w-3 h-3 transition-transform duration-200 <?php echo $is_labor ? 'rotate-180' : ''; ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-3 h-3 transition-transform duration-200 <?php echo $is_workforce ? 'rotate-180' : ''; ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
                 
-                <ul id="labor-submenu" class="<?php echo $is_labor ? '' : 'hidden'; ?> mt-1 ml-6 space-y-1">
-                    <?php $project_param = isset($_SESSION['selected_project_id']) ? '?project_id=' . $_SESSION['selected_project_id'] : ''; ?>
-                    <li><a href="<?php echo $labor_path; ?>dashboard.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_labor_dashboard ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_labor_dashboard ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Dashboard</span></a></li>
-                    <li><a href="<?php echo $labor_path; ?>employees.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_employees ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_employees ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Employees</span></a></li>
-                    <li><a href="<?php echo $labor_path; ?>attendance.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_attendance ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_attendance ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Attendance</span></a></li>
-                    <li><a href="<?php echo $labor_path; ?>assignments.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_assignments ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_assignments ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Assignments</span></a></li>
-                    <li><a href="<?php echo $labor_path; ?>payroll.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_labor_payroll ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_labor_payroll ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Payroll</span></a></li>
-                    <li><a href="<?php echo $labor_path; ?>reports.php<?php echo $project_param; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_labor_reports ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_labor_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Reports</span></a></li>
+                <ul id="workforce-submenu" class="<?php echo $is_workforce ? '' : 'hidden'; ?> mt-1 ml-6 space-y-1">
+                    <li><a href="<?php echo $workforce_path; ?>dashboard.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_workforce_dashboard ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_workforce_dashboard ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Dashboard</span></a></li>
+                    <li><a href="<?php echo $workforce_path; ?>employees.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_employees ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_employees ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Employees</span></a></li>
+                    <li><a href="<?php echo $workforce_path; ?>attendance.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_attendance ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_attendance ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Attendance</span></a></li>
+                    <li><a href="<?php echo $workforce_path; ?>assignments.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_assignments ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_assignments ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Assignments</span></a></li>
+                    <li><a href="<?php echo $workforce_path; ?>payroll.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_workforce_payroll ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_workforce_payroll ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Payroll</span></a></li>
+                    <li><a href="<?php echo $workforce_path; ?>reports.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_workforce_reports ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_workforce_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Reports</span></a></li>
                 </ul>
             </li>
 

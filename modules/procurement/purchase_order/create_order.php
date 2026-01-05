@@ -48,25 +48,12 @@
         // 2. Data Fetching using isolated connection variables
         
         // Fetch Projects FROM MAIN ICMIS DB
-        $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY name ASC";
+        $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_name ASC";
         $result_projects = $icmis_conn->query($sql_projects);
-
-				// 4. Fetch Approved Phases (Budget DB)
-        // We fetch the 'phase' column which represents the Target Milestone in your icmis_budget.sql
-        $sql_phases = "SELECT DISTINCT phase FROM budget_proposals WHERE status = 'APPROVED' ORDER BY phase ASC";
-        $result_phases = mysqli_query($budget_conn, $sql_phases);
 
         // Fetch Suppliers FROM PROCUREMENT DB
         $sql_suppliers = "SELECT supplierID, supplierName FROM suppliers ORDER BY supplierName ASC";
         $result_suppliers = $procurement_conn->query($sql_suppliers);
-
-			// Fetch Approved Budget Items FROM icmis_budget
-			$sql_budget_items = "SELECT bli.item_name, bli.quantity, bli.unit_cost 
-													FROM budget_line_items bli
-													JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id
-													WHERE bp.status = 'APPROVED'
-													ORDER BY bli.item_name ASC";
-			$result_budget_items = mysqli_query($budget_conn, $sql_budget_items);
     ?>
 
     <main class="ml-56 pt-24 p-6 min-h-screen transition-all duration-300">
@@ -90,14 +77,14 @@
                         <select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
                             <option value="">-- Select Project --</option>
                             <?php if ($result_projects): while($proj = $result_projects->fetch_assoc()): ?>
-                                <option value="<?= $proj['project_id'] ?>" data-name="<?= htmlspecialchars($proj['name']) ?>">
-                                    <?= htmlspecialchars($proj['project_code'] . " - " . $proj['name']) ?>
+                                <option value="<?= $proj['project_id'] ?>" data-name="<?= htmlspecialchars($proj['project_name']) ?>">
+                                    <?= htmlspecialchars($proj['project_code'] . " - " . $proj['project_name']) ?>
                                 </option>
                             <?php endwhile; endif; ?>
                         </select>
                     </div>
 
-										<div class="mb-6">
+                    <div class="mb-6">
                         <label for="targetPhase" class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Target Milestone / Phase</label>
                         <select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                             <option value="">Select Approved Phase...</option>
@@ -110,18 +97,17 @@
                     </div>
 
                     <div class="mb-6">
-												<label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Supplier</label>
-												<input type="text" id="supplier" list="suppliers-list" placeholder="Search or select a supplier..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
-												
-												<datalist id="suppliers-list">
-														<?php if ($result_suppliers): 
-																// Reset the pointer to the beginning if the result set was used earlier
-																$result_suppliers->data_seek(0); 
-																while($sup = $result_suppliers->fetch_assoc()): ?>
-																		<option value="<?= htmlspecialchars($sup['supplierName']) ?>" data-id="<?= $sup['supplierID'] ?>">
-														<?php endwhile; endif; ?>
-												</datalist>
-										</div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Supplier</label>
+                        <input type="text" id="supplier" list="suppliers-list" placeholder="Search or select a supplier..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                        
+                        <datalist id="suppliers-list">
+                            <?php if ($result_suppliers): 
+                                $result_suppliers->data_seek(0); 
+                                while($sup = $result_suppliers->fetch_assoc()): ?>
+                                    <option value="<?= htmlspecialchars($sup['supplierName']) ?>" data-id="<?= $sup['supplierID'] ?>">
+                            <?php endwhile; endif; ?>
+                        </datalist>
+                    </div>
 
                     <div class="mb-6">
                         <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Order Title</label>
@@ -129,38 +115,40 @@
                     </div>
 
                     <div class="border-t border-gray-100 pt-6 mt-6">
-											<h3 class="text-md font-bold text-navy-dark mb-4 uppercase italic">Budget Line Items</h3>
-											<div class="space-y-4">
-													<div>
-															<label class="block text-sm text-gray-600 mb-1">Approved Budget Item</label>
-															<select id="item-name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-white">
-																	<option value="">-- Select Approved Item --</option>
-																	<?php if ($result_budget_items): 
-																			mysqli_data_seek($result_budget_items, 0); // Reset pointer
-																			while($item = mysqli_fetch_assoc($result_budget_items)): ?>
-																					<option value="<?= htmlspecialchars($item['item_name']) ?>">
-																							<?= htmlspecialchars($item['item_name']) ?>
-																					</option>
-																	<?php endwhile; endif; ?>
-															</select>
-													</div>
+                        <h3 class="text-md font-bold text-navy-dark mb-4 uppercase italic">Budget Line Items</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">Approved Budget Item</label>
+                                <select id="item-name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-white">
+                                    <option value="">-- Select Approved Item --</option>
+                                    <?php if ($result_budget_items): 
+                                        mysqli_data_seek($result_budget_items, 0); 
+                                        while($item = mysqli_fetch_assoc($result_budget_items)): ?>
+                                            <option value="<?= htmlspecialchars($item['item_name']) ?>" 
+                                                    data-qty="<?= $item['quantity'] ?? '' ?>" 
+                                                    data-price="<?= $item['unit_cost'] ?? '' ?>">
+                                                <?= htmlspecialchars($item['item_name']) ?>
+                                            </option>
+                                    <?php endwhile; endif; ?>
+                                </select>
+                            </div>
 
-													<div class="grid grid-cols-2 gap-4">
-															<div>
-																	<label class="block text-sm text-gray-600 mb-1">Quantity</label>
-																	<input type="number" id="item-qty" min="1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-															</div>
-															<div>
-																	<label class="block text-sm text-gray-600 mb-1">Unit Price (₱)</label>
-																	<input type="number" id="item-price" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-															</div>
-													</div>
-													
-													<button id="add-item-btn" class="w-full bg-navy-dark text-white rounded-lg py-3 font-bold hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
-															<i class="fa-solid fa-plus"></i> Add to Request
-													</button>
-											</div>
-									</div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">Quantity</label>
+                                    <input type="number" id="item-qty" min="1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-600 mb-1">Unit Price (₱)</label>
+                                    <input type="number" id="item-price" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                                </div>
+                            </div>
+                            
+                            <button id="add-item-btn" type="button" class="w-full bg-navy-dark text-white rounded-lg py-3 font-bold hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-plus"></i> Add to Request
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-[calc(100vh-220px)] overflow-y-auto custom-scrollbar flex flex-col">
@@ -175,21 +163,21 @@
                     </div>
 
                     <div class="space-y-3 mb-6">
-											<div class="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-lg p-4">
-													<span class="text-xs font-bold text-blue-700 uppercase tracking-widest">Project</span>
-													<p id="preview-project" class="text-sm font-bold text-gray-900 mt-1 italic">No project selected</p>
-											</div>
+                        <div class="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-lg p-4">
+                            <span class="text-xs font-bold text-blue-700 uppercase tracking-widest">Project</span>
+                            <p id="preview-project" class="text-sm font-bold text-gray-900 mt-1 italic">No project selected</p>
+                        </div>
 
-											<div class="bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500 rounded-lg p-4">
-													<span class="text-xs font-bold text-purple-700 uppercase tracking-widest">Target Milestone / Phase</span>
-													<p id="preview-phase" class="text-sm font-bold text-gray-900 mt-1 italic">No phase selected</p>
-											</div>
+                        <div class="bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500 rounded-lg p-4">
+                            <span class="text-xs font-bold text-purple-700 uppercase tracking-widest">Target Milestone / Phase</span>
+                            <p id="preview-phase" class="text-sm font-bold text-gray-900 mt-1 italic">No phase selected</p>
+                        </div>
 
-											<div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg p-4">
-													<span class="text-xs font-bold text-green-700 uppercase tracking-widest">Vendor/Supplier</span>
-													<p id="preview-supplier" class="text-sm font-bold text-gray-900 mt-1 italic">No supplier selected</p>
-											</div>
-									</div>
+                        <div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg p-4">
+                            <span class="text-xs font-bold text-green-700 uppercase tracking-widest">Vendor/Supplier</span>
+                            <p id="preview-supplier" class="text-sm font-bold text-gray-900 mt-1 italic">No supplier selected</p>
+                        </div>
+                    </div>
 
                     <div class="flex-1">
                         <h3 class="text-sm font-bold text-gray-700 uppercase mb-3 border-b pb-2">Requested Items</h3>
@@ -203,9 +191,8 @@
                             <span class="text-lg font-bold text-gray-700">GRAND TOTAL</span>
                             <span id="grand-total" class="text-3xl font-black text-primary">₱0.00</span>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <button id="save-draft-btn" class="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-3 rounded-lg transition-all">Save Draft</button>
-                            <button id="submit-po-btn" class="bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-lg shadow-md transition-all">Submit Purchase Order</button>
+                        <div class="grid grid-cols-1">
+                            <button id="submit-po-btn" type="button" class="bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-lg shadow-md transition-all">Submit Purchase Order</button>
                         </div>
                     </div>
                 </div>
@@ -214,6 +201,35 @@
     </main>
 
     <script>
+        // --- TOAST HELPER (Missing in original code) ---
+        function showToast(message, type = 'success') {
+            const existingToast = document.querySelector('.toast-notification');
+            if (existingToast) existingToast.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast-notification fixed bottom-5 right-5 px-6 py-4 rounded-xl shadow-2xl text-white font-bold transform transition-all duration-300 translate-y-20 opacity-0 z-50 flex items-center gap-3`;
+            
+            if (type === 'success') {
+                toast.classList.add('bg-green-600');
+                toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`;
+            } else {
+                toast.classList.add('bg-red-600');
+                toast.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> <span>${message}</span>`;
+            }
+
+            document.body.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-20', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- MAIN LOGIC ---
         let orderItems = [];
 
         document.getElementById('project').addEventListener('change', function() {
@@ -222,50 +238,39 @@
             document.getElementById('preview-project').classList.toggle('italic', !name);
         });
 
-				document.getElementById('targetPhase').addEventListener('change', function() {
-						const phaseName = this.value;
-						const previewPhase = document.getElementById('preview-phase');
-						previewPhase.innerText = phaseName || 'No phase selected';
-						previewPhase.classList.toggle('italic', !phaseName);
-				});
+        document.getElementById('targetPhase').addEventListener('change', function() {
+            const phaseName = this.value;
+            const previewPhase = document.getElementById('preview-phase');
+            previewPhase.innerText = phaseName || 'No phase selected';
+            previewPhase.classList.toggle('italic', !phaseName);
+        });
 
-				document.addEventListener('DOMContentLoaded', function() {
-				const itemSelect = document.getElementById('item-name');
-				const qtyInput = document.getElementById('item-qty');
-				const priceInput = document.getElementById('item-price');
+        document.addEventListener('DOMContentLoaded', function() {
+            const itemSelect = document.getElementById('item-name');
+            const qtyInput = document.getElementById('item-qty');
+            const priceInput = document.getElementById('item-price');
 
-				// Listen for changes in the Item Dropdown
-				itemSelect.addEventListener('change', function() {
-						// Get the selected option element
-						const selectedOption = this.options[this.selectedIndex];
+            itemSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const approvedQty = selectedOption.getAttribute('data-qty');
+                const approvedPrice = selectedOption.getAttribute('data-price');
 
-						// Extract the data attributes we set in PHP
-						const approvedQty = selectedOption.getAttribute('data-qty');
-						const approvedPrice = selectedOption.getAttribute('data-price');
+                if (this.value !== "") {
+                    qtyInput.value = approvedQty;
+                    priceInput.value = approvedPrice;
+                } else {
+                    qtyInput.value = '';
+                    priceInput.value = '';
+                }
+            });
+        });
 
-						// Auto-fill the inputs
-						if (this.value !== "") {
-								qtyInput.value = approvedQty;
-								priceInput.value = approvedPrice;
-							
-						} else {
-								qtyInput.value = '';
-								priceInput.value = '';
-						}
-				});
-		});
-
-				// Update Supplier Preview based on the search list value
-				document.getElementById('supplier').addEventListener('input', function() {
-						const name = this.value;
-						const previewSupplier = document.getElementById('preview-supplier');
-						
-						// Update the preview text; if empty, show fallback
-						previewSupplier.innerText = name || 'No supplier selected';
-						
-						// Toggle italic style based on whether a supplier is selected
-						previewSupplier.classList.toggle('italic', !name);
-				});
+        document.getElementById('supplier').addEventListener('input', function() {
+            const name = this.value;
+            const previewSupplier = document.getElementById('preview-supplier');
+            previewSupplier.innerText = name || 'No supplier selected';
+            previewSupplier.classList.toggle('italic', !name);
+        });
 
         document.getElementById('add-item-btn').addEventListener('click', () => {
             const name = document.getElementById('item-name').value;
@@ -273,7 +278,7 @@
             const price = parseFloat(document.getElementById('item-price').value);
 
             if (!name || isNaN(qty) || isNaN(price) || qty <= 0) {
-                showToast('Valid name, quantity, and price are required', 'warning');
+                showToast('Valid name, quantity, and price are required', 'error');
                 return;
             }
 
@@ -323,54 +328,56 @@
         }
 
         document.getElementById('submit-po-btn').addEventListener('click', function() {
-        const btn = this;
-        const projectId = document.getElementById('project').value;
-        const phase = document.getElementById('targetPhase').value;
-        const supplier = document.getElementById('supplier').value;
-        const title = document.getElementById('orderTitle').value;
+            const btn = this;
+            const projectId = document.getElementById('project').value;
+            const phase = document.getElementById('targetPhase').value;
+            const supplier = document.getElementById('supplier').value;
+            const title = document.getElementById('orderTitle').value;
 
-        if (!projectId || !phase || !supplier || orderItems.length === 0) {
-            showToast('Please complete all fields and add items.', 'error');
-            return;
-        }
+            if (!projectId || !phase || !supplier || orderItems.length === 0) {
+                showToast('Please complete all fields and add items.', 'error');
+                return;
+            }
 
-        // Disable button to prevent double submit
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
 
-        // Prepare Data
-        const payload = {
-            project_id: projectId,
-            phase: phase,
-            supplier: supplier, // Sending name; PHP will lookup ID
-            title: title,
-            items: orderItems
-        };
+            const payload = {
+                project_id: projectId,
+                phase: phase,
+                supplier: supplier,
+                title: title,
+                items: orderItems
+            };
 
-        // Send Request
-        fetch('save_order.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast(data.message, 'success');
-                setTimeout(() => window.location.href = '../orders.php?msg=created', 500);
-            } else {
-                showToast('Error: ' + data.message, 'error');
+            fetch('save_order.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.href = '../orders.php?msg=created', 1000);
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                    btn.disabled = false;
+                    btn.innerText = 'Submit Purchase Order';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Server connection error. Check console for details.', 'error');
                 btn.disabled = false;
                 btn.innerText = 'Submit Purchase Order';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Server connection error', 'error');
-            btn.disabled = false;
-            btn.innerText = 'Submit Purchase Order';
+            });
         });
-    });
     </script>
 </body>
 </html>

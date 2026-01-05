@@ -1,5 +1,13 @@
 <?php
-include __DIR__ . '/connection.php';
+// Include config for database connection
+require_once __DIR__ . '/../../config/config.php';
+
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+$conn->set_charset("utf8mb4");
 
 if (!isset($_GET['project_id']) || !isset($_GET['phase']) || empty($_GET['project_id']) || empty($_GET['phase'])) {
     die('Project ID and Phase are required');
@@ -9,7 +17,7 @@ $project_id = intval($_GET['project_id']);
 $phase_name = urldecode($_GET['phase']);
 
 // Fetch project details
-$sql_project = "SELECT project_id, project_code, name FROM projects WHERE project_id = ?";
+$sql_project = "SELECT project_id, project_code, project_name FROM projects WHERE project_id = ?";
 $stmt_project = $conn->prepare($sql_project);
 $stmt_project->bind_param("i", $project_id);
 $stmt_project->execute();
@@ -49,7 +57,7 @@ if ($result_phase->num_rows > 0) {
     }
 
     // Get expenses for this phase
-    $sql_expenses = "SELECT COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0) as spent FROM expenses WHERE project_id = ? AND phase = ?";
+    $sql_expenses = "SELECT COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END), 0) as spent FROM budget_expenses WHERE project_id = ? AND phase = ?";
     $stmt_expenses = $conn->prepare($sql_expenses);
     $stmt_expenses->bind_param("is", $project_id, $phase_name);
     $stmt_expenses->execute();
@@ -88,11 +96,11 @@ while ($row = $result_proposals->fetch_assoc()) {
 }
 
 // Fetch expenses for this phase
-$sql_expenses_list = "SELECT e.*, s.name as supplier_name
-                      FROM expenses e
+$sql_expenses_list = "SELECT e.*, s.supplier_name
+                      FROM budget_expenses e
                       LEFT JOIN suppliers s ON e.supplier_id = s.supplier_id
                       WHERE e.project_id = ? AND e.phase = ?
-                      ORDER BY e.expense_date DESC, e.created_at DESC";
+                      ORDER BY e.expense_date DESC";
 $stmt_expenses_list = $conn->prepare($sql_expenses_list);
 $stmt_expenses_list->bind_param("is", $project_id, $phase_name);
 $stmt_expenses_list->execute();

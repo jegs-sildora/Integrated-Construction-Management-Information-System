@@ -19,9 +19,12 @@
   </style>
 </head>
 <body class="bg-gray-50">
-  <?php include __DIR__ . '/../components/sidebar.php'; ?>
-  <?php include __DIR__ . '/connection.php'; ?>
-  <?php include __DIR__ . '/project_context.php'; ?>
+  <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
+  <?php 
+    // Connection & Context - using centralized config
+    include __DIR__ . '/project_context.php';
+    $conn = getBudgetConnection();
+  ?>
   
   <?php 
     $pageTitle = "Expense Tracker";
@@ -30,7 +33,7 @@
     $userName = "John Doe";
     $userRole = "Financial Manager";
     $notificationCount = 0;
-    include __DIR__ . '/../components/header.php'; 
+    include __DIR__ . '/../../includes/header.php'; 
   ?>
 
   <?php
@@ -38,8 +41,8 @@
     $selected_project_id = getProjectContext($conn);
     $selected_phase = getPhaseContext();
 
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, name FROM projects ORDER BY created_at DESC";
+    // Fetch projects from main database
+    $sql_projects = "SELECT project_id, project_code, project_name FROM projects ORDER BY project_id DESC";
     $result_projects = $conn->query($sql_projects);
     $projects = [];
     if ($result_projects && $result_projects->num_rows > 0) {
@@ -56,20 +59,20 @@
     $project_name = 'No Project Selected';
     $project_code = '';
     if ($selected_project_id > 0) {
-      $sql_project = "SELECT project_code, name FROM projects WHERE project_id = ?";
+      $sql_project = "SELECT project_code, project_name FROM projects WHERE project_id = ?";
       $stmt = $conn->prepare($sql_project);
       $stmt->bind_param("i", $selected_project_id);
       $stmt->execute();
       $result = $stmt->get_result();
       if ($result && $result->num_rows > 0) {
         $project = $result->fetch_assoc();
-        $project_name = $project['name'];
+        $project_name = $project['project_name'];
         $project_code = $project['project_code'];
       }
       $stmt->close();
     }
 
-    // Fetch active phases from approved budget proposals for the selected project
+    // Fetch active phases from approved budget proposals
     $phases = [];
     if ($selected_project_id > 0) {
       $sql_phases = "SELECT DISTINCT phase 
@@ -120,9 +123,10 @@
               <select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                 <option value="">Select a project</option>
                 <?php foreach ($projects as $proj): ?>
-                  <option value="<?php echo $proj['project_id']; ?>" data-code="<?php echo htmlspecialchars($proj['project_code']); ?>" data-name="<?php echo htmlspecialchars($proj['name']); ?>" <?php echo ($proj['project_id'] == $selected_project_id) ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($proj['name']); ?>
-                  </option>
+                  <option value="<?php echo $proj['project_id']; ?>" 
+                          data-code="<?php echo htmlspecialchars($proj['project_code']); ?>" 
+                          data-name="<?php echo htmlspecialchars($proj['project_name']); ?>" <?php echo ($proj['project_id'] == $selected_project_id) ? 'selected' : ''; ?>>
+                    <?php echo htmlspecialchars($proj['project_name']); ?> </option>
                 <?php endforeach; ?>
               </select>
             </div>
@@ -291,13 +295,13 @@
           
           <!-- Receipt Header -->
           <div class="flex items-center mb-6">
-            <div class="w-12 h-12 bg-[#e9922c] rounded-lg flex items-center justify-center text-white text-2xl font-bold mr-4">
-              I
-            </div>
-            <div>
-              <h2 class="text-lg font-bold text-gray-900">Expense Receipt</h2>
-              <p class="text-xs text-gray-500">ICMIS - Budget & Cost Control</p>
-            </div>
+              <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-md p-1.5 mr-4 border border-gray-100">
+                  <img src="/icmis/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+              </div>
+              <div>
+                  <h2 class="text-xl font-bold text-gray-900">ICMIS</h2>
+                  <p class="text-sm text-gray-500">EXPENSE SUMMARY</p>
+              </div>
           </div>
 
           <!-- Current Date -->
