@@ -1,53 +1,50 @@
 <?php
-	require_once __DIR__ . '/../../../config/config.php';
+// ============================================================
+// ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
+// ============================================================
 
-    // Initialize default values
-    $default_labor_workers = 0;
-    $default_labor_hourly = 0.00;
-    $default_labor_daily = 0.00;
-    $default_equipment_quantity = 0;
-    $default_equipment_days = 0;
-    $default_equipment_rate = 0.00;
+include __DIR__ . '/../project_context.php';
+$conn = getBudgetConnection();
+
+// Initialize default values
+$default_labor_workers = 0;
+$default_labor_hourly = 0.00;
+$default_labor_daily = 0.00;
+$default_equipment_quantity = 0;
+$default_equipment_days = 0;
+$default_equipment_rate = 0.00;
+
+// Fetch projects from database
+$sql = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
+$result = $conn->query($sql);
+$projects = [];
+if ($result && $result->num_rows > 0) {
+  while ($row = $result->fetch_assoc()) {
+    $projects[] = $row;
+  }
+}
+
+// Header variables
+$pageTitle = "Budget Proposals";
+$pageSubTitle = "Create New Proposal";
+$pageSection = "Budget & Cost Control";
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<link rel="stylesheet" href="../css/output.css">
-	<link rel="stylesheet" href="../css/input.css">
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Create Budget Proposal | ICMIS</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/images/favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="../../../assets/images/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="../../../assets/images/favicon/favicon-16x16.png">
-    <link rel="manifest" href="../../../assets/images/favicon/site.webmanifest">
+  <?php include __DIR__ . '/../../../includes/head_assetsv2.php'; ?>
+  <title>Create Budget Proposal | ICMIS</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+  </style>
 </head>
 <body class="bg-gray-50">
-    <?php 
-		include __DIR__ . '/../../../includes/sidebar.php';
-		include __DIR__ . '/../project_context.php';
-		$conn = getBudgetConnection();
-		include __DIR__ . '/../../../includes/header.php'; 
-		include __DIR__ . '/../../../includes/toast.php';
-	?>
-
-	<?php
-		// Fetch projects from database
-		$sql = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
-		$result = $conn->query($sql);
-		$projects = [];
-		if ($result && $result->num_rows > 0) {
-			while ($row = $result->fetch_assoc()) {
-				$projects[] = $row;
-			}
-		}
-	?>
+  <?php 
+    include __DIR__ . '/../../../includes/sidebar.php';
+    include __DIR__ . '/../../../includes/toast.php';
+    include __DIR__ . '/../../../includes/header.php'; 
+  ?>
 
     <main class="ml-56 mt-24 p-6">
         <div class="max-w-7xl mx-auto">

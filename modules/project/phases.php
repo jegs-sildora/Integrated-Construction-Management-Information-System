@@ -13,51 +13,36 @@ if (!isset($_SESSION['user_id'])) {
 // 3. Database Connection
 require_once __DIR__ . '/../../config/database.php';
 
-// Get project_id from query string
-$projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+// Fetch all phases across all projects
+$sql = "SELECT ph.*, p.project_name, p.project_code
+        FROM icmis_project_phases ph 
+        LEFT JOIN icmis_projects p ON ph.project_id = p.project_id 
+        ORDER BY ph.start_date DESC, ph.phase_id DESC";
+$result = $conn->query($sql);
 
-// Fetch project details
-$project = null;
-if ($projectId > 0) {
-    $stmt = $conn->prepare("SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
-                            FROM icmis_projects p 
-                            LEFT JOIN workforce_employees e ON p.project_manager_id = e.employee_id 
-                            WHERE p.project_id = ?");
-    $stmt->bind_param("i", $projectId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $project = $result->fetch_assoc();
-    $stmt->close();
-}
-
-// Fetch phases for this project
 $phases = [];
 $totalPhases = 0;
-$pendingCount = 0;
-$inProgressCount = 0;
+$activeCount = 0;
 $completedCount = 0;
+$upcomingCount = 0;
 
-if ($project) {
-    $sql = "SELECT ph.*, 
-                   (SELECT COUNT(*) FROM icmis_tasks t WHERE t.phase_id = ph.phase_id) as task_count
-            FROM icmis_project_phases ph 
-            WHERE ph.project_id = ? 
-            ORDER BY ph.start_date ASC, ph.phase_id ASC";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $projectId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
+if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $phases[] = $row;
         $totalPhases++;
         
         $status = strtolower($row['status'] ?? '');
-        if ($status === 'pending' || $status === 'not started') $pendingCount++;
-        if ($status === 'in progress' || $status === 'active') $inProgressCount++;
+        if ($status === 'in progress') $activeCount++;
         if ($status === 'completed') $completedCount++;
+        if ($status === 'not started') $upcomingCount++;
     }
-    $stmt->close();
+}
+
+// Fetch all projects for dropdown filter
+$projectsResult = $conn->query("SELECT project_id, project_name, project_code FROM icmis_projects ORDER BY project_name ASC");
+$allProjects = [];
+while ($row = $projectsResult->fetch_assoc()) {
+    $allProjects[] = $row;
 }
 ?>
 <!DOCTYPE html>
@@ -65,7 +50,7 @@ if ($project) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Phases | <?php echo htmlspecialchars($project['project_name'] ?? 'Unknown'); ?> | ICMIS</title>
+    <title>Phase Management | ICMIS</title>
     
     <!-- Global Head Assets -->
     <?php include __DIR__ . '/../../includes/head_assets.php'; ?>
@@ -86,69 +71,71 @@ if ($project) {
     ?>
     
     <?php
-        $pageTitle = "Project Phases";
+        $pageTitle = "Phase Management";
         $pageSection = "Project Management";
-        $pageSubTitle = '<span class="text-sm text-gray-500">' . htmlspecialchars($project['project_name'] ?? 'Unknown Project') . '</span>';
+        $pageSubTitle = '<span class="text-sm text-gray-500">Define and manage project phases and milestones</span>';
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
     <main class="ml-56 mt-16 p-6">
-        <?php if (!$project): ?>
-        <!-- Invalid Project -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
-            <div class="max-w-md mx-auto text-center">
-                <div class="flex justify-center mb-6">
-                    <div class="bg-red-50 rounded-full p-6">
-                        <svg class="w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                </div>
-                <h2 class="text-xl text-gray-900 font-bold mb-3">Project Not Found</h2>
-                <p class="text-gray-500 mb-8">The project you're looking for doesn't exist or has been deleted.</p>
-                <a href="projects.php" class="inline-flex items-center gap-2 bg-[#e9922c] text-white px-6 py-3 rounded-lg hover:bg-[#d17f1f] transition-all duration-200 shadow-md font-medium">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to Projects
-                </a>
-            </div>
-        </div>
-        <?php else: ?>
-        
-        <!-- Breadcrumb -->
-        <nav class="flex items-center gap-2 text-sm mb-6">
-            <a href="projects.php" class="text-gray-500 hover:text-[#e9922c] transition-colors">Projects</a>
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-            <span class="text-gray-900 font-medium"><?php echo htmlspecialchars($project['project_name']); ?></span>
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-            <span class="text-gray-900 font-medium">Phases</span>
-        </nav>
-
         <!-- Page Header -->
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-2xl text-gray-900 font-bold">Project Phases</h1>
-                <p class="text-sm text-gray-500 mt-1">Manage phases for: <?php echo htmlspecialchars($project['project_name']); ?></p>
+                <h1 class="text-2xl text-gray-900 font-bold">Phase Management</h1>
+                <p class="text-sm text-gray-500 mt-1">Define and manage project phases and milestones.</p>
             </div>
-            <div class="flex items-center gap-3">
-                <a href="projects.php" class="flex items-center gap-2 bg-white text-gray-700 px-4 py-2.5 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors duration-200">
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
+            <div class="flex">
+                <a href="projects.php" class="flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
-                    <span class="font-medium">Back</span>
+                    Projects
                 </a>
-                <button id="addPhaseBtn" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
+                <a href="phases.php" class="flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 border-[#e9922c] text-[#e9922c] bg-orange-50/50">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
-                    <span class="font-medium">Add Phase</span>
-                </button>
+                    Phases
+                </a>
+                <a href="tasks.php" class="flex items-center gap-2 px-6 py-4 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    Tasks
+                </a>
             </div>
+        </div>
+
+        <!-- Search, Filter, and Add Button -->
+        <div class="flex items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-4 flex-1">
+                <!-- Search -->
+                <div class="relative flex-1 max-w-md">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search phase or project" class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] text-sm">
+                </div>
+                
+                <!-- Filter -->
+                <select id="projectFilter" class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c]">
+                    <option value="">Filter</option>
+                    <?php foreach ($allProjects as $proj): ?>
+                    <option value="<?php echo $proj['project_id']; ?>"><?php echo htmlspecialchars($proj['project_name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <button id="addPhaseBtn" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span class="font-medium">Add Phase</span>
+            </button>
         </div>
 
         <!-- Stat Cards -->
@@ -163,20 +150,7 @@ if ($project) {
                     <div>
                         <p class="text-sm text-gray-500">Total Phases</p>
                         <h2 class="text-2xl font-bold text-gray-900"><?php echo $totalPhases; ?></h2>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <div class="flex items-center gap-3">
-                    <div class="bg-yellow-100 rounded-lg p-3">
-                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Pending</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $pendingCount; ?></h2>
+                        <p class="text-xs text-gray-400">Across all projects</p>
                     </div>
                 </div>
             </div>
@@ -189,8 +163,9 @@ if ($project) {
                         </svg>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-500">In Progress</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $inProgressCount; ?></h2>
+                        <p class="text-sm text-gray-500">Active Phases</p>
+                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $activeCount; ?></h2>
+                        <p class="text-xs text-gray-400">Currently in progress</p>
                     </div>
                 </div>
             </div>
@@ -203,98 +178,94 @@ if ($project) {
                         </svg>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-500">Completed</p>
+                        <p class="text-sm text-gray-500">Completed Phases</p>
                         <h2 class="text-2xl font-bold text-gray-900"><?php echo $completedCount; ?></h2>
+                        <p class="text-xs text-gray-400">Successfully finished</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <div class="flex items-center gap-3">
+                    <div class="bg-yellow-100 rounded-lg p-3">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Upcoming Phases</p>
+                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $upcomingCount; ?></h2>
+                        <p class="text-xs text-gray-400">Scheduled to start</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <?php if (empty($phases)): ?>
-        <!-- Empty State -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
-            <div class="max-w-md mx-auto text-center">
-                <div class="flex justify-center mb-6">
-                    <div class="bg-orange-50 rounded-full p-6">
-                        <svg class="w-16 h-16 text-[#e9922c]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                        </svg>
-                    </div>
-                </div>
-                <h2 class="text-xl text-gray-900 font-bold mb-3">No Phases Yet</h2>
-                <p class="text-gray-500 mb-8 leading-relaxed">
-                    Start by creating the first phase for this project. Break down your project into 
-                    manageable phases to track progress effectively.
-                </p>
-                <button onclick="document.getElementById('addPhaseBtn').click()" class="inline-flex items-center gap-2 bg-[#e9922c] text-white px-6 py-3 rounded-lg hover:bg-[#d17f1f] transition-all duration-200 shadow-md font-medium">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Create First Phase
-                </button>
-            </div>
-        </div>
-        <?php else: ?>
         <!-- Phases Table -->
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full" id="phasesTable">
                     <thead>
                         <tr class="bg-gradient-to-r from-slate-800 to-slate-700">
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Phase</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Phase Name</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Project</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Description</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Timeline</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Duration</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Tasks</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Start Date</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Priority</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Budget</th>
                             <th class="px-6 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        <?php foreach ($phases as $index => $phase): ?>
-                        <tr class="hover:bg-gray-50 transition-colors duration-150">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="bg-slate-100 rounded-lg p-2 w-10 h-10 flex items-center justify-center">
-                                        <span class="text-sm font-bold text-slate-600"><?php echo $index + 1; ?></span>
-                                    </div>
-                                    <div class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($phase['phase_name']); ?></div>
+                    <tbody class="divide-y divide-gray-200" id="phasesTableBody">
+                        <?php if (empty($phases)): ?>
+                        <tr id="emptyRow">
+                            <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                <div class="flex flex-col items-center">
+                                    <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                    </svg>
+                                    <p class="text-sm">No phases found</p>
                                 </div>
+                            </td>
+                        </tr>
+                        <?php else: ?>
+                        <?php foreach ($phases as $phase): ?>
+                        <tr class="hover:bg-gray-50 transition-colors duration-150 phase-row" 
+                            data-project="<?php echo $phase['project_id']; ?>"
+                            data-name="<?php echo strtolower(htmlspecialchars($phase['phase_name'])); ?>"
+                            data-project-name="<?php echo strtolower(htmlspecialchars($phase['project_name'] ?? '')); ?>">
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($phase['phase_name']); ?></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900"><?php echo htmlspecialchars($phase['project_name'] ?? '-'); ?></div>
+                                <div class="text-xs text-gray-500"><?php echo htmlspecialchars($phase['project_code'] ?? ''); ?></div>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm text-gray-600 max-w-xs truncate"><?php echo htmlspecialchars($phase['description'] ?? '-'); ?></div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900"><?php echo !empty($phase['start_date']) ? date('M d, Y', strtotime($phase['start_date'])) : '-'; ?></div>
-                                <?php if (!empty($phase['end_date'])): ?>
-                                <div class="text-xs text-gray-500">to <?php echo date('M d, Y', strtotime($phase['end_date'])); ?></div>
-                                <?php endif; ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-sm text-gray-600"><?php echo htmlspecialchars($phase['duration'] ?? '-'); ?></span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <a href="tasks.php?project_id=<?php echo $projectId; ?>&phase_id=<?php echo $phase['phase_id']; ?>" 
-                                   class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-100 transition-colors">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                    </svg>
-                                    <?php echo $phase['task_count']; ?> Tasks
-                                </a>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <?php 
                                     $statusClass = match(strtolower($phase['status'] ?? '')) {
-                                        'pending', 'not started' => 'bg-yellow-100 text-yellow-700',
-                                        'in progress', 'active' => 'bg-green-100 text-green-700',
+                                        'not started' => 'bg-yellow-100 text-yellow-700',
+                                        'in progress' => 'bg-green-100 text-green-700',
                                         'completed' => 'bg-purple-100 text-purple-700',
-                                        'cancelled' => 'bg-red-100 text-red-700',
                                         default => 'bg-gray-100 text-gray-700'
                                     };
                                 ?>
                                 <span class="px-3 py-1 text-xs font-bold rounded-full <?php echo $statusClass; ?>">
                                     <?php echo htmlspecialchars($phase['status'] ?? 'Unknown'); ?>
                                 </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700">Medium</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-sm text-gray-600">-</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1">
@@ -316,12 +287,24 @@ if ($project) {
                             </td>
                         </tr>
                         <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <p class="text-sm text-gray-500" id="paginationInfo">Showing 0-0 of 0</p>
+                <div class="flex items-center gap-2">
+                    <button id="prevPage" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Prev
+                    </button>
+                    <button id="nextPage" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Next
+                    </button>
+                </div>
+            </div>
         </div>
-        <?php endif; ?>
-        <?php endif; ?>
     </main>
 
     <!-- Phase Modal -->
@@ -385,9 +368,96 @@ if ($project) {
     </div>
 
     <script>
-        const projectId = <?php echo $projectId; ?>;
         const backendUrl = "api/phases.php";
+        const projectsData = <?php echo json_encode($allProjects); ?>;
         let phaseToDelete = null;
+        
+        // Pagination
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let filteredRows = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTable();
+        });
+
+        // Search and Filter
+        document.getElementById('searchInput')?.addEventListener('input', updateTable);
+        document.getElementById('projectFilter')?.addEventListener('change', updateTable);
+
+        function updateTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const projectFilter = document.getElementById('projectFilter').value;
+            const rows = document.querySelectorAll('.phase-row');
+            
+            filteredRows = [];
+            rows.forEach(row => {
+                const name = row.dataset.name || '';
+                const projectName = row.dataset.projectName || '';
+                const projectId = row.dataset.project;
+                
+                const matchesSearch = name.includes(searchTerm) || projectName.includes(searchTerm);
+                const matchesProject = !projectFilter || projectId === projectFilter;
+                
+                if (matchesSearch && matchesProject) {
+                    filteredRows.push(row);
+                }
+            });
+            
+            currentPage = 1;
+            renderPage();
+        }
+
+        function renderPage() {
+            const rows = document.querySelectorAll('.phase-row');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            
+            rows.forEach(row => row.style.display = 'none');
+            
+            filteredRows.forEach((row, index) => {
+                if (index >= start && index < end) {
+                    row.style.display = '';
+                }
+            });
+            
+            // Update pagination info
+            const total = filteredRows.length;
+            const showStart = total > 0 ? start + 1 : 0;
+            const showEnd = Math.min(end, total);
+            document.getElementById('paginationInfo').textContent = `Showing ${showStart}-${showEnd} of ${total}`;
+            
+            // Update buttons
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = end >= total;
+        }
+
+        document.getElementById('prevPage')?.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage();
+            }
+        });
+
+        document.getElementById('nextPage')?.addEventListener('click', function() {
+            const maxPage = Math.ceil(filteredRows.length / itemsPerPage);
+            if (currentPage < maxPage) {
+                currentPage++;
+                renderPage();
+            }
+        });
+
+        // Populate project select in modal
+        function populateProjectSelect(selectedProjectId = null) {
+            const select = document.getElementById('phase_project_id');
+            if (!select) return;
+            select.innerHTML = '<option value="">Select Project</option>';
+            projectsData.forEach(proj => {
+                const selected = selectedProjectId == proj.project_id ? 'selected' : '';
+                select.innerHTML += `<option value="${proj.project_id}" ${selected}>${proj.project_name}</option>`;
+            });
+        }
 
         // ------------------ Add Phase ------------------
         document.getElementById('addPhaseBtn')?.addEventListener('click', function() {
@@ -395,7 +465,7 @@ if ($project) {
             document.getElementById('phaseModalTitle').textContent = 'Add Phase';
             document.getElementById('phaseModalBtnText').textContent = 'Add Phase';
             document.getElementById('phase_id').value = '';
-            document.getElementById('phase_project_id').value = projectId;
+            populateProjectSelect();
             document.getElementById('phaseModal').style.display = 'flex';
         });
 
@@ -410,13 +480,13 @@ if ($project) {
                         if (data.success) {
                             const phase = data.phase;
                             document.getElementById('phase_id').value = phase.phase_id;
-                            document.getElementById('phase_project_id').value = phase.project_id;
+                            populateProjectSelect(phase.project_id);
                             document.getElementById('phase_name').value = phase.phase_name;
                             document.getElementById('phase_description').value = phase.description || '';
                             document.getElementById('phase_start_date').value = phase.start_date || '';
                             document.getElementById('phase_end_date').value = phase.end_date || '';
                             document.getElementById('phase_duration').value = phase.duration || '';
-                            document.getElementById('phase_status').value = phase.status || 'Pending';
+                            document.getElementById('phase_status').value = phase.status || 'Not Started';
                             
                             document.getElementById('phaseModalTitle').textContent = 'Edit Phase';
                             document.getElementById('phaseModalBtnText').textContent = 'Save Changes';

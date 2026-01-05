@@ -49,15 +49,6 @@ if ($show_project_selector) {
         if (file_exists($db_path)) {
             require_once $db_path;
         }
-        
-        // 3. Re-check: If require_once didn't give us a valid $conn (e.g., included previously but var unset)
-        // We manually create a connection if config constants are available
-        if ((!isset($conn) || !($conn instanceof mysqli)) && defined('DB_HOST')) {
-             $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-             if ($conn->connect_error) {
-                 error_log("Header DB Connection Failed: " . $conn->connect_error);
-             }
-        }
     }
 
     // Handle Context Switch (URL param overrides session)
@@ -71,8 +62,8 @@ if ($show_project_selector) {
     // Fetch Projects for Dropdown
     // Only proceed if we have a valid connection object
     if (isset($conn) && $conn instanceof mysqli) {
-        // FIX: Explicitly target 'icmis.projects' to handle cross-database contexts
-        $h_sql = "SELECT project_id, project_code, project_name FROM icmis.projects ORDER BY created_at DESC";
+        // FIX: CHANGED ORDER BY 'created_at' TO 'project_id' (created_at column does not exist)
+        $h_sql = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
         $h_result = $conn->query($h_sql);
 
         if ($h_result && $h_result->num_rows > 0) {

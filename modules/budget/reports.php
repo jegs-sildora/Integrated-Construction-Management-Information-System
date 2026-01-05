@@ -1,8 +1,4 @@
 <?php
-  require_once __DIR__ . '/../../config/config.php';
-?>
-
-<?php
     // reports.php - using centralized config
     include __DIR__ . '/project_context.php';
     $conn = getBudgetConnection();

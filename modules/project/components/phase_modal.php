@@ -26,7 +26,6 @@
         <!-- Modal Body -->
         <form id="phaseForm" class="flex-1 overflow-y-auto">
             <input type="hidden" name="phase_id" id="phase_id" value="">
-            <input type="hidden" name="project_id" id="phase_project_id" value="">
             
             <div class="p-6 space-y-6">
                 <!-- Phase Info Section -->
@@ -39,6 +38,14 @@
                     </h4>
                     
                     <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Project <span class="text-red-500">*</span></label>
+                            <select name="project_id" id="phase_project_id" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
+                                <option value="">Select Project</option>
+                            </select>
+                        </div>
+                        
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Phase Name <span class="text-red-500">*</span></label>
                             <input type="text" name="phase_name" id="phase_name" required

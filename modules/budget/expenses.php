@@ -1,123 +1,88 @@
 <?php
-  require_once __DIR__ . '/../../config/config.php';
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <link rel="stylesheet" href="/css/output.css">
-  <link rel="stylesheet" href="/css/input.css">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Expense Tracker | ICMIS</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-  <link rel="apple-touch-icon" sizes="180x180" href="../../assets/images/favicon/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="../../assets/images/favicon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="../../assets/images/favicon/favicon-16x16.png">
-  <link rel="manifest" href="../../assets/images/favicon/site.webmanifest">
-  <?php include '../../includes/head_assetsv2.php'; ?>
-  <style>
-    * { font-family: 'Inter', sans-serif; }
-  </style>
-</head>
-<body class="bg-gray-50">
-  <?php 
-    // 1. Connection & Context - using centralized config
-    include __DIR__ . '/project_context.php';
-    $conn = getBudgetConnection();
-    
-    // Get selected project ID and phase from global context BEFORE sidebar
-    $selected_project_id = getProjectContext($conn);
-    $selected_phase = getPhaseContext();
-    
-  ?>
-  <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
-
-<?php
-
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-    $result_projects = $conn->query($sql_projects);
-    $projects = [];
-    if ($result_projects && $result_projects->num_rows > 0) {
-      while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-        // Set first project as default if none selected
-        if ($selected_project_id == 0) {
-          $selected_project_id = $row['project_id'];
-        }
+  // 1. Connection & Context - using centralized config (MUST be before any HTML output)
+  include __DIR__ . '/project_context.php';
+  $conn = getBudgetConnection();
+  
+  // Get selected project ID and phase from global context BEFORE HTML
+  $selected_project_id = getProjectContext($conn);
+  $selected_phase = getPhaseContext();
+  
+  // Fetch all projects for dropdown
+  $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
+  $result_projects = $conn->query($sql_projects);
+  $projects = [];
+  if ($result_projects && $result_projects->num_rows > 0) {
+    while ($row = $result_projects->fetch_assoc()) {
+      $projects[] = $row;
+      // Set first project as default if none selected
+      if ($selected_project_id == 0) {
+        $selected_project_id = $row['project_id'];
+        $_SESSION['selected_project_id'] = $selected_project_id;
       }
     }
+  }
 
-    // Define phases
-    $phases = [
-      'All Phases',
-      'Phase 1: Mobilization',
-      'Phase 2: Structural',
-      'Phase 3: MEPFS',
-      'Phase 4: Finishing'
-    ];
+  // Define phases
+  $phases = [
+    'All Phases',
+    'Phase 1: Mobilization',
+    'Phase 2: Structural',
+    'Phase 3: MEPFS',
+    'Phase 4: Finishing'
+  ];
 
-    // Build breadcrumb navigation with dropdowns
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
-    
-    // Project Dropdown
-    $breadcrumbHTML .= '<div class="relative inline-block">';
-    $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value + \'&phase=' . urlencode($selected_phase) . '\'" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
-    
-    foreach ($projects as $proj) {
-      $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      // FIX: Use project_name to match DB column
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
-    }
-    
-    $breadcrumbHTML .= '</select>';
-    $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-    $breadcrumbHTML .= '</div>';
-    
-    $breadcrumbHTML .= '</div>';
+  // Build breadcrumb navigation with dropdowns
+  $current_page = basename($_SERVER['PHP_SELF']);
+  $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
+  
+  // Project Dropdown
+  $breadcrumbHTML .= '<div class="relative inline-block">';
+  $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value + \'&phase=' . urlencode($selected_phase) . '\'" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
+  
+  foreach ($projects as $proj) {
+    $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
+    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
+  }
+  
+  $breadcrumbHTML .= '</select>';
+  $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
+  $breadcrumbHTML .= '</div>';
+  
+  $breadcrumbHTML .= '</div>';
 
-    // Set header variables
-    $pageTitle = "Expense Tracker";
-    $pageSection = "Budget & Cost Control";
-    $pageSubTitle = $breadcrumbHTML;
+  // Set header variables
+  $pageTitle = "Expense Tracker";
+  $pageSection = "Budget & Cost Control";
+  $pageSubTitle = $breadcrumbHTML;
+
+  // Initialize project data variables
+  $project_name = 'No Project Selected';
+  $total_budget = 0;
+  $actual_spending = 0;
+  $remaining_budget = 0;
+  $budget_utilization = 0;
+  $alert_type = 'good';
+  $alert_message = '';
+
+  // Fetch selected project details with budget data
+  if ($selected_project_id > 0) {
+    // Get project basic info with total approved budget proposals
+    $sql_project = "SELECT p.project_id, p.project_code, p.project_name,
+                    (SELECT COALESCE(SUM(bp.total_amount), 0) 
+                     FROM budget_proposals bp 
+                     WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
+                    (SELECT COALESCE(SUM(e.amount), 0) 
+                     FROM budget_expenses e 
+                     WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
+                    FROM icmis_projects p
+                    WHERE p.project_id = ?";
+    $stmt = $conn->prepare($sql_project);
+    $stmt->bind_param("i", $selected_project_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
     
-    include __DIR__ . '/../../includes/header.php';
-
-    // Initialize project data variables
-    $project_name = 'No Project Selected';
-    $total_budget = 0;
-    $actual_spending = 0;
-    $remaining_budget = 0;
-    $budget_utilization = 0;
-    $alert_type = 'good';
-    $alert_message = '';
-
-    // Fetch selected project details with budget data
-    if ($selected_project_id > 0) {
-      // Get project basic info with total approved budget proposals
-      $sql_project = "SELECT p.project_id, p.project_code, p.project_name,
-                      (SELECT COALESCE(SUM(bp.total_amount), 0) 
-                       FROM budget_proposals bp 
-                       WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
-                      (SELECT COALESCE(SUM(e.amount), 0) 
-                       FROM budget_expenses e 
-                       WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                      FROM icmis_projects p
-                      WHERE p.project_id = ?";
-      $stmt = $conn->prepare($sql_project);
-      $stmt->bind_param("i", $selected_project_id);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      
-      if ($result && $result->num_rows > 0) {
-        $project = $result->fetch_assoc();
+    if ($result && $result->num_rows > 0) {
+      $project = $result->fetch_assoc();
         $project_name = $project['project_name']; 
         $total_budget = floatval($project['total_budget']);
         $actual_spending = floatval($project['actual_spending']);
@@ -311,6 +276,30 @@
       }
       $stmt_check->close();
     }
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expense Tracker | ICMIS</title>
+  
+  <?php include __DIR__ . '/../../includes/head_assetsv2.php'; ?>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <?php 
+    include __DIR__ . '/../../includes/sidebar.php';
+    include __DIR__ . '/../../includes/toast.php';
+    include __DIR__ . '/../../includes/header.php';
   ?>
 
   <!-- Main Content Area -->

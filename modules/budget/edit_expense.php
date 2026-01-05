@@ -1,60 +1,53 @@
+<?php
+// ============================================================
+// ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
+// ============================================================
+
+// Connection & Context - using centralized config
+include __DIR__ . '/project_context.php';
+$conn = getBudgetConnection();
+
+// Get expense_id from URL
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+  header('Location: expenses.php');
+  exit;
+}
+
+$expense_id = intval($_GET['id']);
+
+// Fetch projects from main database
+$sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
+$result_projects = $conn->query($sql_projects);
+$projects = [];
+if ($result_projects && $result_projects->num_rows > 0) {
+  while ($row = $result_projects->fetch_assoc()) {
+    $projects[] = $row;
+  }
+}
+
+// Header variables
+$pageTitle = "Edit Expense";
+$pageSubTitle = "Update Expense Details";
+$pageSection = "Budget & Cost Control";
+$userName = $_SESSION['user_name'] ?? "Admin";
+$userRole = $_SESSION['user_role'] ?? "Financial Manager";
+$notificationCount = 0;
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Global project styles -->
-  <link rel="stylesheet" href="/icmis_budget/css/output.css">
-  <link rel="stylesheet" href="/icmis_budget/css/input.css">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <?php include __DIR__ . '/../../includes/head_assetsv2.php'; ?>
   <title>Edit Expense - ICMIS</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body {
-      font-family: 'Arimo', sans-serif;
-    }
+    * { font-family: 'Inter', sans-serif; }
   </style>
 </head>
 <body class="bg-gray-50">
   <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
-  <?php 
-    // Connection & Context - using centralized config
-    include __DIR__ . '/project_context.php';
-    $conn = getBudgetConnection();
-  ?>
-  
-  <?php 
-    $pageTitle = "Edit Expense";
-    $pageSubTitle = "Update Expense Details";
-    $pageSection = "Budget & Cost Control";
-    $userName = "John Doe";
-    $userRole = "Financial Manager";
-    $notificationCount = 0;
-    include __DIR__ . '/../../includes/header.php'; 
-  ?>
-
-  <?php
-    // Get expense_id from URL
-    if (!isset($_GET['id']) || empty($_GET['id'])) {
-      header('Location: expenses.php');
-      exit;
-    }
-
-    $expense_id = intval($_GET['id']);
-
-    // Fetch projects from main database
-    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-    $result_projects = $conn->query($sql_projects);
-    $projects = [];
-    if ($result_projects && $result_projects->num_rows > 0) {
-      while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-      }
-    }
-  ?>
+  <?php include __DIR__ . '/../../includes/toast.php'; ?>
+  <?php include __DIR__ . '/../../includes/header.php'; ?>
 
   <!-- Toast included globally via header.php -->
 

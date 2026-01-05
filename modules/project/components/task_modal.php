@@ -26,7 +26,6 @@
         <!-- Modal Body -->
         <form id="taskForm" class="flex-1 overflow-y-auto">
             <input type="hidden" name="task_id" id="task_id" value="">
-            <input type="hidden" name="project_id" id="task_project_id" value="">
             
             <div class="p-6 space-y-6">
                 <!-- Task Info Section -->
@@ -40,18 +39,26 @@
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Task Name <span class="text-red-500">*</span></label>
-                            <input type="text" name="task_name" id="task_name" required
-                                   placeholder="Enter task name"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Project <span class="text-red-500">*</span></label>
+                            <select name="project_id" id="task_project_id" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
+                                <option value="">Select Project</option>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Phase</label>
                             <select name="phase_id" id="task_phase_id"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
-                                <option value="">Select Phase</option>
+                                <option value="">Select Phase (Optional)</option>
                             </select>
                         </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Task Name <span class="text-red-500">*</span></label>
+                        <input type="text" name="task_name" id="task_name" required
+                               placeholder="Enter task name"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
                     </div>
                     
                     <div class="mt-4">

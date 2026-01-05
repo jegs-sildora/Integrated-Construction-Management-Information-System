@@ -1,84 +1,81 @@
 <?php
-	require_once __DIR__ . '/../../../config/config.php';
-?>
+// ============================================================
+// ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
+// ============================================================
 
+include __DIR__ . '/../project_context.php';
+$conn = getBudgetConnection();
+
+// Get proposal ID from URL
+$proposal_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+if ($proposal_id <= 0) {
+  header('Location: ../proposals.php');
+  exit;
+}
+
+// Fetch proposal details
+$sql = "SELECT bp.*, p.project_code, p.project_name 
+    FROM budget_proposals bp 
+    LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
+    WHERE bp.proposal_id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $proposal_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows === 0) {
+  header('Location: ../proposals.php');
+  exit;
+}
+
+$proposal = $result->fetch_assoc();
+$stmt->close();
+
+// Fetch line items
+$sql_items = "SELECT * FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id";
+$stmt_items = $conn->prepare($sql_items);
+$stmt_items->bind_param("i", $proposal_id);
+$stmt_items->execute();
+$result_items = $stmt_items->get_result();
+
+$line_items = [];
+while ($row = $result_items->fetch_assoc()) {
+  $line_items[] = $row;
+}
+$stmt_items->close();
+
+// Fetch all projects for dropdown
+$sql_projects = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
+$result_projects = $conn->query($sql_projects);
+$projects = [];
+if ($result_projects && $result_projects->num_rows > 0) {
+  while ($row = $result_projects->fetch_assoc()) {
+    $projects[] = $row;
+  }
+}
+
+// Header variables
+$pageTitle = "Budget Proposals";
+$pageSubTitle = "Edit Proposal";
+$pageSection = "Budget & Cost Control";
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<link rel="stylesheet" href="../css/output.css">
-	<link rel="stylesheet" href="../css/input.css">
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Edit Budget Proposal</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <?php include __DIR__ . '/../../../includes/head_assetsv2.php'; ?>
+  <title>Edit Budget Proposal | ICMIS</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/images/favicon/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="../../../assets/images/favicon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="../../../assets/images/favicon/favicon-16x16.png">
-  <link rel="manifest" href="../../../assets/images/favicon/site.webmanifest">
-
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+  </style>
 </head>
-<body>
-	<?php 
-		include __DIR__ . '/../../../includes/sidebar.php';
-		include __DIR__ . '/../project_context.php';
-		$conn = getBudgetConnection();
-		include __DIR__ . '/../../../includes/header.php'; 
-	?>
-
-	<?php
-		// Get proposal ID from URL
-		$proposal_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-		
-		if ($proposal_id <= 0) {
-			die("Invalid proposal ID");
-		}
-
-		// Fetch proposal details
-		$sql = "SELECT bp.*, p.project_code, p.project_name 
-				FROM budget_proposals bp 
-				LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
-				WHERE bp.proposal_id = ?";
-		$stmt = $conn->prepare($sql);
-		$stmt->bind_param("i", $proposal_id);
-		$stmt->execute();
-		$result = $stmt->get_result();
-		
-		if ($result->num_rows === 0) {
-			die("Proposal not found");
-		}
-		
-		$proposal = $result->fetch_assoc();
-		$stmt->close();
-
-		// Fetch line items
-		$sql_items = "SELECT * FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id";
-		$stmt_items = $conn->prepare($sql_items);
-		$stmt_items->bind_param("i", $proposal_id);
-		$stmt_items->execute();
-		$result_items = $stmt_items->get_result();
-		
-		$line_items = [];
-		while ($row = $result_items->fetch_assoc()) {
-			$line_items[] = $row;
-		}
-		$stmt_items->close();
-
-		// Fetch all projects for dropdown
-		$sql_projects = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
-		$result_projects = $conn->query($sql_projects);
-		$projects = [];
-		if ($result_projects && $result_projects->num_rows > 0) {
-			while ($row = $result_projects->fetch_assoc()) {
-				$projects[] = $row;
-			}
-		}
-	?>
-	
-	<?php include __DIR__ . '/../../../includes/toast.php'; ?>
+<body class="bg-gray-50">
+  <?php 
+    include __DIR__ . '/../../../includes/sidebar.php';
+    include __DIR__ . '/../../../includes/toast.php';
+    include __DIR__ . '/../../../includes/header.php'; 
+  ?>
 
 	<main class="ml-56 mt-20 p-6">
 		<div class="max-w-7xl mx-auto">

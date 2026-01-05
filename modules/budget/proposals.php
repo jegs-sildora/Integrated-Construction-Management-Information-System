@@ -1,107 +1,94 @@
 <?php
-  require_once __DIR__ . '/../../config/config.php';
+  // 1. Connection & Context - using centralized config
+  include __DIR__ . '/project_context.php';
+  $conn = getBudgetConnection();
+
+  // Get selected project ID from global context
+  $selected_project_id = getProjectContext($conn);
+
+  // Fetch all projects for dropdown
+  $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
+  $result_projects = $conn->query($sql_projects);
+  $projects = [];
+  
+  if ($result_projects && $result_projects->num_rows > 0) {
+    while ($row = $result_projects->fetch_assoc()) {
+      $projects[] = $row;
+    }
+  }
+
+  // Build breadcrumb navigation with dropdown
+  $current_page = basename($_SERVER['PHP_SELF']);
+  $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
+  
+  // Project Dropdown
+  $breadcrumbHTML .= '<div class="relative inline-block">';
+  $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
+  
+  foreach ($projects as $proj) {
+    $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
+    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
+  }
+  
+  $breadcrumbHTML .= '</select>';
+  $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
+  $breadcrumbHTML .= '</div>';
+  $breadcrumbHTML .= '</div>';
+
+  // Set Header Variables
+  $pageSection = "Budget & Cost Control";
+  $pageTitle = "Budget Proposals";
+  $pageSubTitle = $breadcrumbHTML;
+
+  // Fetch budget proposals for selected project
+  if ($selected_project_id > 0) {
+    $sql = "SELECT bp.*, p.project_name, p.project_code, 
+            COALESCE(u.full_name, 'System Admin') as user_name 
+            FROM budget_proposals bp 
+            LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
+            LEFT JOIN icmis_users u ON bp.created_by = u.user_id
+            WHERE bp.project_id = ?
+            ORDER BY bp.created_at DESC";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $selected_project_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $proposals = [];
+    if ($result && $result->num_rows > 0) {
+      while ($row = $result->fetch_assoc()) {
+        $proposals[] = $row;
+      }
+    }
+    $stmt->close();
+  } else {
+    $proposals = [];
+  }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="stylesheet" href="/css/output.css">
-  <link rel="stylesheet" href="/css/input.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Budget Proposals | ICMIS</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="apple-touch-icon" sizes="180x180" href="../../assets/images/favicon/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="../../assets/images/favicon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="../../assets/images/favicon/favicon-16x16.png">
-  <link rel="manifest" href="../../assets/images/favicon/site.webmanifest">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap" rel="stylesheet">
+  
+  <?php include __DIR__ . '/../../includes/head_assetsv2.php'; ?>
+  
   <style>
     * { font-family: 'Inter', sans-serif; }
+    @keyframes modal-slide-in {
+      from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-modal-slide-in { animation: modal-slide-in 0.3s ease-out forwards; }
   </style>
-z
 </head>
 <body class="bg-gray-50">
   <?php 
-    // 1. Connection & Context - using centralized config
-    include __DIR__ . '/project_context.php';
+    include __DIR__ . '/../../includes/sidebar.php';
     include __DIR__ . '/../../includes/toast.php';
-    $conn = getBudgetConnection();
-
-    // Get selected project ID from global context
-    $selected_project_id = getProjectContext($conn);
-  ?>
-
-  <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
-  
-  <?php
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-    $result_projects = $conn->query($sql_projects);
-    $projects = [];
-    
-    if ($result_projects && $result_projects->num_rows > 0) {
-      while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-      }
-    }
-
-    // Build breadcrumb navigation with dropdown
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
-    
-    // Project Dropdown
-    $breadcrumbHTML .= '<div class="relative inline-block">';
-    $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
-    
-    foreach ($projects as $proj) {
-      $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
-    }
-    
-    $breadcrumbHTML .= '</select>';
-    $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-    $breadcrumbHTML .= '</div>';
-    $breadcrumbHTML .= '</div>';
-
-    // 5. Header Variables & Include
-    $pageTitle = "Budget Proposals";
-    $pageSection = "Budget & Cost Control";
-    $pageSubTitle = $breadcrumbHTML;
-    
     include __DIR__ . '/../../includes/header.php'; 
-  ?>
-
-  <?php
-    // Fetch budget proposals for selected project
-    if ($selected_project_id > 0) {
-        // CHANGE: Added 'Unknown User' as the second parameter to COALESCE
-        $sql = "SELECT bp.*, p.project_name, p.project_code, 
-                COALESCE(u.full_name, 'System Admin') as user_name 
-                FROM budget_proposals bp 
-                LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
-                LEFT JOIN icmis_users u ON bp.created_by = u.user_id
-                WHERE bp.project_id = ?
-                ORDER BY bp.created_at DESC";
-        
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $selected_project_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        $proposals = [];
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $proposals[] = $row;
-            }
-        }
-        $stmt->close();
-    } else {
-        $proposals = [];
-    }
   ?>
 
   <main class="ml-56 mt-16 p-6">

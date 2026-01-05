@@ -82,7 +82,7 @@ $is_workforce_payroll = ($current_page === 'payroll.php' && $is_workforce);
 $is_workforce_reports = ($current_page === 'reports.php' && $is_workforce);
 ?>
 <aside class="w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
-    <div class="px-4 py-6 border-b border-gray-200 ml-10">
+    <div class="px-4 py-[1.1rem] border-b border-gray-200 ml-10">
         <div class="flex items-center gap-3 mb-1">
             <img src="<?php echo $root_path; ?>assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-10 h-10 object-contain">
             <h1 class="text-xl font-black text-gray-900 text-center">ICMIS</h1>

@@ -1,96 +1,90 @@
+<?php
+// ============================================================
+// ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
+// ============================================================
+
+// Connection & Context - using centralized config
+include __DIR__ . '/project_context.php';
+$conn = getBudgetConnection();
+
+// Get project_id and phase from global context
+$selected_project_id = getProjectContext($conn);
+$selected_phase = getPhaseContext();
+
+// Fetch projects from main database
+$sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
+$result_projects = $conn->query($sql_projects);
+$projects = [];
+if ($result_projects && $result_projects->num_rows > 0) {
+  while ($row = $result_projects->fetch_assoc()) {
+    $projects[] = $row;
+    // Set first project as default if none selected
+    if ($selected_project_id == 0) {
+      $selected_project_id = $row['project_id'];
+      $_SESSION['selected_project_id'] = $selected_project_id;
+    }
+  }
+}
+
+// Get selected project details
+$project_name = 'No Project Selected';
+$project_code = '';
+if ($selected_project_id > 0) {
+  $sql_project = "SELECT project_code, project_name FROM icmis_projects WHERE project_id = ?";
+  $stmt = $conn->prepare($sql_project);
+  $stmt->bind_param("i", $selected_project_id);
+  $stmt->execute();
+  $result = $stmt->get_result();
+  if ($result && $result->num_rows > 0) {
+    $project = $result->fetch_assoc();
+    $project_name = $project['project_name'];
+    $project_code = $project['project_code'];
+  }
+  $stmt->close();
+}
+
+// Fetch active phases from approved budget proposals
+$phases = [];
+if ($selected_project_id > 0) {
+  $sql_phases = "SELECT DISTINCT phase 
+                 FROM budget_proposals 
+                 WHERE project_id = ? AND status = 'APPROVED'
+                 ORDER BY phase";
+  $stmt_phases = $conn->prepare($sql_phases);
+  $stmt_phases->bind_param("i", $selected_project_id);
+  $stmt_phases->execute();
+  $result_phases = $stmt_phases->get_result();
+  if ($result_phases && $result_phases->num_rows > 0) {
+    while ($row = $result_phases->fetch_assoc()) {
+      $phases[] = $row['phase'];
+    }
+  }
+  $stmt_phases->close();
+}
+
+// Header variables
+$pageTitle = "Expense Tracker";
+$pageSubTitle = "Add New Expense";
+$pageSection = "Budget & Cost Control";
+$userName = $_SESSION['user_name'] ?? "Admin";
+$userRole = $_SESSION['user_role'] ?? "Financial Manager";
+$notificationCount = 0;
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Global project styles -->
-  <link rel="stylesheet" href="/icmis_budget/css/output.css">
-  <link rel="stylesheet" href="/icmis_budget/css/input.css">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <?php include __DIR__ . '/../../includes/head_assetsv2.php'; ?>
   <title>Add New Expense - ICMIS</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body {
-      font-family: 'Arimo', sans-serif;
-    }
+    * { font-family: 'Inter', sans-serif; }
   </style>
 </head>
 <body class="bg-gray-50">
   <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
-  <?php 
-    // Connection & Context - using centralized config
-    include __DIR__ . '/project_context.php';
-    $conn = getBudgetConnection();
-  ?>
-  
-  <?php 
-    $pageTitle = "Expense Tracker";
-    $pageSubTitle = "Add New Expense";
-    $pageSection = "Budget & Cost Control";
-    $userName = "John Doe";
-    $userRole = "Financial Manager";
-    $notificationCount = 0;
-    include __DIR__ . '/../../includes/header.php'; 
-  ?>
-
-  <?php
-    // Get project_id and phase from global context
-    $selected_project_id = getProjectContext($conn);
-    $selected_phase = getPhaseContext();
-
-    // Fetch projects from main database
-    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-    $result_projects = $conn->query($sql_projects);
-    $projects = [];
-    if ($result_projects && $result_projects->num_rows > 0) {
-      while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-        // Set first project as default if none selected
-        if ($selected_project_id == 0) {
-          $selected_project_id = $row['project_id'];
-        }
-      }
-    }
-
-    // Get selected project details
-    $project_name = 'No Project Selected';
-    $project_code = '';
-    if ($selected_project_id > 0) {
-      $sql_project = "SELECT project_code, project_name FROM icmis_projects WHERE project_id = ?";
-      $stmt = $conn->prepare($sql_project);
-      $stmt->bind_param("i", $selected_project_id);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      if ($result && $result->num_rows > 0) {
-        $project = $result->fetch_assoc();
-        $project_name = $project['project_name'];
-        $project_code = $project['project_code'];
-      }
-      $stmt->close();
-    }
-
-    // Fetch active phases from approved budget proposals
-    $phases = [];
-    if ($selected_project_id > 0) {
-      $sql_phases = "SELECT DISTINCT phase 
-                     FROM budget_proposals 
-                     WHERE project_id = ? AND status = 'APPROVED'
-                     ORDER BY phase";
-      $stmt_phases = $conn->prepare($sql_phases);
-      $stmt_phases->bind_param("i", $selected_project_id);
-      $stmt_phases->execute();
-      $result_phases = $stmt_phases->get_result();
-      if ($result_phases && $result_phases->num_rows > 0) {
-        while ($row = $result_phases->fetch_assoc()) {
-          $phases[] = $row['phase'];
-        }
-      }
-      $stmt_phases->close();
-    }
-  ?>
+  <?php include __DIR__ . '/../../includes/toast.php'; ?>
+  <?php include __DIR__ . '/../../includes/header.php'; ?>
 
   <!-- Toast included globally via header.php -->
 
