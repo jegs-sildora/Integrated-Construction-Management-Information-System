@@ -7,8 +7,12 @@
     }
     $conn->set_charset("utf8mb4");
 
-    // 2. Fetch Approved Phases from Budget Proposals
-    $sql_phases = "SELECT DISTINCT phase FROM budget_proposals WHERE status = 'APPROVED' ORDER BY phase ASC";
+    // 2. Fetch Approved Phases from Budget Proposals (using phase_id with JOIN)
+    $sql_phases = "SELECT DISTINCT pp.phase_id, pp.phase_name 
+                   FROM budget_proposals bp
+                   JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
+                   WHERE bp.status = 'APPROVED' 
+                   ORDER BY pp.phase_name ASC";
     $result_phases = $conn->query($sql_phases);
 
     // 3. Fetch Approved Budget Items
@@ -87,8 +91,8 @@
                         <select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                             <option value="">Select Approved Phase...</option>
                             <?php if ($result_phases): while($phase = $result_phases->fetch_assoc()): ?>
-                                <option value="<?= htmlspecialchars($phase['phase']) ?>">
-                                    <?= htmlspecialchars($phase['phase']) ?>
+                                <option value="<?= htmlspecialchars($phase['phase_name']) ?>" data-phase-id="<?= $phase['phase_id'] ?>">
+                                    <?= htmlspecialchars($phase['phase_name']) ?>
                                 </option>
                             <?php endwhile; endif; ?>
                         </select>

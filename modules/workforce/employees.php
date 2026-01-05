@@ -108,11 +108,21 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     <main class="ml-56 mt-16 p-6">
         <div class="max-w-7xl mx-auto">
             
+            <!-- Tabs -->
+            <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
+                <button onclick="switchTab('employees')" id="tab-employees" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-[#e9922c] text-[#e9922c] transition-colors">
+                    Employees
+                </button>
+                <button onclick="switchTab('groups')" id="tab-groups" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                    Employee Groups
+                </button>
+            </div>
+
             <!-- Page Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h1 class="text-2xl text-gray-900 font-bold">Employee Management</h1>
-                    <p class="text-sm text-gray-500 mt-1">Manage and view employee profiles</p>
+                    <p class="text-sm text-gray-500 mt-1">Manage, View, and Edit Employee Profiles</p>
                 </div>
                 <button onclick="openModal()" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
@@ -168,16 +178,19 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                 </div>
             </div>
 
+            <!-- Tab Content: Employees -->
+            <div id="content-employees" class="tab-content">
+
             <!-- Search and Filter -->
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
                         <div class="relative">
                             <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                            <input type="text" id="searchInput" placeholder="Search employees..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none w-64">
+                            <input type="text" id="searchInput" placeholder="Search by name, role, or ID" class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none w-72">
                         </div>
                         <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none">
-                            <option value="">All Status</option>
+                            <option value="">Filter</option>
                             <option value="Active">Active</option>
                             <option value="Inactive">Inactive</option>
                             <option value="On Leave">On Leave</option>
@@ -194,9 +207,9 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         <tr>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Position</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Skill</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Hire Date</th>
                             <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -223,16 +236,17 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($emp['job_title'] ?? 'N/A'); ?></td>
+                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($emp['skill'] ?? 'General'); ?></td>
                             <td class="px-6 py-4">
-                                <p class="text-gray-600"><?php echo htmlspecialchars($emp['email'] ?? 'N/A'); ?></p>
-                                <p class="text-xs text-gray-400"><?php echo htmlspecialchars($emp['phone'] ?? ''); ?></p>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                    <?php echo htmlspecialchars($emp['employee_type'] ?? 'Regular'); ?>
+                                </span>
                             </td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium <?php echo $statusClass; ?>">
                                     <?php echo htmlspecialchars($emp['status']); ?>
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-gray-600"><?php echo $emp['hire_date'] ? date('M d, Y', strtotime($emp['hire_date'])) : 'N/A'; ?></td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center justify-center gap-2">
                                     <button onclick="viewEmployee(<?php echo $emp['employee_id']; ?>)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="View">
@@ -260,6 +274,41 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                 </table>
             </div>
 
+            </div> <!-- End Tab Content: Employees -->
+
+            <!-- Tab Content: Employee Groups -->
+            <div id="content-groups" class="tab-content hidden">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+                    <i data-lucide="users-2" class="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Employee Groups</h3>
+                    <p class="text-gray-500 mb-6">Organize employees into groups for easier management and bulk assignments.</p>
+                    <button onclick="openGroupModal()" class="inline-flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Create Group
+                    </button>
+                    
+                    <div class="mt-8 text-left">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Group Name</th>
+                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Members</th>
+                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Description</th>
+                                    <th class="text-center px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                        <p>No groups created yet</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End Tab Content: Employee Groups -->
+
         </div>
     </main>
 
@@ -268,6 +317,30 @@ $userName = $_SESSION['user_name'] ?? "Admin";
 
     <script>
         lucide.createIcons();
+
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            // Show selected tab content
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+            
+            // Update tab button styles
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-[#e9922c]', 'text-[#e9922c]');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('tab-' + tabName).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById('tab-' + tabName).classList.add('border-[#e9922c]', 'text-[#e9922c]');
+            
+            lucide.createIcons();
+        }
+
+        function openGroupModal() {
+            showToast('Group management feature coming soon', 'info');
+        }
 
         // Search functionality
         document.getElementById('searchInput').addEventListener('input', filterTable);

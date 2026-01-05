@@ -43,20 +43,21 @@ if ($selected_project_id > 0) {
   $stmt->close();
 }
 
-// Fetch active phases from approved budget proposals
+// Fetch active phases from approved budget proposals (using phase_id with JOIN)
 $phases = [];
 if ($selected_project_id > 0) {
-  $sql_phases = "SELECT DISTINCT phase 
-                 FROM budget_proposals 
-                 WHERE project_id = ? AND status = 'APPROVED'
-                 ORDER BY phase";
+  $sql_phases = "SELECT DISTINCT pp.phase_id, pp.phase_name 
+                 FROM budget_proposals bp
+                 JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
+                 WHERE bp.project_id = ? AND bp.status = 'APPROVED'
+                 ORDER BY pp.phase_name";
   $stmt_phases = $conn->prepare($sql_phases);
   $stmt_phases->bind_param("i", $selected_project_id);
   $stmt_phases->execute();
   $result_phases = $stmt_phases->get_result();
   if ($result_phases && $result_phases->num_rows > 0) {
     while ($row = $result_phases->fetch_assoc()) {
-      $phases[] = $row['phase'];
+      $phases[] = ['phase_id' => $row['phase_id'], 'phase_name' => $row['phase_name']];
     }
   }
   $stmt_phases->close();
@@ -138,8 +139,8 @@ $notificationCount = 0;
               <select id="phase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                 <option value="">Select project phase</option>
                 <?php foreach ($phases as $phase): ?>
-                  <option value="<?php echo htmlspecialchars($phase); ?>" <?php echo ($selected_phase == $phase) ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($phase); ?>
+                  <option value="<?php echo htmlspecialchars($phase['phase_id']); ?>" <?php echo ($selected_phase == $phase['phase_id']) ? 'selected' : ''; ?>>
+                    <?php echo htmlspecialchars($phase['phase_name']); ?>
                   </option>
                 <?php endforeach; ?>
               </select>

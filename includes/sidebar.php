@@ -39,6 +39,7 @@ $budget_path = '/icmis/modules/budget/';
 $procurement_path = '/icmis/modules/procurement/';
 $workforce_path = '/icmis/modules/workforce/';
 $project_path = '/icmis/modules/project/'; 
+$reports_path = '/icmis/modules/reports/'; 
 
 // ------------------------------------------------------------------
 // ACTIVE STATE LOGIC
@@ -80,6 +81,9 @@ $is_attendance = ($current_page === 'attendance.php');
 $is_assignments = ($current_page === 'assignments.php');
 $is_workforce_payroll = ($current_page === 'payroll.php' && $is_workforce);
 $is_workforce_reports = ($current_page === 'reports.php' && $is_workforce);
+
+// 7. REPORTS MODULE
+$is_reports = strpos($current_uri, '/modules/reports/') !== false;
 ?>
 <aside class="w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
     <div class="px-4 py-[1.1rem] border-b border-gray-200 ml-10">
@@ -168,6 +172,15 @@ $is_workforce_reports = ($current_page === 'reports.php' && $is_workforce);
                     <li><a href="<?php echo $workforce_path; ?>payroll.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_workforce_payroll ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_workforce_payroll ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Payroll</span></a></li>
                     <li><a href="<?php echo $workforce_path; ?>reports.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_workforce_reports ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_workforce_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Reports</span></a></li>
                 </ul>
+            </li>
+
+            <li>
+                <a href="<?php echo $reports_path; ?>index.php" class="flex items-center gap-3 px-3 py-2 <?php echo $is_reports ? 'text-[#e9922c] bg-orange-50 border-r-4 border-[#e9922c] -mr-3' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg transition-colors duration-200 group">
+                    <svg class="w-3.5 h-3.5" style="stroke-width: 1.17;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="<?php echo $is_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Reports</span>
+                </a>
             </li>
 
             <li>

@@ -129,17 +129,36 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     <main class="ml-56 mt-16 p-6">
         <div class="max-w-7xl mx-auto">
             
+            <!-- Tabs -->
+            <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
+                <button onclick="switchTab('assignments')" id="tab-assignments" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-[#e9922c] text-[#e9922c] transition-colors">
+                    Assignments
+                </button>
+                <button onclick="switchTab('group-assignments')" id="tab-group-assignments" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                    Group Assignments
+                </button>
+            </div>
+
             <!-- Page Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h1 class="text-2xl text-gray-900 font-bold">Employee Assignments</h1>
-                    <p class="text-sm text-gray-500 mt-1">Manage and track project assignments</p>
+                    <h1 class="text-2xl text-gray-900 font-bold">Assignments</h1>
+                    <p class="text-sm text-gray-500 mt-1">Manage and track employee project assignments</p>
                 </div>
-                <button onclick="openModal()" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
-                    Add Assignment
-                </button>
+                <div class="flex items-center gap-3">
+                    <button onclick="openBulkModal()" class="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                        <i data-lucide="users" class="w-4 h-4"></i>
+                        Bulk Assignment
+                    </button>
+                    <button onclick="openModal()" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Add Assignment
+                    </button>
+                </div>
             </div>
+
+            <!-- Tab Content: Assignments -->
+            <div id="content-assignments" class="tab-content">
 
             <!-- Stats Cards -->
             <div class="grid grid-cols-4 gap-6 mb-6">
@@ -195,10 +214,10 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                     <div class="flex items-center gap-4">
                         <div class="relative">
                             <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                            <input type="text" id="searchInput" placeholder="Search assignments..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none w-64">
+                            <input type="text" id="searchInput" placeholder="Search assignments..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none w-72">
                         </div>
                         <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none">
-                            <option value="">All Status</option>
+                            <option value="">Filter</option>
                             <option value="Active">Active</option>
                             <option value="Completed">Completed</option>
                             <option value="Cancelled">Cancelled</option>
@@ -215,9 +234,11 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         <tr>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Project</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Task</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Phase</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Period</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Start Date</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">End Date</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                             <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -245,14 +266,14 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['project_name'] ?? 'N/A'); ?></td>
+                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['task'] ?? '-'); ?></td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['phase_name'] ?? 'N/A'); ?></td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['role'] ?? 'N/A'); ?></td>
                             <td class="px-6 py-4 text-gray-600 text-sm">
-                                <?php 
-                                    $start = $a['start_date'] ? date('M d, Y', strtotime($a['start_date'])) : 'N/A';
-                                    $end = $a['end_date'] ? date('M d, Y', strtotime($a['end_date'])) : 'Ongoing';
-                                    echo "$start - $end";
-                                ?>
+                                <?php echo $a['start_date'] ? date('M d, Y', strtotime($a['start_date'])) : 'N/A'; ?>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600 text-sm">
+                                <?php echo $a['end_date'] ? date('M d, Y', strtotime($a['end_date'])) : 'Ongoing'; ?>
                             </td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium <?php echo $statusClass; ?>">
@@ -273,7 +294,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         <?php endforeach; ?>
                         <?php if (empty($assignments)): ?>
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                            <td colspan="9" class="px-6 py-12 text-center text-gray-500">
                                 <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 text-gray-300"></i>
                                 <p>No assignments found</p>
                             </td>
@@ -281,7 +302,52 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         <?php endif; ?>
                     </tbody>
                 </table>
+                
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                    <p class="text-sm text-gray-500">Showing 0-0 of 0</p>
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled>Prev</button>
+                        <button class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled>Next</button>
+                    </div>
+                </div>
             </div>
+
+            </div> <!-- End Tab Content: Assignments -->
+
+            <!-- Tab Content: Group Assignments -->
+            <div id="content-group-assignments" class="tab-content hidden">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+                    <i data-lucide="users-2" class="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Group Assignments</h3>
+                    <p class="text-gray-500 mb-6">Assign employee groups to projects for easier bulk management.</p>
+                    <button onclick="openBulkModal()" class="inline-flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Create Group Assignment
+                    </button>
+                    
+                    <div class="mt-8 text-left">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Group Name</th>
+                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Project</th>
+                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Members</th>
+                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                    <th class="text-center px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                        <p>No group assignments created yet</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End Tab Content: Group Assignments -->
 
         </div>
     </main>
@@ -291,6 +357,30 @@ $userName = $_SESSION['user_name'] ?? "Admin";
 
     <script>
         lucide.createIcons();
+
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            // Show selected tab content
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+            
+            // Update tab button styles
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-[#e9922c]', 'text-[#e9922c]');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('tab-' + tabName).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById('tab-' + tabName).classList.add('border-[#e9922c]', 'text-[#e9922c]');
+            
+            lucide.createIcons();
+        }
+
+        function openBulkModal() {
+            showToast('Bulk assignment feature coming soon', 'info');
+        }
 
         // Store data for JS
         const projectsData = <?php echo json_encode($projects); ?>;
