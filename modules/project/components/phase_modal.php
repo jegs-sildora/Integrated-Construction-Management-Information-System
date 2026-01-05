@@ -48,9 +48,14 @@
                         
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Phase Name <span class="text-red-500">*</span></label>
-                            <input type="text" name="phase_name" id="phase_name" required
-                                   placeholder="e.g., Foundation, Framing, Roofing"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
+                            <select name="phase_name" id="phase_name" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
+                                <option value="">Select Phase</option>
+                                <option value="Phase 1: Mobilization">Phase 1: Mobilization</option>
+                                <option value="Phase 2: Structural">Phase 2: Structural</option>
+                                <option value="Phase 3: MEPFS (Mechanical, Electrical, Plumbing, Fire Protection, and Sanitary)">Phase 3: MEPFS (Mechanical, Electrical, Plumbing, Fire Protection, and Sanitary)</option>
+                                <option value="Phase 4: Finishing">Phase 4: Finishing</option>
+                            </select>
                         </div>
                         
                         <div>
@@ -87,9 +92,9 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Duration</label>
-                            <input type="text" name="duration" id="phase_duration"
-                                   placeholder="e.g., 2 weeks, 30 days"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
+                            <input type="text" name="duration" id="phase_duration" readonly
+                                   placeholder="---"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm bg-gray-100 text-gray-600 cursor-not-allowed">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
@@ -124,3 +129,56 @@
         </form>
     </div>
 </div>
+
+<script>
+// Auto-calculate duration based on start and end dates
+function calculatePhaseDuration() {
+    const startDate = document.getElementById('phase_start_date').value;
+    const endDate = document.getElementById('phase_end_date').value;
+    const durationField = document.getElementById('phase_duration');
+    
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        if (end >= start) {
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                durationField.value = '1 day';
+            } else if (diffDays === 1) {
+                durationField.value = '1 day';
+            } else if (diffDays < 7) {
+                durationField.value = diffDays + ' days';
+            } else if (diffDays < 30) {
+                const weeks = Math.floor(diffDays / 7);
+                const remainingDays = diffDays % 7;
+                if (remainingDays === 0) {
+                    durationField.value = weeks + (weeks === 1 ? ' week' : ' weeks');
+                } else {
+                    durationField.value = weeks + (weeks === 1 ? ' week, ' : ' weeks, ') + remainingDays + (remainingDays === 1 ? ' day' : ' days');
+                }
+            } else {
+                const months = Math.floor(diffDays / 30);
+                const remainingDays = diffDays % 30;
+                if (remainingDays === 0) {
+                    durationField.value = months + (months === 1 ? ' month' : ' months');
+                } else if (remainingDays < 7) {
+                    durationField.value = months + (months === 1 ? ' month, ' : ' months, ') + remainingDays + (remainingDays === 1 ? ' day' : ' days');
+                } else {
+                    const weeks = Math.floor(remainingDays / 7);
+                    durationField.value = months + (months === 1 ? ' month, ' : ' months, ') + weeks + (weeks === 1 ? ' week' : ' weeks');
+                }
+            }
+        } else {
+            durationField.value = 'Invalid dates';
+        }
+    } else {
+        durationField.value = '';
+    }
+}
+
+document.getElementById('phase_start_date')?.addEventListener('change', calculatePhaseDuration);
+document.getElementById('phase_end_date')?.addEventListener('change', calculatePhaseDuration);
+</script>

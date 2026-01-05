@@ -1,5 +1,5 @@
 <?php
-// modules/project/tasks.php
+// modules/project/tasks.php - Kanban Board View
 
 // 1. Configuration (Session & Constants)
 require_once __DIR__ . '/../../config/config.php';
@@ -13,35 +13,44 @@ if (!isset($_SESSION['user_id'])) {
 // 3. Database Connection
 require_once __DIR__ . '/../../config/database.php';
 
-// Fetch all tasks across all projects
+// Define status columns for Kanban
+$statusColumns = [
+    'Not Started' => [],
+    'In Progress' => [],
+    'On Hold' => [],
+    'Completed' => []
+];
+
+// Fetch all tasks and group by status
 $sql = "SELECT t.*, 
                p.project_name, p.project_code,
                ph.phase_name,
-               CONCAT(e.first_name, ' ', e.last_name) as assignee_name
+               CONCAT(e.first_name, ' ', e.last_name) as assignee_name,
+               SUBSTRING(e.first_name, 1, 1) as assignee_initial_first,
+               SUBSTRING(e.last_name, 1, 1) as assignee_initial_last
         FROM icmis_tasks t 
         LEFT JOIN icmis_projects p ON t.project_id = p.project_id
         LEFT JOIN icmis_project_phases ph ON t.phase_id = ph.phase_id
         LEFT JOIN workforce_employees e ON t.assigned_to_employee_id = e.employee_id
-        ORDER BY t.due_date ASC, t.task_id DESC";
+        ORDER BY t.priority DESC, t.due_date ASC";
 $result = $conn->query($sql);
 
-$tasks = [];
 $totalTasks = 0;
-$inProgressCount = 0;
-$totalEstHours = 0;
 $overdueCount = 0;
 $now = new DateTime();
 
 if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
-        $tasks[] = $row;
+        $status = $row['status'] ?? 'Not Started';
+        if (isset($statusColumns[$status])) {
+            $statusColumns[$status][] = $row;
+        } else {
+            $statusColumns['Not Started'][] = $row;
+        }
         $totalTasks++;
         
-        $status = strtolower($row['status'] ?? '');
-        if ($status === 'in progress') $inProgressCount++;
-        
-        // Check if overdue (due_date passed and not completed)
-        if (!empty($row['due_date']) && $status !== 'completed') {
+        // Check if overdue
+        if (!empty($row['due_date']) && strtolower($row['status']) !== 'completed') {
             $dueDate = new DateTime($row['due_date']);
             if ($dueDate < $now) {
                 $overdueCount++;
@@ -73,16 +82,27 @@ $allEmployees = [];
 while ($row = $employeesResult->fetch_assoc()) {
     $allEmployees[] = $row;
 }
+
+// Status column colors
+$statusColors = [
+    'Not Started' => ['bg' => 'bg-slate-100', 'border' => 'border-slate-300', 'header' => 'bg-slate-500', 'badge' => 'bg-slate-200 text-slate-700'],
+    'In Progress' => ['bg' => 'bg-blue-50', 'border' => 'border-blue-300', 'header' => 'bg-blue-500', 'badge' => 'bg-blue-200 text-blue-700'],
+    'On Hold' => ['bg' => 'bg-amber-50', 'border' => 'border-amber-300', 'header' => 'bg-amber-500', 'badge' => 'bg-amber-200 text-amber-700'],
+    'Completed' => ['bg' => 'bg-green-50', 'border' => 'border-green-300', 'header' => 'bg-green-500', 'badge' => 'bg-green-200 text-green-700']
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Management | ICMIS</title>
+    <title>Task Management - Kanban | ICMIS</title>
     
     <!-- Global Head Assets -->
     <?php include __DIR__ . '/../../includes/head_assets.php'; ?>
+    
+    <!-- SortableJS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
         * { font-family: 'Inter', sans-serif; }
@@ -91,6 +111,44 @@ while ($row = $employeesResult->fetch_assoc()) {
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .animate-modal-slide-in { animation: modal-slide-in 0.3s ease-out forwards; }
+        
+        /* Kanban specific styles */
+        .kanban-column {
+            min-height: 500px;
+        }
+        .task-card {
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        .task-card:active {
+            cursor: grabbing;
+        }
+        .task-card.sortable-ghost {
+            opacity: 0.4;
+            background: #fef3c7;
+        }
+        .task-card.sortable-chosen {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            transform: rotate(2deg);
+        }
+        .kanban-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db #f3f4f6;
+        }
+        .kanban-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .kanban-scroll::-webkit-scrollbar-track {
+            background: #f3f4f6;
+            border-radius: 3px;
+        }
+        .kanban-scroll::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+        .kanban-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -102,12 +160,12 @@ while ($row = $employeesResult->fetch_assoc()) {
     <?php
         $pageTitle = "Task Management";
         $pageSection = "Project Management";
-        $pageSubTitle = '<span class="text-sm text-gray-500">Define and manage project tasks, assignments, and hours</span>';
+        $pageSubTitle = '<span class="text-sm text-gray-500">Kanban board for task management</span>';
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
     <main class="ml-56 mt-16 p-6">
-        <div class="max-w-7xl mx-auto">
+        <div class="max-w-full mx-auto">
             
             <!-- Tabs -->
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
@@ -120,238 +178,157 @@ while ($row = $employeesResult->fetch_assoc()) {
                 <a href="tasks.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-[#e9922c] text-[#e9922c] transition-colors">
                     Tasks
                 </a>
+                <a href="gantt.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                    Gantt Chart
+                </a>
             </div>
 
-        <!-- Page Header -->
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-2xl text-gray-900 font-bold">Task Management</h1>
-                <p class="text-sm text-gray-500 mt-1">Define and manage project tasks, assignments, and hours.</p>
-            </div>
-        </div>
-
-        <!-- Search, Filter, and Add Button -->
-        <div class="flex items-center justify-between gap-4 mb-6">
-            <div class="flex items-center gap-4 flex-1">
-                <!-- Search -->
-                <div class="relative flex-1 max-w-md">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input type="text" id="searchInput" placeholder="Search tasks..." class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] text-sm">
+            <!-- Page Header with Stats -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-6">
+                    <div>
+                        <h1 class="text-2xl text-gray-900 font-bold">Task Board</h1>
+                        <p class="text-sm text-gray-500 mt-1">Drag and drop tasks to update their status</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-200">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <span class="text-sm font-semibold text-gray-700"><?php echo $totalTasks; ?> Tasks</span>
+                        </div>
+                        <?php if ($overdueCount > 0): ?>
+                        <div class="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-lg border border-red-200">
+                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="text-sm font-semibold text-red-700"><?php echo $overdueCount; ?> Overdue</span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 
-                <!-- Filter -->
-                <select id="projectFilter" class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c]">
-                    <option value="">Filter</option>
-                    <?php foreach ($allProjects as $proj): ?>
-                    <option value="<?php echo $proj['project_id']; ?>"><?php echo htmlspecialchars($proj['project_name']); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <button id="addTaskBtn" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span class="font-medium">Add Task</span>
+                </button>
             </div>
-            
-            <button id="addTaskBtn" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                <span class="font-medium">Add Task</span>
-            </button>
-        </div>
 
-        <!-- Stat Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <div class="flex items-center gap-3">
-                    <div class="bg-blue-100 rounded-lg p-3">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                        </svg>
+            <!-- Kanban Board -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <?php foreach ($statusColumns as $status => $tasks): ?>
+                <?php $colors = $statusColors[$status]; ?>
+                <div class="flex flex-col">
+                    <!-- Column Header -->
+                    <div class="<?php echo $colors['header']; ?> rounded-t-xl px-4 py-3 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-white text-sm uppercase tracking-wide"><?php echo $status; ?></h3>
+                            <span class="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full"><?php echo count($tasks); ?></span>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Total Tasks</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $totalTasks; ?></h2>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <div class="flex items-center gap-3">
-                    <div class="bg-green-100 rounded-lg p-3">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">In Progress</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $inProgressCount; ?></h2>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <div class="flex items-center gap-3">
-                    <div class="bg-purple-100 rounded-lg p-3">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Est. Hours</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $totalEstHours; ?></h2>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <div class="flex items-center gap-3">
-                    <div class="bg-red-100 rounded-lg p-3">
-                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Overdue</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $overdueCount; ?></h2>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tasks Table -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full" id="tasksTable">
-                    <thead>
-                        <tr class="bg-gradient-to-r from-slate-800 to-slate-700">
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Task Name</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Project / Phase</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Assigned To</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Due Date</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Priority</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Hours</th>
-                            <th class="px-6 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200" id="tasksTableBody">
+                    
+                    <!-- Column Body -->
+                    <div class="kanban-column <?php echo $colors['bg']; ?> border-l border-r border-b <?php echo $colors['border']; ?> rounded-b-xl p-3 kanban-scroll overflow-y-auto" 
+                         data-status="<?php echo htmlspecialchars($status); ?>" 
+                         id="column-<?php echo str_replace(' ', '-', strtolower($status)); ?>">
+                        
                         <?php if (empty($tasks)): ?>
-                        <tr id="emptyRow">
-                            <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                                <div class="flex flex-col items-center">
-                                    <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                                    </svg>
-                                    <p class="text-sm">No tasks found</p>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php else: ?>
+                        <div class="empty-state text-center py-8 text-gray-400">
+                            <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <p class="text-sm">No tasks</p>
+                        </div>
+                        <?php endif; ?>
                         <?php foreach ($tasks as $task): ?>
                         <?php
                             $isOverdue = false;
-                            if (!empty($task['due_date']) && strtolower($task['status'] ?? '') !== 'completed') {
+                            if (!empty($task['due_date']) && strtolower($task['status']) !== 'completed') {
                                 $dueDate = new DateTime($task['due_date']);
                                 if ($dueDate < $now) {
                                     $isOverdue = true;
                                 }
                             }
+                            
+                            $priorityClass = match(strtolower($task['priority'] ?? '')) {
+                                'low' => 'bg-gray-100 text-gray-600',
+                                'medium' => 'bg-blue-100 text-blue-700',
+                                'high' => 'bg-orange-100 text-orange-700',
+                                'urgent' => 'bg-red-100 text-red-700',
+                                default => 'bg-gray-100 text-gray-600'
+                            };
+                            
+                            $initials = strtoupper(($task['assignee_initial_first'] ?? '') . ($task['assignee_initial_last'] ?? ''));
                         ?>
-                        <tr class="hover:bg-gray-50 transition-colors duration-150 task-row" 
-                            data-project="<?php echo $task['project_id']; ?>"
-                            data-name="<?php echo strtolower(htmlspecialchars($task['task_name'])); ?>"
-                            data-project-name="<?php echo strtolower(htmlspecialchars($task['project_name'] ?? '')); ?>">
-                            <td class="px-6 py-4">
-                                <div class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($task['task_name']); ?></div>
-                                <?php if (!empty($task['description'])): ?>
-                                <div class="text-xs text-gray-500 truncate max-w-xs"><?php echo htmlspecialchars($task['description']); ?></div>
-                                <?php endif; ?>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="text-sm text-gray-900"><?php echo htmlspecialchars($task['project_name'] ?? '-'); ?></div>
-                                <div class="text-xs text-gray-500"><?php echo htmlspecialchars($task['phase_name'] ?? 'No Phase'); ?></div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="text-sm text-gray-900"><?php echo htmlspecialchars($task['assignee_name'] ?? 'Unassigned'); ?></div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <?php if (!empty($task['due_date'])): ?>
-                                <div class="text-sm <?php echo $isOverdue ? 'text-red-600 font-semibold' : 'text-gray-900'; ?>">
-                                    <?php echo date('M d, Y', strtotime($task['due_date'])); ?>
+                        <div class="task-card group bg-white rounded-lg p-3 mb-2 shadow-sm border border-gray-200 hover:shadow-md transition-shadow" 
+                             data-id="<?php echo $task['task_id']; ?>">
+                            <!-- Task Header -->
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-semibold text-gray-900 text-sm leading-tight flex-1 pr-2"><?php echo htmlspecialchars($task['task_name']); ?></h4>
+                                <span class="<?php echo $priorityClass; ?> text-xs font-bold px-2 py-0.5 rounded shrink-0">
+                                    <?php echo $task['priority'] ?? 'Medium'; ?>
+                                </span>
+                            </div>
+                            
+                            <!-- Project Name -->
+                            <p class="text-xs text-gray-500 mb-2 truncate">
+                                <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                <?php echo htmlspecialchars($task['project_name'] ?? 'No Project'); ?>
+                            </p>
+                            
+                            <!-- Task Footer -->
+                            <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                                <!-- Due Date -->
+                                <div class="flex items-center gap-1 <?php echo $isOverdue ? 'text-red-600' : 'text-gray-400'; ?>">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="text-xs font-medium">
+                                        <?php echo !empty($task['due_date']) ? date('M d', strtotime($task['due_date'])) : 'No date'; ?>
+                                    </span>
                                 </div>
-                                <?php if ($isOverdue): ?>
-                                <div class="text-xs text-red-500">Overdue</div>
-                                <?php endif; ?>
+                                
+                                <!-- Assignee Avatar -->
+                                <?php if (!empty($task['assignee_name'])): ?>
+                                <div class="flex items-center gap-1.5" title="<?php echo htmlspecialchars($task['assignee_name']); ?>">
+                                    <div class="w-6 h-6 rounded-full bg-[#e9922c] flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold"><?php echo $initials; ?></span>
+                                    </div>
+                                </div>
                                 <?php else: ?>
-                                <span class="text-sm text-gray-400">-</span>
-                                <?php endif; ?>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <?php 
-                                    $statusClass = match(strtolower($task['status'] ?? '')) {
-                                        'not started' => 'bg-yellow-100 text-yellow-700',
-                                        'in progress' => 'bg-green-100 text-green-700',
-                                        'completed' => 'bg-purple-100 text-purple-700',
-                                        'on hold' => 'bg-red-100 text-red-700',
-                                        default => 'bg-gray-100 text-gray-700'
-                                    };
-                                ?>
-                                <span class="px-3 py-1 text-xs font-bold rounded-full <?php echo $statusClass; ?>">
-                                    <?php echo htmlspecialchars($task['status'] ?? 'Unknown'); ?>
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <?php 
-                                    $priorityClass = match(strtolower($task['priority'] ?? '')) {
-                                        'low' => 'bg-gray-100 text-gray-700',
-                                        'medium' => 'bg-blue-100 text-blue-700',
-                                        'high' => 'bg-orange-100 text-orange-700',
-                                        'urgent' => 'bg-red-100 text-red-700',
-                                        default => 'bg-gray-100 text-gray-700'
-                                    };
-                                ?>
-                                <span class="px-3 py-1 text-xs font-bold rounded-full <?php echo $priorityClass; ?>">
-                                    <?php echo htmlspecialchars($task['priority'] ?? 'Medium'); ?>
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-sm text-gray-600">-</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-1">
-                                    <button class="edit-btn text-gray-500 p-2 rounded-lg hover:text-green-600 hover:bg-green-50 transition-colors duration-200" 
-                                            data-id="<?php echo $task['task_id']; ?>" title="Edit">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </button>
-                                    
-                                    <button class="delete-btn text-gray-500 p-2 rounded-lg hover:text-red-600 hover:bg-red-50 transition-colors duration-200" 
-                                            data-id="<?php echo $task['task_id']; ?>" 
-                                            data-name="<?php echo htmlspecialchars($task['task_name'], ENT_QUOTES); ?>" title="Delete">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
+                                <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center" title="Unassigned">
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
                                 </div>
-                            </td>
-                        </tr>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <!-- Quick Actions (on hover) -->
+                            <div class="hidden group-hover:flex items-center justify-end gap-1 mt-2 pt-2 border-t border-gray-100">
+                                <button class="edit-btn p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" 
+                                        data-id="<?php echo $task['task_id']; ?>" title="Edit">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                                <button class="delete-btn p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" 
+                                        data-id="<?php echo $task['task_id']; ?>" 
+                                        data-name="<?php echo htmlspecialchars($task['task_name'], ENT_QUOTES); ?>" title="Delete">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                         <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Pagination -->
-            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                <p class="text-sm text-gray-500" id="paginationInfo">Showing 0-0 of 0</p>
-                <div class="flex items-center gap-2">
-                    <button id="prevPage" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                        Prev
-                    </button>
-                    <button id="nextPage" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                        Next
-                    </button>
+                    </div>
                 </div>
+                <?php endforeach; ?>
             </div>
         </div>
     </main>
@@ -417,86 +394,85 @@ while ($row = $employeesResult->fetch_assoc()) {
 
     <script>
         const backendUrl = "api/tasks.php";
+        const updateStatusUrl = "api/update_task_status.php";
         const projectsData = <?php echo json_encode($allProjects); ?>;
         const phasesData = <?php echo json_encode($allPhases); ?>;
         const employeesData = <?php echo json_encode($allEmployees); ?>;
         let taskToDelete = null;
-        
-        // Pagination
-        let currentPage = 1;
-        const itemsPerPage = 10;
-        let filteredRows = [];
 
-        // Initialize
+        // Initialize SortableJS for each column
         document.addEventListener('DOMContentLoaded', function() {
-            updateTable();
+            const columns = document.querySelectorAll('.kanban-column');
+            
+            columns.forEach(column => {
+                new Sortable(column, {
+                    group: 'kanban',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    dragClass: 'sortable-drag',
+                    filter: '.empty-state',
+                    onEnd: function(evt) {
+                        const taskId = evt.item.dataset.id;
+                        const newStatus = evt.to.dataset.status;
+                        const oldStatus = evt.from.dataset.status;
+                        
+                        if (newStatus !== oldStatus) {
+                            updateTaskStatus(taskId, newStatus, evt.item);
+                        }
+                    }
+                });
+            });
         });
 
-        // Search and Filter
-        document.getElementById('searchInput')?.addEventListener('input', updateTable);
-        document.getElementById('projectFilter')?.addEventListener('change', updateTable);
+        // Update task status via AJAX
+        function updateTaskStatus(taskId, newStatus, cardElement) {
+            const formData = new FormData();
+            formData.append('task_id', taskId);
+            formData.append('status', newStatus);
 
-        function updateTable() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const projectFilter = document.getElementById('projectFilter').value;
-            const rows = document.querySelectorAll('.task-row');
-            
-            filteredRows = [];
-            rows.forEach(row => {
-                const name = row.dataset.name || '';
-                const projectName = row.dataset.projectName || '';
-                const projectId = row.dataset.project;
-                
-                const matchesSearch = name.includes(searchTerm) || projectName.includes(searchTerm);
-                const matchesProject = !projectFilter || projectId === projectFilter;
-                
-                if (matchesSearch && matchesProject) {
-                    filteredRows.push(row);
+            fetch(updateStatusUrl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(`Task moved to "${newStatus}"`, 'success');
+                    
+                    // Update column counts
+                    updateColumnCounts();
+                    
+                    // Remove empty state if present in target column
+                    const targetColumn = cardElement.parentElement;
+                    const emptyState = targetColumn.querySelector('.empty-state');
+                    if (emptyState) {
+                        emptyState.remove();
+                    }
+                } else {
+                    showToast(data.message || 'Failed to update task status', 'error');
+                    // Revert the drag - reload page
+                    setTimeout(() => window.location.reload(), 500);
                 }
+            })
+            .catch(err => {
+                showToast('Error updating task: ' + err.message, 'error');
+                setTimeout(() => window.location.reload(), 500);
             });
-            
-            currentPage = 1;
-            renderPage();
         }
 
-        function renderPage() {
-            const rows = document.querySelectorAll('.task-row');
-            const start = (currentPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            
-            rows.forEach(row => row.style.display = 'none');
-            
-            filteredRows.forEach((row, index) => {
-                if (index >= start && index < end) {
-                    row.style.display = '';
+        // Update column task counts
+        function updateColumnCounts() {
+            const columns = document.querySelectorAll('.kanban-column');
+            columns.forEach(column => {
+                const count = column.querySelectorAll('.task-card').length;
+                const header = column.previousElementSibling;
+                const badge = header.querySelector('span');
+                if (badge) {
+                    badge.textContent = count;
                 }
             });
-            
-            // Update pagination info
-            const total = filteredRows.length;
-            const showStart = total > 0 ? start + 1 : 0;
-            const showEnd = Math.min(end, total);
-            document.getElementById('paginationInfo').textContent = `Showing ${showStart}-${showEnd} of ${total}`;
-            
-            // Update buttons
-            document.getElementById('prevPage').disabled = currentPage === 1;
-            document.getElementById('nextPage').disabled = end >= total;
         }
-
-        document.getElementById('prevPage')?.addEventListener('click', function() {
-            if (currentPage > 1) {
-                currentPage--;
-                renderPage();
-            }
-        });
-
-        document.getElementById('nextPage')?.addEventListener('click', function() {
-            const maxPage = Math.ceil(filteredRows.length / itemsPerPage);
-            if (currentPage < maxPage) {
-                currentPage++;
-                renderPage();
-            }
-        });
 
         // Populate project select in modal
         function populateProjectSelect(selectedProjectId = null) {
@@ -554,7 +530,8 @@ while ($row = $employeesResult->fetch_assoc()) {
 
         // ------------------ Edit Task ------------------
         document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
                 const taskId = this.dataset.id;
 
                 fetch(backendUrl + '?fetch_id=' + taskId)
@@ -585,7 +562,8 @@ while ($row = $employeesResult->fetch_assoc()) {
 
         // ------------------ Delete Task ------------------
         document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
                 taskToDelete = this.dataset.id;
                 document.getElementById('deleteTaskName').textContent = this.dataset.name;
                 document.getElementById('deleteModal').classList.remove('hidden');

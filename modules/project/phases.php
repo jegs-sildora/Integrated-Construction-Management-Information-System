@@ -13,10 +13,21 @@ if (!isset($_SESSION['user_id'])) {
 // 3. Database Connection
 require_once __DIR__ . '/../../config/database.php';
 
-// Fetch all phases across all projects
-$sql = "SELECT ph.*, p.project_name, p.project_code
+// Default Phases for new projects
+$defaultPhases = [
+    'Phase 1: Mobilization',
+    'Phase 2: Structural',
+    'Phase 3: MEPFS (Mechanical, Electrical, Plumbing, Fire Protection, and Sanitary)',
+    'Phase 4: Finishing'
+];
+
+// Fetch all phases across all projects with approved budget from budget_proposals
+$sql = "SELECT ph.*, p.project_name, p.project_code,
+               COALESCE(SUM(CASE WHEN bp.status = 'APPROVED' THEN bp.total_amount ELSE 0 END), 0) AS phase_budget
         FROM icmis_project_phases ph 
         LEFT JOIN icmis_projects p ON ph.project_id = p.project_id 
+        LEFT JOIN budget_proposals bp ON bp.phase_id = ph.phase_id AND bp.status = 'APPROVED'
+        GROUP BY ph.phase_id
         ORDER BY ph.start_date DESC, ph.phase_id DESC";
 $result = $conn->query($sql);
 
@@ -90,6 +101,9 @@ while ($row = $projectsResult->fetch_assoc()) {
                 </a>
                 <a href="tasks.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
                     Tasks
+                </a>
+                <a href="gantt.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                    Gantt Chart
                 </a>
             </div>
 
@@ -256,7 +270,14 @@ while ($row = $projectsResult->fetch_assoc()) {
                                 <span class="px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700">Medium</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-sm text-gray-600">-</span>
+                                <?php 
+                                $phaseBudget = floatval($phase['phase_budget'] ?? 0);
+                                if ($phaseBudget > 0): 
+                                ?>
+                                <span class="text-sm font-semibold text-gray-900">₱<?php echo number_format($phaseBudget, 2); ?></span>
+                                <?php else: ?>
+                                <span class="text-sm text-gray-400 italic">No budget</span>
+                                <?php endif; ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="flex items-center justify-center gap-1">

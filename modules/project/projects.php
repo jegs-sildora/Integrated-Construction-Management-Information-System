@@ -89,6 +89,9 @@ if ($result && $result->num_rows > 0) {
                 <a href="tasks.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
                     Tasks
                 </a>
+                <a href="gantt.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                    Gantt Chart
+                </a>
             </div>
 
         <!-- Page Header -->
@@ -97,6 +100,31 @@ if ($result && $result->num_rows > 0) {
                 <h1 class="text-2xl text-gray-900 font-bold">Project Management</h1>
                 <p class="text-sm text-gray-500 mt-1">Create, manage, and track all construction projects</p>
             </div>
+        </div>
+
+        <!-- Search, Filter, and Add Button -->
+        <div class="flex items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-4 flex-1">
+                <!-- Search -->
+                <div class="relative flex-1 max-w-md">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search project name or code" class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] text-sm">
+                </div>
+                
+                <!-- Status Filter -->
+                <select id="statusFilter" class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c]">
+                    <option value="">All Status</option>
+                    <option value="Planning">Planning</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Active">Active</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+            
             <button id="addProjectBtn" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -584,6 +612,78 @@ if ($result && $result->num_rows > 0) {
                     showToast('Error: ' + err.message, 'error');
                 });
         });
+
+        // ------------------ Search and Filter ------------------
+        function filterProjects() {
+            const searchTerm = document.getElementById('projectSearch')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('projectStatusFilter')?.value.toLowerCase() || '';
+            const budgetFilter = document.getElementById('projectBudgetFilter')?.value || '';
+            
+            const rows = document.querySelectorAll('.project-row');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const name = row.dataset.name || '';
+                const manager = row.dataset.manager || '';
+                const status = row.dataset.status || '';
+                const budget = parseFloat(row.dataset.budget) || 0;
+                
+                // Search match (project name or manager)
+                const searchMatch = !searchTerm || name.includes(searchTerm) || manager.includes(searchTerm);
+                
+                // Status match
+                const statusMatch = !statusFilter || status === statusFilter;
+                
+                // Budget match
+                let budgetMatch = true;
+                if (budgetFilter === 'low') {
+                    budgetMatch = budget < 1000000;
+                } else if (budgetFilter === 'mid') {
+                    budgetMatch = budget >= 1000000 && budget <= 5000000;
+                } else if (budgetFilter === 'high') {
+                    budgetMatch = budget > 5000000;
+                }
+                
+                // Show/hide row
+                if (searchMatch && statusMatch && budgetMatch) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Show no results message if needed
+            const tableBody = document.getElementById('projectsTableBody');
+            let noResultsRow = document.getElementById('noResultsRow');
+            
+            if (visibleCount === 0 && rows.length > 0) {
+                if (!noResultsRow) {
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'noResultsRow';
+                    noResultsRow.innerHTML = `
+                        <td colspan="7" class="px-6 py-12 text-center">
+                            <div class="text-gray-400">
+                                <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <p class="text-sm font-medium">No projects match your filters</p>
+                                <p class="text-xs mt-1">Try adjusting your search or filter criteria</p>
+                            </div>
+                        </td>
+                    `;
+                    tableBody?.appendChild(noResultsRow);
+                }
+                noResultsRow.style.display = '';
+            } else if (noResultsRow) {
+                noResultsRow.style.display = 'none';
+            }
+        }
+        
+        // Attach event listeners
+        document.getElementById('projectSearch')?.addEventListener('input', filterProjects);
+        document.getElementById('projectStatusFilter')?.addEventListener('change', filterProjects);
+        document.getElementById('projectBudgetFilter')?.addEventListener('change', filterProjects);
     </script>
 </body>
 </html>

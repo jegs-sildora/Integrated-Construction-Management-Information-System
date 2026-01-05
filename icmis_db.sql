@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 05, 2026 at 03:05 PM
+-- Generation Time: Jan 05, 2026 at 11:33 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -147,7 +147,8 @@ CREATE TABLE `icmis_projects` (
 
 INSERT INTO `icmis_projects` (`project_id`, `project_code`, `project_name`, `description`, `location`, `status`, `start_date`, `end_date`, `completion_rate`, `project_manager_id`, `total_budget`) VALUES
 (1, 'PRJ-2025-001', 'Makati Skyline Tower', NULL, 'Makati City', 'Active', '2025-01-15', '2027-06-30', 0.00, 1, 15000000.00),
-(2, 'PRJ-2025-002', 'Bacolod Gov Center Annex', NULL, 'Bacolod City', 'Planning', '2025-06-01', '2026-12-15', 0.00, 1, 8500000.00);
+(2, 'PRJ-2025-002', 'Bacolod Gov Center Annex', NULL, 'Bacolod City', 'Planning', '2025-06-01', '2026-12-15', 0.00, 1, 8500000.00),
+(4, 'PRJ-2026-001', 'Davao', 'ASDF', 'Davao City', 'Planning', '2026-01-06', '2027-01-06', 0.00, 1, 10000000.00);
 
 -- --------------------------------------------------------
 
@@ -982,7 +983,7 @@ ALTER TABLE `budget_proposals`
 -- AUTO_INCREMENT for table `icmis_projects`
 --
 ALTER TABLE `icmis_projects`
-  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `icmis_project_phases`

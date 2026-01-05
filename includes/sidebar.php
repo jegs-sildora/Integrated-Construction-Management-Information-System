@@ -84,6 +84,8 @@ $is_workforce_reports = ($current_page === 'reports.php' && $is_workforce);
 
 // 7. REPORTS MODULE
 $is_reports = strpos($current_uri, '/modules/reports/') !== false;
+
+// 8. TASK MANAGEMENT (removed - navigation consolidated under Project Management)
 ?>
 <aside class="w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
     <div class="px-4 py-[1.1rem] border-b border-gray-200 ml-10">
