@@ -113,7 +113,7 @@ try {
                         total_budget = ?
                     WHERE project_id = ?";
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("ssissssdi", $project_code, $project_name, $project_manager, $description, $location, $start_date, $end_date, $status, $total_budget, $project_id);
+            $stmt->bind_param("ssisssssdi", $project_code, $project_name, $project_manager, $description, $location, $start_date, $end_date, $status, $total_budget, $project_id);
             $stmt->execute();
             $stmt->close();
 
@@ -158,4 +158,3 @@ try {
 }
 
 $conn->close();
-?>

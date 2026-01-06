@@ -201,6 +201,7 @@ $ganttDataJson = json_encode($ganttData);
         .gantt .bar-label {
             font-family: 'Inter', sans-serif !important;
             font-size: 11px !important;
+            transition: fill .15s ease;
         }
         
         /* Today line */
@@ -449,7 +450,7 @@ $ganttDataJson = json_encode($ganttData);
                     const typeColor = item.type === 'phase' ? '#e9922c' : '#3b82f6';
                     
                     let html = `
-                        <div class="p-3 min-w-[200px]">
+                        <div class="p-3 min-w-[200px] bg-white">
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="px-2 py-0.5 text-xs font-bold text-white rounded" style="background-color: ${typeColor}">
                                     ${typeLabel}
@@ -493,14 +494,96 @@ $ganttDataJson = json_encode($ganttData);
                 on_click: function(task) {
                     const item = ganttData.find(d => d.id === task.id);
                     if (item) {
-                        if (item.type === 'phase') {
-                            window.location.href = 'phases.php';
-                        } else {
-                            window.location.href = 'tasks.php';
-                        }
+                        // Briefly highlight the clicked item using the system accent color
+                        const typeColor = item.type === 'phase' ? '#e9922c' : '#3b82f6';
+                        setHighlightForItem(item.id, typeColor);
+                        setTimeout(() => {
+                            if (item.type === 'phase') {
+                                window.location.href = 'phases.php';
+                            } else {
+                                window.location.href = 'tasks.php';
+                            }
+                        }, 150);
                     }
                 }
             });
+            
+            // Apply dynamic text colors once DOM is ready
+            setTimeout(applyDynamicTextColors, 60);
+        }
+
+        // Utility: compute contrast (black or white) for a given hex color
+        function getContrastingTextColor(hex) {
+            if (!hex) return '#111';
+            // normalize
+            hex = hex.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex.split('').map(h => h + h).join('');
+            }
+            const r = parseInt(hex.substr(0,2),16);
+            const g = parseInt(hex.substr(2,2),16);
+            const b = parseInt(hex.substr(4,2),16);
+            // luminance formula
+            const lum = (0.2126*r + 0.7152*g + 0.0722*b)/255;
+            return lum > 0.55 ? '#111827' : '#ffffff';
+        }
+
+        // Apply dynamic label colors based on bar fill color (or system type color)
+        function applyDynamicTextColors() {
+            document.querySelectorAll('.gantt .bar-wrapper').forEach(wrapper => {
+                // try to find the label and the bar element
+                const label = wrapper.querySelector('.bar-label');
+                const bar = wrapper.querySelector('.bar');
+                if (!label || !bar) return;
+
+                // determine fill color
+                let fill = bar.getAttribute('fill') || window.getComputedStyle(bar).fill || '';
+                if (fill && fill.indexOf('rgb') === 0) {
+                    // convert rgb(...) to hex
+                    const nums = fill.match(/\d+/g).map(Number);
+                    fill = '#' + nums.map(n => n.toString(16).padStart(2,'0')).join('');
+                }
+
+                // fallback: if wrapper has class bar-phase or bar-task, use system colors
+                if (!fill || fill === 'none') {
+                    if (wrapper.classList.contains('bar-phase')) fill = '#e9922c';
+                    else if (wrapper.classList.contains('bar-task')) fill = '#3b82f6';
+                }
+
+                const contrast = getContrastingTextColor(fill);
+                label.style.fill = contrast;
+            });
+        }
+
+        // Highlight label and add a subtle outline on click before navigation
+        function setHighlightForItem(itemId, color) {
+            // selector by data-id if present
+            let wrapper = document.querySelector(`.gantt .bar-wrapper[data-id="${itemId}"]`);
+            if (!wrapper) {
+                // fallback: match by label text
+                const item = ganttData.find(d => d.id === itemId);
+                if (item) {
+                    wrapper = Array.from(document.querySelectorAll('.gantt .bar-wrapper')).find(w => {
+                        const l = w.querySelector('.bar-label');
+                        return l && l.textContent.trim() === item.name;
+                    });
+                }
+            }
+            if (!wrapper) return;
+
+            const label = wrapper.querySelector('.bar-label');
+            const bar = wrapper.querySelector('.bar');
+            const contrast = getContrastingTextColor(color);
+            if (label) label.style.fill = color;
+            if (bar) {
+                bar.style.stroke = color;
+                bar.style.strokeWidth = '1.5';
+            }
+            // remove highlight after short delay
+            setTimeout(() => {
+                if (label) label.style.fill = getContrastingTextColor(bar ? (bar.getAttribute('fill')||'') : '');
+                if (bar) { bar.style.stroke = ''; bar.style.strokeWidth = ''; }
+            }, 800);
         }
         
         function changeViewMode(mode) {

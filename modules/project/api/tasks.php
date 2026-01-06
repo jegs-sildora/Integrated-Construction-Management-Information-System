@@ -84,6 +84,29 @@ try {
         $priority = $_POST['priority'] ?? 'Medium';
         $status = $_POST['status'] ?? 'Not Started';
 
+        // Validate and normalize `status` to match DB column definition
+        $colQuery = "SELECT COLUMN_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" . $conn->real_escape_string(DB_NAME) . "' AND TABLE_NAME = 'icmis_tasks' AND COLUMN_NAME = 'status' LIMIT 1";
+        $colRes = $conn->query($colQuery);
+        if ($colRes && $colInfo = $colRes->fetch_assoc()) {
+            $colType = $colInfo['COLUMN_TYPE'];
+            if (strpos($colType, 'enum(') === 0) {
+                preg_match_all("/'([^']+)'/", $colType, $m);
+                $enumVals = $m[1] ?? [];
+                if (!in_array($status, $enumVals, true)) {
+                    if (in_array('Not Started', $enumVals, true)) {
+                        $status = 'Not Started';
+                    } elseif (!empty($enumVals)) {
+                        $status = $enumVals[0];
+                    }
+                }
+            } else {
+                $max = (int)$colInfo['CHARACTER_MAXIMUM_LENGTH'];
+                if ($max > 0 && strlen($status) > $max) {
+                    $status = substr($status, 0, $max);
+                }
+            }
+        }
+
         // Check if Task ID exists
         $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM icmis_tasks WHERE task_id = ?");
         $stmt->bind_param("i", $task_id);
@@ -115,7 +138,7 @@ try {
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             
             $stmt = $conn->prepare($sql);
-            $stmt->bind_param("siisisss", $task_name, $project_id, $phase_id, $description, $assigned_to, $start_date, $due_date, $priority, $status);
+            $stmt->bind_param("siisissss", $task_name, $project_id, $phase_id, $description, $assigned_to, $start_date, $due_date, $priority, $status);
             $msg = "Task added successfully";
         }
 
@@ -155,4 +178,4 @@ try {
 }
 
 $conn->close();
-?>
+ 
