@@ -23,12 +23,12 @@ $defaultPhases = [
 
 // Fetch all phases across all projects with approved budget from budget_proposals
 $sql = "SELECT ph.*, p.project_name, p.project_code,
-               COALESCE(SUM(CASE WHEN bp.status = 'APPROVED' THEN bp.total_amount ELSE 0 END), 0) AS phase_budget
-        FROM icmis_project_phases ph 
-        LEFT JOIN icmis_projects p ON ph.project_id = p.project_id 
-        LEFT JOIN budget_proposals bp ON bp.phase_id = ph.phase_id AND bp.status = 'APPROVED'
-        GROUP BY ph.phase_id
-        ORDER BY ph.start_date DESC, ph.phase_id DESC";
+           COALESCE(SUM(CASE WHEN bp.status = 'APPROVED' THEN bp.total_amount ELSE 0 END), 0) AS phase_budget
+    FROM icmis_project_phases ph 
+    LEFT JOIN icmis_projects p ON ph.project_id = p.project_id 
+    LEFT JOIN budget_proposals bp ON bp.phase_id = ph.phase_id AND bp.status = 'APPROVED'
+    GROUP BY ph.phase_id
+    ORDER BY ph.phase_id DESC, ph.start_date DESC";
 $result = $conn->query($sql);
 
 $phases = [];

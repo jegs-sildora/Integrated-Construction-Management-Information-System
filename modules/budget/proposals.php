@@ -91,7 +91,7 @@
     include __DIR__ . '/../../includes/header.php'; 
   ?>
 
-  <main class="ml-56 mt-16 p-6">
+  <main class="ml-56 mt-18 p-6">
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-2xl text-gray-900 font-bold">Budget Proposals</h1>

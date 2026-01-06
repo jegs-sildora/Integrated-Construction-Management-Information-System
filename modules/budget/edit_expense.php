@@ -1,8 +1,24 @@
 <?php
 // ============================================================
-// ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
+// DEPRECATED: Manual expense editing has been removed.
+// Expenses are now automatically synced from the Procurement module.
+// This file redirects users to the expenses list.
 // ============================================================
 
+session_start();
+
+// Set a notice message
+$_SESSION['toast_message'] = 'Manual expense editing has been disabled. Expenses are now automatically synced from completed Purchase Orders. To modify an expense, please update the corresponding Purchase Order in the Procurement module.';
+$_SESSION['toast_type'] = 'info';
+
+// Redirect to expenses list
+header('Location: expenses.php');
+exit;
+
+// ============================================================
+// LEGACY CODE BELOW (DEPRECATED - kept for reference)
+// ============================================================
+/*
 // Connection & Context - using centralized config
 include __DIR__ . '/project_context.php';
 $conn = getBudgetConnection();
@@ -24,6 +40,7 @@ if ($result_projects && $result_projects->num_rows > 0) {
     $projects[] = $row;
   }
 }
+*/
 
 // Header variables
 $pageTitle = "Edit Expense";

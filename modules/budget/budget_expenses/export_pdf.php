@@ -56,10 +56,10 @@ try {
     // This makes the "Recent Reports" table work
     $check_table = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
     if ($check_table && $check_table->num_rows > 0) {
-        $log_sql = "INSERT INTO budget_generated_reports (project_id, report_type, report_name, context, generated_by) VALUES (?, ?, ?, ?, ?)";
+        $log_sql = "INSERT INTO budget_generated_reports (project_id, report_type, report_name, generated_by) VALUES (?, ?, ?, ?)";
         $stmt_log = $conn->prepare($log_sql);
         if ($stmt_log) {
-            $stmt_log->bind_param("issss", $project_id, $report_type, $report_name, $context_label, $user_name);
+            $stmt_log->bind_param("isss", $project_id, $report_type, $report_name, $user_name);
             $stmt_log->execute();
             $stmt_log->close();
         }

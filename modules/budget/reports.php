@@ -297,7 +297,7 @@
                       <tr>
                           <th class="px-6 py-3">Report Name</th>
                           <th class="px-6 py-3">Type</th>
-                          <th class="px-6 py-3">Context</th>
+                          <th class="px-6 py-3">Project</th>
                           <th class="px-6 py-3">Date Generated</th>
                           <th class="px-6 py-3 text-right">Actions</th>
                       </tr>
@@ -336,7 +336,7 @@
                                     <?php echo str_replace('-', ' ', $type); ?>
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-gray-500"><?php echo htmlspecialchars($report['context'] ?? $current_project_name); ?></td>
+                            <td class="px-6 py-4 text-gray-500"><?php echo htmlspecialchars($current_project_name); ?></td>
                             <td class="px-6 py-4 text-gray-500">
                                 <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime($report['created_at'] ?? 'now'))); ?>
                             </td>

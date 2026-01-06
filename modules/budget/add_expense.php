@@ -1,8 +1,24 @@
 <?php
 // ============================================================
-// ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
+// DEPRECATED: Manual expense entry has been removed.
+// Expenses are now automatically synced from the Procurement module.
+// This file redirects users to the expenses list.
 // ============================================================
 
+session_start();
+
+// Set a notice message
+$_SESSION['toast_message'] = 'Manual expense entry has been disabled. Expenses are now automatically synced from completed Purchase Orders in the Procurement module.';
+$_SESSION['toast_type'] = 'info';
+
+// Redirect to expenses list
+header('Location: expenses.php');
+exit;
+
+// ============================================================
+// LEGACY CODE BELOW (DEPRECATED - kept for reference)
+// ============================================================
+/*
 // Connection & Context - using centralized config
 include __DIR__ . '/project_context.php';
 $conn = getBudgetConnection();
@@ -11,8 +27,8 @@ $conn = getBudgetConnection();
 $selected_project_id = getProjectContext($conn);
 $selected_phase = getPhaseContext();
 
-// Fetch projects from main database
-$sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
+// Fetch projects from main database (include status like create_proposal.php)
+$sql_projects = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
 $result_projects = $conn->query($sql_projects);
 $projects = [];
 if ($result_projects && $result_projects->num_rows > 0) {
@@ -25,6 +41,7 @@ if ($result_projects && $result_projects->num_rows > 0) {
     }
   }
 }
+*/
 
 // Get selected project details
 $project_name = 'No Project Selected';
@@ -43,24 +60,57 @@ if ($selected_project_id > 0) {
   $stmt->close();
 }
 
-// Fetch active phases from approved budget proposals (using phase_id with JOIN)
+// Fetch active phases similarly to create_proposal.php: use project phases table
 $phases = [];
 if ($selected_project_id > 0) {
-  $sql_phases = "SELECT DISTINCT pp.phase_id, pp.phase_name 
+  // First try: phases referenced by approved proposals
+  $sql_phases = "SELECT DISTINCT pp.phase_id, pp.phase_name, pp.start_date, pp.end_date
                  FROM budget_proposals bp
                  JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
-                 WHERE bp.project_id = ? AND bp.status = 'APPROVED'
+                 WHERE bp.project_id = ? AND UPPER(TRIM(bp.status)) = 'APPROVED'
                  ORDER BY pp.phase_name";
   $stmt_phases = $conn->prepare($sql_phases);
-  $stmt_phases->bind_param("i", $selected_project_id);
-  $stmt_phases->execute();
-  $result_phases = $stmt_phases->get_result();
-  if ($result_phases && $result_phases->num_rows > 0) {
-    while ($row = $result_phases->fetch_assoc()) {
-      $phases[] = ['phase_id' => $row['phase_id'], 'phase_name' => $row['phase_name']];
+  if ($stmt_phases) {
+    $stmt_phases->bind_param("i", $selected_project_id);
+    $stmt_phases->execute();
+    $result_phases = $stmt_phases->get_result();
+    if ($result_phases && $result_phases->num_rows > 0) {
+      while ($row = $result_phases->fetch_assoc()) {
+        $phases[] = [
+          'phase_id' => $row['phase_id'],
+          'phase_name' => $row['phase_name'],
+          'start_date' => $row['start_date'],
+          'end_date' => $row['end_date']
+        ];
+      }
+    }
+    $stmt_phases->close();
+  }
+
+  // Fallback: if no phases from approved proposals, return all phases for project
+  if (count($phases) === 0) {
+    $sql_fb = "SELECT phase_id, phase_name, start_date, end_date
+               FROM icmis_project_phases
+               WHERE project_id = ?
+               ORDER BY start_date ASC";
+    $stmt_fb = $conn->prepare($sql_fb);
+    if ($stmt_fb) {
+      $stmt_fb->bind_param("i", $selected_project_id);
+      $stmt_fb->execute();
+      $res_fb = $stmt_fb->get_result();
+      if ($res_fb && $res_fb->num_rows > 0) {
+        while ($row = $res_fb->fetch_assoc()) {
+          $phases[] = [
+            'phase_id' => $row['phase_id'],
+            'phase_name' => $row['phase_name'],
+            'start_date' => $row['start_date'],
+            'end_date' => $row['end_date']
+          ];
+        }
+      }
+      $stmt_fb->close();
     }
   }
-  $stmt_phases->close();
 }
 
 // Header variables
@@ -96,7 +146,6 @@ $notificationCount = 0;
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
         </svg>
-        Back to Expenses Dashboard
       </a>
 
       <!-- Page Header -->
@@ -139,7 +188,8 @@ $notificationCount = 0;
               <select id="phase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                 <option value="">Select project phase</option>
                 <?php foreach ($phases as $phase): ?>
-                  <option value="<?php echo htmlspecialchars($phase['phase_id']); ?>" <?php echo ($selected_phase == $phase['phase_id']) ? 'selected' : ''; ?>>
+                  <?php $phaseIdVal = isset($phase['phase_id']) ? intval($phase['phase_id']) : 0; ?>
+                  <option value="<?php echo $phaseIdVal; ?>" data-name="<?php echo htmlspecialchars($phase['phase_name']); ?>" data-start="<?php echo htmlspecialchars($phase['start_date'] ?? ''); ?>" data-end="<?php echo htmlspecialchars($phase['end_date'] ?? ''); ?>" <?php echo ((string)$selected_phase === (string)$phase['phase_name'] || (string)$selected_phase === (string)$phaseIdVal) ? 'selected' : ''; ?>>
                     <?php echo htmlspecialchars($phase['phase_name']); ?>
                   </option>
                 <?php endforeach; ?>
@@ -165,6 +215,42 @@ $notificationCount = 0;
                 <option value="OVERHEAD">Overhead & Other (Permits, Fuel, Utilities)</option>
               </select>
               <p class="mt-1 text-xs text-gray-500">💡 <strong>Note:</strong> Labor/Wages are managed in the Payroll module</p>
+            </div>
+
+            <!-- Sample Items (pre-filled examples per category) -->
+            <div class="mb-6">
+              <label for="sample-item" class="block text-sm text-gray-700 mb-2">Sample Items (optional)</label>
+              <select id="sample-item" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
+                <option value="">Choose a sample item to prefill fields</option>
+                <optgroup label="Materials">
+                  <option value="Cement (50kg bag)" data-category="MATERIALS" data-description="Cement (50kg bag)" data-quantity="10" data-unitcost="450.00">Cement (50kg bag)</option>
+                  <option value="16mm Rebars" data-category="MATERIALS" data-description="16mm Rebars" data-quantity="100" data-unitcost="320.00">16mm Rebars</option>
+                  <option value="20mm Deformed Bar" data-category="MATERIALS" data-description="20mm Deformed Bar (Grade 40)" data-quantity="500" data-unitcost="480.00">20mm Deformed Bar</option>
+                  <option value="Gravel (cu.m)" data-category="MATERIALS" data-description="Gravel (cu.m)" data-quantity="12" data-unitcost="1212.00">Gravel (cu.m)</option>
+                  <option value="Phenolic Board 1/2" data-category="MATERIALS" data-description="Phenolic Board 1/2\"" data-quantity="100" data-unitcost="850.00">Phenolic Board 1/2"</option>
+                </optgroup>
+                <optgroup label="Equipment">
+                  <option value="Bar Cutter Rental" data-category="EQUIPMENT" data-description="Bar Cutter Rental (per day)" data-quantity="15" data-unitcost="1933.33">Bar Cutter Rental</option>
+                  <option value="Concrete Mixer Rental" data-category="EQUIPMENT" data-description="Concrete Mixer Rental (per day)" data-quantity="5" data-unitcost="2500.00">Concrete Mixer Rental</option>
+                  <option value="Scaffolding Rental" data-category="EQUIPMENT" data-description="Scaffolding Rental (per month)" data-quantity="1" data-unitcost="15000.00">Scaffolding Rental</option>
+                </optgroup>
+                <optgroup label="Professional Fees">
+                  <option value="Structural Engineer Fee" data-category="PROFESSIONAL_FEES" data-description="Structural Engineer Fee" data-quantity="1" data-unitcost="50000.00">Structural Engineer Fee</option>
+                  <option value="Project Manager Consultancy" data-category="PROFESSIONAL_FEES" data-description="Project Manager Consultancy (monthly)" data-quantity="1" data-unitcost="40000.00">Project Manager Consultancy</option>
+                  <option value="Surveyor Fee" data-category="PROFESSIONAL_FEES" data-description="Surveyor Fee" data-quantity="1" data-unitcost="15000.00">Surveyor Fee</option>
+                </optgroup>
+                <optgroup label="Subcontractor">
+                  <option value="Electrical Works" data-category="SUBCONTRACTOR" data-description="Electrical Works (complete)" data-quantity="1" data-unitcost="80000.00">Electrical Works</option>
+                  <option value="Plumbing Works" data-category="SUBCONTRACTOR" data-description="Plumbing Works (complete)" data-quantity="1" data-unitcost="45000.00">Plumbing Works</option>
+                  <option value="Masonry Works" data-category="SUBCONTRACTOR" data-description="Masonry Works (per cu.m)" data-quantity="20" data-unitcost="2000.00">Masonry Works</option>
+                </optgroup>
+                <optgroup label="Overhead & Other">
+                  <option value="Fuel" data-category="OVERHEAD" data-description="Fuel (site operations)" data-quantity="200" data-unitcost="80.00">Fuel</option>
+                  <option value="Permits" data-category="OVERHEAD" data-description="Building Permits" data-quantity="1" data-unitcost="20000.00">Permits</option>
+                  <option value="Site Utilities" data-category="OVERHEAD" data-description="Site Office Utilities (monthly)" data-quantity="1" data-unitcost="8000.00">Site Utilities</option>
+                </optgroup>
+              </select>
+              <p class="mt-1 text-xs text-gray-500">Selecting a sample will prefill the description, quantity and unit cost — you can edit afterwards.</p>
             </div>
 
             <!-- Description -->
@@ -209,7 +295,24 @@ $notificationCount = 0;
             <!-- Supplier/Vendor Name -->
             <div class="mb-6">
               <label for="supplier-name" class="block text-sm text-gray-700 mb-2">Supplier/Vendor Name <span class="text-red-500">*</span></label>
-              <input type="text" id="supplier-name" placeholder="Enter supplier or vendor name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
+              <select id="supplier-name" name="supplier_id" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
+                <option value="">Select supplier</option>
+              </select>
+            </div>
+
+            <div class="mb-6 grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Supplier Address</label>
+                    <input type="text" id="supplier-address" readonly class="w-full bg-transparent border-b border-gray-300 text-sm text-gray-700 focus:outline-none py-1" placeholder="Address will autofill...">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Contact Number</label>
+                    <input type="text" id="supplier-contact" readonly class="w-full bg-transparent border-b border-gray-300 text-sm text-gray-700 focus:outline-none py-1" placeholder="---">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Email</label>
+                    <input type="text" id="supplier-email" readonly class="w-full bg-transparent border-b border-gray-300 text-sm text-gray-700 focus:outline-none py-1" placeholder="---">
+                </div>
             </div>
 
             <!-- Receipt Upload -->
@@ -319,6 +422,10 @@ $notificationCount = 0;
             <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Category</p>
               <p id="preview-category" class="text-sm font-medium text-gray-400 italic">No category selected</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Description</p>
+              <p id="preview-description" class="text-sm font-medium text-gray-400 italic">No description entered</p>
             </div>
           </div>
 
@@ -432,7 +539,10 @@ $notificationCount = 0;
     const unitCostInput = document.getElementById('unit-cost');
     const itemSubtotalSpan = document.getElementById('item-subtotal');
     const addLineItemBtn = document.getElementById('add-line-item-btn');
-    const supplierNameInput = document.getElementById('supplier-name');
+    const supplierSelect = document.getElementById('supplier-name');
+    const supplierAddress = document.getElementById('supplier-address');
+    const supplierContact = document.getElementById('supplier-contact');
+    const supplierEmail = document.getElementById('supplier-email');
     const notesInput = document.getElementById('notes');
     const charCount = document.getElementById('char-count');
 
@@ -483,6 +593,82 @@ $notificationCount = 0;
     unitCostInput.addEventListener('input', calculateItemSubtotal);
 
     // ============================================
+    // SUPPLIER: load list and autofill details
+    // ============================================
+    let suppliersData = [];
+
+    supplierSelect.addEventListener('change', async function() {
+      const selected = supplierSelect.options[supplierSelect.selectedIndex];
+      if (selected && selected.value) {
+        // Prefer dataset values (preloaded), but fall back to server fetch if important fields are missing
+        const addr = selected.dataset.address || '';
+        const contact = selected.dataset.contactNumber || selected.dataset.contact_number || '';
+        const email = selected.dataset.email || '';
+
+        if (!addr && selected.value) {
+          // Fetch supplier details by ID as a fallback
+          try {
+            const res = await fetch(`/icmis/modules/procurement/php/get_supplier.php?id=${selected.value}`);
+            const data = await res.json();
+            if (data && !data.error) {
+              supplierAddress.value = data.address || '';
+              supplierContact.value = data.contact_number || data.contactNumber || '';
+              supplierEmail.value = data.email || '';
+
+              // store on option for subsequent quick access
+              selected.dataset.address = supplierAddress.value;
+              selected.dataset.contactNumber = supplierContact.value;
+              selected.dataset.email = supplierEmail.value;
+            } else {
+              supplierAddress.value = '';
+              supplierContact.value = '';
+              supplierEmail.value = '';
+            }
+          } catch (err) {
+            console.error('Error fetching supplier details:', err);
+            supplierAddress.value = '';
+            supplierContact.value = '';
+            supplierEmail.value = '';
+          }
+        } else {
+          supplierAddress.value = addr;
+          supplierContact.value = contact;
+          supplierEmail.value = email;
+        }
+      } else {
+        supplierAddress.value = '';
+        supplierContact.value = '';
+        supplierEmail.value = '';
+      }
+      updatePreview();
+    });
+
+    async function loadSuppliers() {
+      try {
+        const url = '/icmis/modules/procurement/php/fetch_suppliers.php';
+        const res = await fetch(url);
+        const data = await res.json();
+        suppliersData = data.suppliers || [];
+        supplierSelect.innerHTML = '<option value="">Select supplier</option>';
+        suppliersData.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.supplier_id || '';
+          opt.textContent = s.supplier_name || s.name || '';
+          opt.dataset.contactPerson = s.contact_person || '';
+          opt.dataset.contactNumber = s.contact_number || '';
+          opt.dataset.email = s.email || '';
+          opt.dataset.address = s.address || '';
+          supplierSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error('Error loading suppliers:', err);
+      }
+    }
+
+    // load suppliers on page init
+    loadSuppliers();
+
+    // ============================================
     // LINE ITEMS MANAGEMENT
     // ============================================
     addLineItemBtn.addEventListener('click', () => {
@@ -501,12 +687,6 @@ $notificationCount = 0;
 
       if (!description) {
         showToast('Please enter a description', 'warning');
-        descriptionField.focus();
-        return;
-      }
-
-      if (description.length < 10) {
-        showToast('Description must be at least 10 characters', 'warning');
         descriptionField.focus();
         return;
       }
@@ -632,22 +812,23 @@ $notificationCount = 0;
       clearTimeout(debounceTimer);
       
       if (searchText.length >= 2) {
-        const projectId = projectSelect.value;
-        const phase = phaseSelect.value;
-        
-        if (!projectId) {
-          showSuggestionMessage('⚠️ Please select a project first');
-          return;
-        }
-        
-        if (!phase) {
-          showSuggestionMessage('⚠️ Please select a phase first to see planned items');
-          return;
-        }
+          const projectId = projectSelect.value;
+          const selPhaseOpt = phaseSelect.options[phaseSelect.selectedIndex];
+          const phaseName = selPhaseOpt ? selPhaseOpt.textContent.trim() : '';
 
-        debounceTimer = setTimeout(() => {
-          fetchPlannedItems(projectId, phase, searchText);
-        }, 300);
+          if (!projectId) {
+            showSuggestionMessage('⚠️ Please select a project first');
+            return;
+          }
+
+          if (!phaseName) {
+            showSuggestionMessage('⚠️ Please select a phase first to see planned items');
+            return;
+          }
+
+          debounceTimer = setTimeout(() => {
+            fetchPlannedItems(projectId, phaseName, searchText);
+          }, 300);
       } else {
         hideSuggestions();
       }
@@ -679,10 +860,25 @@ $notificationCount = 0;
 
     async function fetchPlannedItems(projectId, phase, searchText) {
       try {
-        const response = await fetch(`budget_expenses/get_planned_items.php?project_id=${projectId}&phase=${encodeURIComponent(phase)}&search=${encodeURIComponent(searchText)}`);
+        // Prefer numeric phase_id when available (keeps server-side filtering deterministic)
+        const phaseId = phaseSelect ? (phaseSelect.value || '') : '';
+
+        const params = new URLSearchParams();
+        params.append('project_id', projectId);
+        if (phaseId) {
+          params.append('phase_id', phaseId);
+        } else if (phase) {
+          params.append('phase', phase);
+        }
+        params.append('search', searchText);
+
+        const url = `/icmis/modules/budget/budget_expenses/get_planned_items.php?${params.toString()}`;
+        const response = await fetch(url, { cache: 'no-store' });
+
+        // Be defensive when parsing the response
         const result = await response.json();
 
-        if (result.success && result.items.length > 0) {
+        if (result && result.success && Array.isArray(result.items) && result.items.length > 0) {
           displaySuggestions(result.items);
         } else {
           hideSuggestions();
@@ -697,7 +893,7 @@ $notificationCount = 0;
       selectedSuggestionIndex = -1;
       
       const html = items.map((item, index) => `
-        <div class="suggestion-item px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors" data-index="${index}" data-item='${JSON.stringify(item)}'>
+        <div class="suggestion-item px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors" data-index="${index}" data-item='${encodeURIComponent(JSON.stringify(item))}'>
           <div class="flex items-start gap-3">
             <svg class="w-5 h-5 text-[#e9922c] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -722,8 +918,12 @@ $notificationCount = 0;
       // Add click handlers
       suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
         item.addEventListener('click', function() {
-          const itemData = JSON.parse(this.dataset.item);
-          selectSuggestion(itemData);
+          try {
+            const itemData = JSON.parse(decodeURIComponent(this.dataset.item || ''));
+            selectSuggestion(itemData);
+          } catch (err) {
+            console.error('Failed to parse suggestion item', err);
+          }
         });
       });
     }
@@ -759,7 +959,7 @@ $notificationCount = 0;
       }
 
       hideSuggestions();
-      supplierNameInput.focus();
+      supplierSelect.focus();
       updatePreview();
     }
 
@@ -784,6 +984,76 @@ $notificationCount = 0;
         hideSuggestions();
       }
     });
+
+    // ============================================
+    // SAMPLE ITEMS -> populate description/quantity/unit cost and filter by selected category
+    // ============================================
+    const sampleItemSelect = document.getElementById('sample-item');
+    if (sampleItemSelect) {
+      const defaultOption = sampleItemSelect.querySelector('option[value=""]') ? sampleItemSelect.querySelector('option[value=""]').cloneNode(true) : null;
+      const originalOptions = Array.from(sampleItemSelect.querySelectorAll('option[data-description]')).map(o => o.cloneNode(true));
+      const categoryLabels = {
+        'MATERIALS': 'Materials',
+        'EQUIPMENT': 'Equipment',
+        'PROFESSIONAL_FEES': 'Professional Fees',
+        'SUBCONTRACTOR': 'Subcontractor',
+        'OVERHEAD': 'Overhead & Other'
+      };
+
+      function rebuildSampleOptions(selectedCategory) {
+        sampleItemSelect.innerHTML = '';
+        if (defaultOption) sampleItemSelect.appendChild(defaultOption.cloneNode(true));
+
+        const groups = {};
+        originalOptions.forEach(opt => {
+          const cat = (opt.dataset.category || '').toString();
+          if (selectedCategory && selectedCategory !== '' && cat !== selectedCategory) return;
+          if (!groups[cat]) groups[cat] = [];
+          groups[cat].push(opt.cloneNode(true));
+        });
+
+        const order = ['MATERIALS','EQUIPMENT','PROFESSIONAL_FEES','SUBCONTRACTOR','OVERHEAD'];
+        order.forEach(cat => {
+          if (groups[cat] && groups[cat].length) {
+            const og = document.createElement('optgroup');
+            og.label = categoryLabels[cat] || cat;
+            groups[cat].forEach(o => og.appendChild(o));
+            sampleItemSelect.appendChild(og);
+          }
+        });
+
+        // Append any other categories not in the known order
+        Object.keys(groups).forEach(cat => {
+          if (!order.includes(cat)) {
+            const og = document.createElement('optgroup');
+            og.label = cat || 'Other';
+            groups[cat].forEach(o => og.appendChild(o));
+            sampleItemSelect.appendChild(og);
+          }
+        });
+      }
+
+      // Initialize filtered view based on current category selection
+      rebuildSampleOptions(categorySelect.value);
+      categorySelect.addEventListener('change', () => rebuildSampleOptions(categorySelect.value));
+
+      // Populate fields when a sample is chosen
+      sampleItemSelect.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        if (!opt || !opt.value) return;
+
+        const desc = opt.dataset.description || opt.value || '';
+        const qty = opt.dataset.quantity || '';
+        const unit = opt.dataset.unitcost || '';
+
+        descriptionField.value = desc;
+        quantityInput.value = qty;
+        unitCostInput.value = unit;
+
+        calculateItemSubtotal();
+        updatePreview();
+      });
+    }
 
     // ============================================
     // FILE UPLOAD HANDLING
@@ -862,32 +1132,35 @@ $notificationCount = 0;
     // ============================================
     projectSelect.addEventListener('change', async function() {
       const projectId = this.value;
-      
+
+      // Clear existing phase options immediately
+      phaseSelect.innerHTML = '<option value="">Select project phase</option>';
+
       if (projectId) {
-        // Fetch active phases for the selected project
+        // Fetch active phases for the selected project (use absolute path to avoid relative-resolve issues)
         try {
-          const response = await fetch(`budget_expenses/get_phase_budget_proposals.php?project_id=${projectId}`);
+          const url = `/icmis/modules/budget/budget_expenses/get_phase_budget_proposals.php?project_id=${projectId}`;
+          const response = await fetch(url, { cache: 'no-store' });
           const result = await response.json();
-          
-          // Clear existing phase options
-          phaseSelect.innerHTML = '<option value="">Select project phase</option>';
-          
-          if (result.success && result.phases && result.phases.length > 0) {
+
+          if (result && result.success && Array.isArray(result.phases) && result.phases.length > 0) {
             result.phases.forEach(phase => {
               const option = document.createElement('option');
-              option.value = phase;
-              option.textContent = phase;
+              // API returns objects {phase_id, phase_name}
+              option.value = phase.phase_id;
+              option.textContent = phase.phase_name;
+              option.dataset.name = phase.phase_name;
+              if (phase.start_date) option.dataset.start = phase.start_date;
+              if (phase.end_date) option.dataset.end = phase.end_date;
               phaseSelect.appendChild(option);
             });
-            
-            // Show success message
+
             const helpText = phaseSelect.parentElement.querySelector('.text-xs');
             if (helpText) {
               helpText.textContent = 'Select phase first to enable smart item suggestions below';
               helpText.className = 'mt-1 text-xs text-gray-500';
             }
           } else {
-            // No phases found
             const helpText = phaseSelect.parentElement.querySelector('.text-xs');
             if (helpText) {
               helpText.textContent = '⚠️ No active phases found. Please create an approved budget proposal first.';
@@ -898,11 +1171,8 @@ $notificationCount = 0;
           console.error('Error fetching phases:', error);
           showToast('Failed to load phases. Please try again.', 'error');
         }
-      } else {
-        // Clear phases if no project selected
-        phaseSelect.innerHTML = '<option value="">Select project phase</option>';
       }
-      
+
       updatePreview();
     });
 
@@ -912,7 +1182,7 @@ $notificationCount = 0;
     expenseDateInput.addEventListener('change', updatePreview);
     phaseSelect.addEventListener('change', updatePreview);
     categorySelect.addEventListener('change', updatePreview);
-    supplierNameInput.addEventListener('input', updatePreview);
+    supplierSelect.addEventListener('change', updatePreview);
     
     document.querySelectorAll('input[name="status"]').forEach(radio => {
       radio.addEventListener('change', updatePreview);
@@ -935,9 +1205,10 @@ $notificationCount = 0;
         previewDate.textContent = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
       }
 
-      // Phase
-      if (phaseSelect.value) {
-        previewPhase.textContent = phaseSelect.value;
+      // Phase (display the selected option's text)
+      const selPhaseOpt = phaseSelect.options[phaseSelect.selectedIndex];
+      if (selPhaseOpt && phaseSelect.value) {
+        previewPhase.textContent = selPhaseOpt.textContent;
         previewPhase.className = 'text-sm font-medium text-gray-900';
       } else {
         previewPhase.textContent = 'No phase selected';
@@ -964,7 +1235,8 @@ $notificationCount = 0;
       }
 
       // Supplier
-      const supplier = supplierNameInput.value.trim();
+      const selOpt = supplierSelect.options[supplierSelect.selectedIndex];
+      const supplier = selOpt ? (selOpt.textContent || '').trim() : '';
       if (supplier) {
         previewSupplier.textContent = supplier;
         previewSupplier.className = 'text-sm text-gray-900';
@@ -1013,16 +1285,17 @@ $notificationCount = 0;
         return false;
       }
 
-      const supplier = supplierNameInput.value.trim();
+      const selOpt = supplierSelect.options[supplierSelect.selectedIndex];
+      const supplier = selOpt ? (selOpt.textContent || '').trim() : '';
       if (!supplier) {
-        showToast('Please enter supplier name', 'warning');
-        supplierNameInput.focus();
+        showToast('Please select a supplier', 'warning');
+        supplierSelect.focus();
         return false;
       }
 
       if (supplier.length < 3) {
         showToast('Supplier name must be at least 3 characters', 'warning');
-        supplierNameInput.focus();
+        supplierSelect.focus();
         return false;
       }
 
@@ -1052,8 +1325,16 @@ $notificationCount = 0;
       const formData = new FormData();
       formData.append('project_id', projectSelect.value);
       formData.append('expense_date', expenseDateInput.value);
-      formData.append('phase', phaseSelect.value);
-      formData.append('supplier_name', supplierNameInput.value.trim());
+      // Send both phase_id and phase name for backend compatibility
+      const selPhaseOption = phaseSelect.options[phaseSelect.selectedIndex];
+      const phaseIdVal = phaseSelect.value;
+      const phaseNameVal = selPhaseOption ? selPhaseOption.textContent : '';
+      formData.append('phase_id', phaseIdVal);
+      formData.append('phase', phaseNameVal);
+      const sel = supplierSelect.options[supplierSelect.selectedIndex];
+      const supplierNameVal = sel ? (sel.textContent || '').trim() : '';
+      formData.append('supplier_name', supplierNameVal);
+      if (supplierSelect.value) formData.append('supplier_id', supplierSelect.value);
       formData.append('total_amount', totalAmount.toFixed(2));
       formData.append('status', document.querySelector('input[name="status"]:checked').value);
       formData.append('notes', notesInput.value.trim());
@@ -1078,7 +1359,9 @@ $notificationCount = 0;
 
           // Redirect after short delay
           setTimeout(() => {
-            window.location.href = 'expenses.php?project_id=' + projectSelect.value + '&phase=' + encodeURIComponent(phaseSelect.value);
+            const selPhaseOpt = phaseSelect.options[phaseSelect.selectedIndex];
+            const redirectPhase = selPhaseOpt ? selPhaseOpt.textContent : 'All Phases';
+            window.location.href = 'expenses.php?project_id=' + projectSelect.value + '&phase=' + encodeURIComponent(redirectPhase);
           }, 1000);
         } else {
           showToast(result.message || 'Failed to add expense. Please try again.', 'error');
@@ -1113,7 +1396,9 @@ $notificationCount = 0;
     // Cancel button
     cancelBtn.addEventListener('click', () => {
       if (confirm('Are you sure you want to cancel? All unsaved changes will be lost.')) {
-        window.location.href = 'expenses.php?project_id=' + projectSelect.value + '&phase=' + encodeURIComponent(phaseSelect.value || 'All Phases');
+        const selPhaseOpt2 = phaseSelect.options[phaseSelect.selectedIndex];
+        const redirectPhase2 = selPhaseOpt2 ? selPhaseOpt2.textContent : 'All Phases';
+        window.location.href = 'expenses.php?project_id=' + projectSelect.value + '&phase=' + encodeURIComponent(redirectPhase2 || 'All Phases');
       }
     });
 

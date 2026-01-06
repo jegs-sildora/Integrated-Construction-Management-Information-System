@@ -158,7 +158,7 @@ $pageSection = "Budget & Cost Control";
                                 </div>
                             </div>
                         </div>
-                        <button id="add-material" class="w-full bg-[#e9922c] hover:bg-[#d17f1f] text-white rounded-lg py-3 px-6 transition-all shadow-sm flex items-center justify-center mt-18">
+                        <button id="add-material" class="w-full bg-[#e9922c] hover:bg-[#d17f1f] text-white rounded-lg py-3 px-6 transition-all shadow-sm flex items-center justify-center mt-18 font-bold">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                             </svg>
@@ -373,10 +373,10 @@ $pageSection = "Budget & Cost Control";
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <button id="save-draft" class="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg py-3 px-6 font-medium transition-all">
+                        <button id="save-draft" class="border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg py-3 px-6 font-bold transition-all">
                             Save Draft
                         </button>
-                        <button id="submit-proposal" class="bg-[#e9922c] hover:bg-[#d17f1f] text-white rounded-lg py-3 px-6 font-medium transition-all shadow-sm">
+                        <button id="submit-proposal" class="bg-[#e9922c] hover:bg-[#d17f1f] text-white rounded-lg py-3 px-6 transition-all shadow-sm font-bold">
                             Submit Proposal
                         </button>
                     </div>
@@ -673,14 +673,15 @@ $pageSection = "Budget & Cost Control";
                     
                     data.phases.forEach(phase => {
                         const option = document.createElement('option');
-                        option.value = phase.name; // Keeping name as value based on your DB schema
+                        // Use numeric id as the option value so we always submit phase_id
+                        option.value = phase.id;
                         option.textContent = phase.name;
-                        
+
                         // Store data attributes for auto-filling
                         option.dataset.start = phase.start_date;
                         option.dataset.end = phase.end_date;
                         option.dataset.id = phase.id;
-                        
+
                         phaseSelect.appendChild(option);
                     });
                 } else {
@@ -938,7 +939,10 @@ $pageSection = "Budget & Cost Control";
         function validateForm() {
             const project = document.getElementById('project').value;
             const title = document.getElementById('proposalTitle').value.trim();
-            const targetPhase = document.getElementById('targetPhase').value;
+            // Prefer numeric phase_id from selected option; fall back to value (for legacy)
+            const targetPhaseSelect = document.getElementById('targetPhase');
+            const selectedPhaseOption = targetPhaseSelect.options[targetPhaseSelect.selectedIndex];
+            const targetPhaseId = selectedPhaseOption && selectedPhaseOption.dataset.id ? selectedPhaseOption.dataset.id : (selectedPhaseOption ? selectedPhaseOption.value : '');
             const startDate = document.getElementById('phaseStartDate').value;
             const endDate = document.getElementById('phaseEndDate').value;
             const scopeDescription = document.getElementById('scopeDescription').value.trim();
@@ -953,7 +957,7 @@ $pageSection = "Budget & Cost Control";
                 return false;
             }
 
-            if (!targetPhase) {
+            if (!targetPhaseId) {
                 showToast('Please select a target phase', 'warning');
                 return false;
             }
@@ -991,16 +995,23 @@ $pageSection = "Budget & Cost Control";
             const selectedOption = projectSelect.options[projectSelect.selectedIndex];
             const projectId = selectedOption.getAttribute('data-id');
             const title = document.getElementById('proposalTitle').value.trim();
-            const targetPhase = document.getElementById('targetPhase').value;
             const startDate = document.getElementById('phaseStartDate').value;
             const endDate = document.getElementById('phaseEndDate').value;
             const scopeDescription = document.getElementById('scopeDescription').value.trim();
             const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
 
+            // Determine selected phase and id
+            const targetPhaseSelect = document.getElementById('targetPhase');
+            const selectedPhaseOption = targetPhaseSelect.options[targetPhaseSelect.selectedIndex];
+            const targetPhaseId = selectedPhaseOption && selectedPhaseOption.dataset.id ? selectedPhaseOption.dataset.id : (selectedPhaseOption ? selectedPhaseOption.value : '');
+            const targetPhaseName = selectedPhaseOption ? selectedPhaseOption.textContent : '';
+
             const data = {
                 project_id: projectId,
                 title: title,
-                target_phase: targetPhase,
+                phase_id: targetPhaseId,
+                // also include a human-readable phase name for convenience
+                target_phase: targetPhaseName,
                 phase_start_date: startDate,
                 phase_end_date: endDate,
                 scope_description: scopeDescription,

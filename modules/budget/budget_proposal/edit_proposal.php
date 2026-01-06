@@ -32,6 +32,53 @@ if ($result->num_rows === 0) {
 $proposal = $result->fetch_assoc();
 $stmt->close();
 
+// Normalize scope description: some code paths saved it as `description` column.
+if (empty($proposal['scope_description']) && !empty($proposal['description'])) {
+    $proposal['scope_description'] = $proposal['description'];
+}
+
+// Populate `target_phase` from `phase_id` if present
+if (empty($proposal['target_phase']) && !empty($proposal['phase_id'])) {
+    $stmt_phase = $conn->prepare("SELECT phase_name FROM icmis_project_phases WHERE phase_id = ? LIMIT 1");
+    if ($stmt_phase) {
+        $stmt_phase->bind_param("i", $proposal['phase_id']);
+        $stmt_phase->execute();
+        $res_phase = $stmt_phase->get_result();
+        if ($r = $res_phase->fetch_assoc()) {
+            $proposal['target_phase'] = $r['phase_name'];
+        }
+        $stmt_phase->close();
+    }
+}
+
+// If phase_id is missing, try to resolve it using the proposal code (some older records saved mapping by code)
+if ((empty($proposal['phase_id']) || $proposal['phase_id'] == 0) && !empty($proposal['code'])) {
+    $stmt_code = $conn->prepare("SELECT phase_id FROM budget_proposals WHERE code = ? LIMIT 1");
+    if ($stmt_code) {
+        $stmt_code->bind_param("s", $proposal['code']);
+        $stmt_code->execute();
+        $res_code = $stmt_code->get_result();
+        if ($rc = $res_code->fetch_assoc()) {
+            $resolved_phase_id = intval($rc['phase_id']);
+            if ($resolved_phase_id > 0) {
+                $proposal['phase_id'] = $resolved_phase_id;
+                // also populate target_phase for display
+                $stmt_p = $conn->prepare("SELECT phase_name FROM icmis_project_phases WHERE phase_id = ? LIMIT 1");
+                if ($stmt_p) {
+                    $stmt_p->bind_param("i", $proposal['phase_id']);
+                    $stmt_p->execute();
+                    $res_p = $stmt_p->get_result();
+                    if ($rp = $res_p->fetch_assoc()) {
+                        $proposal['target_phase'] = $rp['phase_name'];
+                    }
+                    $stmt_p->close();
+                }
+            }
+        }
+        $stmt_code->close();
+    }
+}
+
 // Fetch line items
 $sql_items = "SELECT * FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id";
 $stmt_items = $conn->prepare($sql_items);
@@ -570,11 +617,60 @@ $pageSection = "Budget & Cost Control";
     // INITIAL LOAD
     renderItems();
     updateGrandTotal();
-    
-    // --- CHANGED: Pass the ID to loadPhases
-    if (savedProjectId) {
-        loadPhases(savedProjectId, savedPhaseId);
+
+    // Initialize by fetching authoritative proposal details (ensures phase_id resolved by code)
+    async function initProposalContext() {
+        try {
+            const resp = await fetch(`get_proposal_details.php?id=${proposalId}`);
+            const data = await resp.json();
+            if (data && data.success && data.proposal) {
+                const p = data.proposal;
+                const projectIdFromApi = p.project_id || savedProjectId;
+                const phaseIdFromApi = p.phase_id || savedPhaseId;
+
+                // Select the matching project option if available
+                if (projectIdFromApi) {
+                    const projectSelectEl = document.getElementById('project');
+                    for (let i = 0; i < projectSelectEl.options.length; i++) {
+                        const opt = projectSelectEl.options[i];
+                        if (opt.getAttribute('data-id') == projectIdFromApi) {
+                            opt.selected = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Load phases for the project and preselect the phase id returned from API
+                if (projectIdFromApi) {
+                    loadPhases(projectIdFromApi, phaseIdFromApi);
+                } else if (savedProjectId) {
+                    loadPhases(savedProjectId, savedPhaseId);
+                }
+
+                // Auto-fill phase dates from the proposal's saved dates
+                const phaseStartDate = p.phase_start_date;
+                const phaseEndDate = p.phase_end_date;
+                if (phaseStartDate) {
+                    document.getElementById('phaseStartDate').value = phaseStartDate;
+                }
+                if (phaseEndDate) {
+                    document.getElementById('phaseEndDate').value = phaseEndDate;
+                }
+
+                // Trigger timeline update to show formatted dates in preview
+                updateTimeline();
+
+                return;
+            }
+        } catch (err) {
+            console.error('Failed to load proposal details:', err);
+        }
+
+        // Fallback to embedded values
+        if (savedProjectId) loadPhases(savedProjectId, savedPhaseId);
     }
+
+    initProposalContext();
 
     // Project Changed
     document.getElementById('project').addEventListener('change', function() {
@@ -829,7 +925,7 @@ $pageSection = "Budget & Cost Control";
         .then(res => res.json())
         .then(result => {
             if (result.success) {
-                showToast('Proposal updated successfully!', 'success');
+                showToast(result.message || 'Proposal updated successfully!', 'success', true);
                 setTimeout(() => window.location.href = '../proposals.php', 1000);
             } else {
                 showToast('Error: ' + result.message, 'error');

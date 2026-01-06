@@ -1,53 +1,19 @@
 <?php
+// ============================================================
+// DEPRECATED: Manual expense updating has been removed.
+// Expenses are now automatically synced from the Procurement module.
+// To modify expense data, update the corresponding Purchase Order.
+// ============================================================
+
 header('Content-Type: application/json');
-date_default_timezone_set('Asia/Manila');
 
-// Include config for database connection
-require_once __DIR__ . '/../../../config/config.php';
-
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
-    exit;
-}
-$conn->set_charset("utf8mb4");
-
-// Enable error reporting for debugging
-ini_set('display_errors', 0);
-error_reporting(E_ALL);
-
-try {
-    // Verify request method
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Invalid request method');
-    }
-
-    // Validate expense_id
-    if (!isset($_POST['expense_id']) || empty($_POST['expense_id'])) {
-        throw new Exception('Expense ID is required');
-    }
-
-    $expense_id = intval($_POST['expense_id']);
-
-    // Validate required fields
-    $required_fields = ['project_id', 'expense_date', 'phase', 'supplier_name', 'total_amount', 'status', 'line_items'];
-    foreach ($required_fields as $field) {
-        if (!isset($_POST[$field]) || trim($_POST[$field]) === '') {
-            throw new Exception("Missing required field: " . ucfirst(str_replace('_', ' ', $field)));
-        }
-    }
-
-    // Sanitize and validate inputs
-    $project_id = intval($_POST['project_id']);
-    $expense_date = trim($_POST['expense_date']);
-    $phase = trim($_POST['phase']);
-    $supplier_name = trim($_POST['supplier_name']);
-    $total_amount = floatval($_POST['total_amount']);
-    $status = trim($_POST['status']);
-    $notes = isset($_POST['notes']) ? trim($_POST['notes']) : null;
-    
-    // Parse line items
+echo json_encode([
+    'success' => false,
+    'message' => 'Manual expense editing has been disabled. Expenses are now automatically synced from completed Purchase Orders in the Procurement module. To modify expense data, please update the corresponding Purchase Order.',
+    'deprecated' => true
+]);
+exit;
+?>
     $line_items = json_decode($_POST['line_items'], true);
     if (!is_array($line_items) || empty($line_items)) {
         throw new Exception('No expense items provided');

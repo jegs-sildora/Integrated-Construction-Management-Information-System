@@ -106,10 +106,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn->begin_transaction();
     
     try {
-        // Look up phase_id from phase name if provided
+        // Determine phase_id: prefer provided numeric `phase_id`, otherwise lookup by `target_phase` name
         $phase_id = null;
-        if (!empty($target_phase)) {
-            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name = ?");
+        if (isset($data['phase_id']) && intval($data['phase_id']) > 0) {
+            $phase_id = intval($data['phase_id']);
+        } elseif (!empty($target_phase)) {
+            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name = ? LIMIT 1");
             $stmt_phase->bind_param("is", $project_id, $target_phase);
             $stmt_phase->execute();
             $result_phase = $stmt_phase->get_result();

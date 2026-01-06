@@ -67,13 +67,14 @@
   // Fetch selected project details with budget data
   if ($selected_project_id > 0) {
     // Get project basic info with total approved budget proposals
+    // Actual spending now comes from COMPLETED purchase orders in Procurement
     $sql_project = "SELECT p.project_id, p.project_code, p.project_name,
                     (SELECT COALESCE(SUM(bp.total_amount), 0) 
                      FROM budget_proposals bp 
                      WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
-                    (SELECT COALESCE(SUM(e.amount), 0) 
-                     FROM budget_expenses e 
-                     WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
+                    (SELECT COALESCE(SUM(po.total_amount), 0) 
+                     FROM procurement_purchase_orders po 
+                     WHERE po.project_id = p.project_id AND po.status = 'COMPLETED') as actual_spending
                     FROM icmis_projects p
                     WHERE p.project_id = ?";
     $stmt = $conn->prepare($sql_project);
@@ -103,22 +104,22 @@
       }
       $stmt->close();
 
-      // Fetch phase-based budget data
+      // Fetch phase-based budget data from completed Purchase Orders
       $phases_data = [];
       $sql_phases = "SELECT 
-                      pp.phase_name as phase,
+                      po.phase as phase,
                       (SELECT COALESCE(SUM(bp.total_amount), 0) 
                        FROM budget_proposals bp 
+                       JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
                        WHERE bp.project_id = ? 
-                       AND bp.phase_id = e.phase_id 
+                       AND pp.phase_name = po.phase 
                        AND bp.status = 'APPROVED') as allocated,
-                      COALESCE(SUM(CASE WHEN e.status = 'APPROVED' THEN e.amount ELSE 0 END), 0) as spent,
-                      COUNT(e.expense_id) as expense_count
-                     FROM budget_expenses e
-                     LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
-                     WHERE e.project_id = ?
-                     GROUP BY e.phase_id, pp.phase_name
-                     ORDER BY pp.phase_name";
+                      COALESCE(SUM(po.total_amount), 0) as spent,
+                      COUNT(po.po_id) as expense_count
+                     FROM procurement_purchase_orders po
+                     WHERE po.project_id = ? AND po.status = 'COMPLETED'
+                     GROUP BY po.phase
+                     ORDER BY po.phase";
       $stmt_phases = $conn->prepare($sql_phases);
       $stmt_phases->bind_param("ii", $selected_project_id, $selected_project_id);
       $stmt_phases->execute();
@@ -202,13 +203,13 @@
     $actual_data = [0, 0, 0, 0];
 
     if ($selected_project_id > 0) {
-      // Get monthly expenses for actual spending (Sept=9, Oct=10, Nov=11, Dec=12)
-      $sql_monthly = "SELECT MONTH(expense_date) as month, YEAR(expense_date) as year, SUM(amount) as total
-                      FROM budget_expenses
-                      WHERE project_id = ? AND status = 'APPROVED'
-                      AND MONTH(expense_date) BETWEEN 9 AND 12
-                      GROUP BY YEAR(expense_date), MONTH(expense_date)
-                      ORDER BY YEAR(expense_date), MONTH(expense_date)";
+      // Get monthly expenses from completed Purchase Orders (Sept=9, Oct=10, Nov=11, Dec=12)
+      $sql_monthly = "SELECT MONTH(order_date) as month, YEAR(order_date) as year, SUM(total_amount) as total
+                      FROM procurement_purchase_orders
+                      WHERE project_id = ? AND status = 'COMPLETED'
+                      AND MONTH(order_date) BETWEEN 9 AND 12
+                      GROUP BY YEAR(order_date), MONTH(order_date)
+                      ORDER BY YEAR(order_date), MONTH(order_date)";
       $stmt_monthly = $conn->prepare($sql_monthly);
       $stmt_monthly->bind_param("i", $selected_project_id);
       $stmt_monthly->execute();
@@ -236,15 +237,24 @@
       }
     }
 
-    // Fetch recent expenses for the table
+    // Fetch recent expenses for the table (now from completed Purchase Orders)
     $expenses = [];
     if ($selected_project_id > 0) {
-      $sql_expenses = "SELECT e.*, s.supplier_name, pp.phase_name as phase
-                       FROM budget_expenses e
-                       LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
-                       LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
-                       WHERE e.project_id = ?
-                       ORDER BY e.expense_date DESC
+      $sql_expenses = "SELECT 
+                         po.po_id as expense_id,
+                         po.po_id,
+                         po.po_reference,
+                         po.order_date as expense_date,
+                         po.phase,
+                         'MATERIALS' as category,
+                         CONCAT(po.order_title, ' (', po.po_reference, ')') as description,
+                         po.total_amount as amount,
+                         'APPROVED' as status,
+                         s.supplier_name as supplier_name
+                       FROM procurement_purchase_orders po
+                       LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
+                       WHERE po.project_id = ? AND po.status = 'COMPLETED'
+                       ORDER BY po.order_date DESC
                        LIMIT 10";
       $stmt_expenses = $conn->prepare($sql_expenses);
       $stmt_expenses->bind_param("i", $selected_project_id);
@@ -309,14 +319,15 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-2xl text-gray-900 font-bold">Expenses</h1>
-          <p class="text-sm text-gray-500 mt-1">Track and manage project expenses</p>
+          <p class="text-sm text-gray-500 mt-1">Expenses are automatically synced from completed Purchase Orders</p>
         </div>
-        <a href="add_expense.php?project_id=<?php echo $selected_project_id; ?>&phase=<?php echo urlencode($selected_phase); ?>" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
+        <!-- Info Badge: Expenses now come from Procurement -->
+        <div class="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2.5 rounded-lg border border-blue-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="font-medium">New Expense</span>
-        </a>
+          <span class="text-sm font-medium">Synced from Procurement</span>
+        </div>
       </div>
 
       <!-- Expenses Table -->
@@ -552,16 +563,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
-                        <a href="edit_expense.php?id=<?php echo $expense['expense_id']; ?>" class="text-green-600 hover:text-green-800 transition-colors" title="Edit">
+                        <!-- Edit removed: Expenses now come from Procurement POs -->
+                        <a href="/icmis/modules/procurement/orders.php?po_id=<?php echo $expense['po_id'] ?? ''; ?>" class="text-green-600 hover:text-green-800 transition-colors" title="View in Procurement">
                           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
                         </a>
-                        <button onclick="openDeleteExpenseModal(<?php echo $expense['expense_id']; ?>, '<?php echo htmlspecialchars($expense['description'], ENT_QUOTES); ?>')" class="text-red-600 hover:text-red-800 transition-colors" title="Delete">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
                       </div>
                     </td>
                   </tr>

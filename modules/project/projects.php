@@ -13,11 +13,10 @@ if (!isset($_SESSION['user_id'])) {
 // 3. Database Connection
 require_once __DIR__ . '/../../config/database.php';
 
-// 4. Fetch Projects from Database
 $sql = "SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
-        FROM icmis_projects p 
-        LEFT JOIN workforce_employees e ON p.project_manager_id = e.employee_id 
-        ORDER BY p.start_date DESC";
+    FROM icmis_projects p 
+    LEFT JOIN workforce_employees e ON p.project_manager_id = e.employee_id 
+    ORDER BY p.project_id DESC";
 $result = $conn->query($sql);
 
 $projects = [];
@@ -455,6 +454,9 @@ if ($result && $result->num_rows > 0) {
             document.getElementById('projectModalTitle').textContent = 'Add Project';
             document.getElementById('projectModalBtnText').textContent = 'Add Project';
             document.getElementById('project_id').value = '';
+                // Clear budget display and hidden raw value
+                if (document.getElementById('total_budget')) document.getElementById('total_budget').value = '';
+                if (document.getElementById('total_budget_display')) document.getElementById('total_budget_display').value = '';
 
             // Get next project code
             fetch(backendUrl + '?get_next_id=1')
@@ -498,7 +500,14 @@ if ($result && $result->num_rows > 0) {
                             document.getElementById('start_date').value = project.start_date || '';
                             document.getElementById('end_date').value = project.end_date || '';
                             document.getElementById('status').value = project.status || 'Planning';
+                            // Raw hidden value
                             document.getElementById('total_budget').value = project.total_budget || '';
+                            // Formatted display
+                            const tbDisplay = document.getElementById('total_budget_display');
+                            if (tbDisplay) {
+                                const raw = (project.total_budget || '').toString();
+                                tbDisplay.value = raw ? raw.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+                            }
 
                             // Fetch employees and populate manager select
                             fetch(employeesUrl)
@@ -586,6 +595,8 @@ if ($result && $result->num_rows > 0) {
         // ------------------ Close Project Modal ------------------
         function closeProjectModal() {
             document.getElementById('projectForm').reset();
+            // also clear formatted display
+            if (document.getElementById('total_budget_display')) document.getElementById('total_budget_display').value = '';
             document.getElementById('projectModal').style.display = 'none';
         }
         document.getElementById('closeProjectModal')?.addEventListener('click', closeProjectModal);

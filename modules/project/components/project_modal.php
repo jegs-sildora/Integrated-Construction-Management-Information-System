@@ -119,9 +119,11 @@
                     </h4>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Total Budget (₱)</label>
-                        <input type="number" name="total_budget" id="total_budget" step="0.01" min="0"
-                               placeholder="Enter total budget"
+                        <!-- Visible formatted input (no name) -->
+                        <input type="text" id="total_budget_display" placeholder="Enter total budget"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
+                        <!-- Hidden raw value submitted to server -->
+                        <input type="hidden" name="total_budget" id="total_budget" value="">
                     </div>
                 </div>
             </div>
@@ -143,3 +145,47 @@
         </form>
     </div>
 </div>
+    <script>
+        (function(){
+            const display = document.getElementById('total_budget_display');
+            const hidden = document.getElementById('total_budget');
+
+            if (!display || !hidden) return;
+
+            function cleanRaw(val){
+                if (!val) return '';
+                // remove commas and non-numeric except dot
+                let raw = val.replace(/,/g, '').replace(/[^0-9.]/g, '');
+                // allow only one dot
+                const parts = raw.split('.');
+                if (parts.length > 1) {
+                    raw = parts[0] + '.' + parts.slice(1).join('').slice(0,2);
+                }
+                return raw;
+            }
+
+            function formatDisplayFromRaw(raw){
+                if (!raw) return '';
+                const parts = raw.split('.');
+                const intPart = parts[0] || '';
+                const decPart = parts[1] || '';
+                const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return decPart ? withCommas + '.' + decPart : withCommas;
+            }
+
+            display.addEventListener('input', function(e){
+                const raw = cleanRaw(display.value);
+                hidden.value = raw;
+                display.value = formatDisplayFromRaw(raw);
+            });
+
+            // When form is reset programmatically, keep display in sync
+            const form = document.getElementById('projectForm');
+            if (form) {
+                form.addEventListener('reset', function(){
+                    hidden.value = '';
+                    display.value = '';
+                });
+            }
+        })();
+    </script>

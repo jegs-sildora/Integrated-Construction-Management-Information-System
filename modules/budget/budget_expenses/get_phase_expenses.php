@@ -1,4 +1,24 @@
 <?php
+/**
+ * Get Phase Expenses - Now sourced from Procurement Purchase Orders
+ * 
+ * This file has been refactored to fetch expense data from completed 
+ * Purchase Orders in the Procurement module instead of the budget_expenses table.
+ * 
+ * Filtering Logic:
+ * - Only fetch Purchase Orders with status = 'COMPLETED' (approved and delivered)
+ * 
+ * Column Mapping from Procurement to Budget:
+ * - po_id -> expense_id (for compatibility)
+ * - order_date -> expense_date
+ * - phase -> phase
+ * - 'MATERIALS' -> category (default, derived from PO context)
+ * - order_title + item details -> description
+ * - total_amount -> amount
+ * - 'APPROVED' -> status (completed POs are considered approved expenses)
+ * - supplierName -> supplier_name
+ */
+
 header('Content-Type: application/json');
 
 // Include config for database connection
@@ -21,15 +41,26 @@ try {
     $project_id = intval($_GET['project_id']);
     $phase_name = trim($_GET['phase']);
 
-    // Fetch expenses for the phase by joining with icmis_project_phases
-    $sql = "SELECT e.expense_id, e.expense_date, e.category, e.description, e.amount, e.status,
-                   s.supplier_name,
-                   pp.phase_name as phase
-            FROM budget_expenses e
-            LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
-            LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
-            WHERE e.project_id = ? AND pp.phase_name = ?
-            ORDER BY e.expense_date DESC, e.expense_id DESC";
+    // Fetch completed Purchase Orders for the phase
+    // We're sourcing expense data from the Procurement module's purchase_orders table
+    // Only POs with status = 'COMPLETED' are considered actual expenses
+    $sql = "SELECT 
+                po.po_id as expense_id,
+                po.po_id,
+                po.po_reference,
+                po.order_date as expense_date,
+                po.phase,
+                'MATERIALS' as category,
+                CONCAT(po.order_title, ' (', po.po_reference, ')') as description,
+                po.total_amount as amount,
+                'APPROVED' as status,
+                s.supplierName as supplier_name
+            FROM purchase_orders po
+            LEFT JOIN suppliers s ON po.supplier_id = s.supplierID
+            WHERE po.project_id = ? 
+              AND po.phase = ?
+              AND po.status = 'COMPLETED'
+            ORDER BY po.order_date DESC, po.po_id DESC";
     
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
@@ -44,12 +75,15 @@ try {
     while ($row = $result->fetch_assoc()) {
         $expenses[] = [
             'expense_id' => $row['expense_id'],
+            'po_id' => $row['po_id'],
+            'po_reference' => $row['po_reference'],
             'expense_date' => $row['expense_date'],
             'category' => $row['category'],
             'description' => $row['description'],
             'amount' => floatval($row['amount']),
             'status' => $row['status'],
-            'supplier_name' => $row['supplier_name']
+            'supplier_name' => $row['supplier_name'],
+            'phase' => $row['phase']
         ];
     }
 
@@ -58,7 +92,8 @@ try {
     echo json_encode([
         'success' => true,
         'expenses' => $expenses,
-        'count' => count($expenses)
+        'count' => count($expenses),
+        'source' => 'procurement_purchase_orders'
     ]);
 
 } catch (Exception $e) {

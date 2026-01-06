@@ -23,8 +23,21 @@ try {
         $project_id = intval($_POST['delete_id']);
         
         // Delete related records first
+        // Tasks and phases (phases have ON DELETE CASCADE for tasks, but ensure both cleared)
         $conn->query("DELETE FROM icmis_tasks WHERE project_id = $project_id");
         $conn->query("DELETE FROM icmis_project_phases WHERE project_id = $project_id");
+
+        // Budget-related data that reference projects without ON DELETE CASCADE
+        $conn->query("DELETE FROM budget_expenses WHERE project_id = $project_id");
+        $conn->query("DELETE FROM budget_generated_reports WHERE project_id = $project_id");
+        // Deleting proposals will cascade to budget_line_items (line items FK has ON DELETE CASCADE)
+        $conn->query("DELETE FROM budget_proposals WHERE project_id = $project_id");
+
+        // Procurement orders referencing the project (their items typically cascade)
+        $conn->query("DELETE FROM procurement_purchase_orders WHERE project_id = $project_id");
+
+        // Optional: cleanup budget-generated reports (table exists in DB dump as `budget_generated_reports`)
+        $conn->query("DELETE FROM budget_generated_reports WHERE project_id = $project_id");
         
         $stmt = $conn->prepare("DELETE FROM icmis_projects WHERE project_id = ?");
         $stmt->bind_param("i", $project_id);
@@ -135,10 +148,10 @@ try {
     }
 
     // -------------------- FETCH ALL PROJECTS --------------------
-    $sql = "SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
+        $sql = "SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
             FROM icmis_projects p
             LEFT JOIN workforce_employees e ON p.project_manager_id = e.employee_id
-            ORDER BY p.start_date DESC";
+            ORDER BY p.project_id DESC";
     $result = $conn->query($sql);
     
     $projects = [];

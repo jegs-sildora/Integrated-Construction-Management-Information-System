@@ -166,12 +166,12 @@
             </div>
 
             <div class="grid gap-3 pt-4">
-                <button onclick="downloadPDF()" class="flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium">
+                <a id="downloadPdfBtn" href="#" target="_blank" class="flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V3h12v6M6 13h12v8H6v-8z" />
                     </svg>
-                    Download PDF
-                </button>
+                    Print PDF
+                </a>
             </div>
 
             <div class="text-center pt-4 border-t border-gray-200">
@@ -301,6 +301,12 @@
             `;
             container.insertAdjacentHTML('beforeend', itemHTML);
         });
+
+        // Set download link for PDF (open in new tab)
+        const downloadBtn = document.getElementById('downloadPdfBtn');
+        if (downloadBtn && currentProposalId) {
+            downloadBtn.href = `./budget_proposal/download_proposal_pdf.php?id=${currentProposalId}`;
+        }
     }
 
     function closeProposalModal() {
@@ -316,7 +322,7 @@
 
     function downloadPDF() {
         if (currentProposalId) {
-            window.location.href = `./budget_proposal/download_proposal_pdf.php?id=${currentProposalId}`;
+            window.open(`./budget_proposal/download_proposal_pdf.php?id=${currentProposalId}`, '_blank');
             showToast('Downloading PDF...', 'success');
         }
     }

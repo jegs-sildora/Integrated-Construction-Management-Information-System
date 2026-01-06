@@ -131,25 +131,41 @@ try {
     $conn->begin_transaction();
 
     try {
-        // Update budget_proposals table
+        // Resolve phase name to phase_id (DB stores phase_id)
+        $phase_id = null;
+        if (!empty($target_phase)) {
+            $phase_lookup = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name = ? LIMIT 1");
+            if ($phase_lookup) {
+                $phase_lookup->bind_param("is", $project_id, $target_phase);
+                $phase_lookup->execute();
+                $phase_res = $phase_lookup->get_result();
+                if ($pr = $phase_res->fetch_assoc()) {
+                    $phase_id = intval($pr['phase_id']);
+                }
+                $phase_lookup->close();
+            }
+        }
+
+        // Update budget_proposals table (use columns present in DB schema)
+        // budget_proposals has: project_id, phase_id, code, title, description, total_amount, status, created_by, created_at
         $update_sql = "UPDATE budget_proposals 
                       SET project_id = ?, 
+                          phase_id = ?,
                           title = ?, 
-                          target_phase = ?,
-                          phase_start_date = ?,
-                          phase_end_date = ?,
-                          scope_description = ?,
+                          description = ?,
                           status = ?, 
-                          total_amount = ?,
-                          updated_at = CURRENT_TIMESTAMP 
+                          total_amount = ?
                       WHERE proposal_id = ?";
-        
+
         $update_stmt = $conn->prepare($update_sql);
         if (!$update_stmt) {
             throw new Exception('Failed to prepare update statement: ' . $conn->error);
         }
 
-        $update_stmt->bind_param("issssssdi", $project_id, $title, $target_phase, $phase_start_date, $phase_end_date, $scope_description, $status, $total_amount, $proposal_id);
+        // map scope_description -> description column
+        $description = $scope_description;
+
+        $update_stmt->bind_param("iisssdi", $project_id, $phase_id, $title, $description, $status, $total_amount, $proposal_id);
         
         if (!$update_stmt->execute()) {
             throw new Exception('Failed to update proposal: ' . $update_stmt->error);
