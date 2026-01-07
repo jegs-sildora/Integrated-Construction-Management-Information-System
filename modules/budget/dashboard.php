@@ -253,7 +253,7 @@
   include __DIR__ . '/../../includes/header.php'; 
   ?>
 
-  <main class="ml-56 pt-28 p-6 transition-all duration-300">
+  <main class="ml-56 pt-26 p-6 transition-all duration-300">
     <div class="max-w-7xl mx-auto">
       <?php if ($has_approved_proposals): ?>
       

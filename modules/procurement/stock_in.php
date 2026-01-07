@@ -58,7 +58,7 @@ if ($project_id > 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock In - <?= htmlspecialchars($project_name) ?></title>
+    <title>Stock In | <?= htmlspecialchars($project_name) ?></title>
     <?php include '../../includes/head_assets.php'; ?>
     <link rel="stylesheet" href="css/style.css"> 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -67,10 +67,11 @@ if ($project_id > 0) {
 
     <?php include '../../includes/sidebar.php'; ?>
     <?php include '../../includes/header.php'; ?>
+    <?php include '../../includes/toast.php'; ?>
 
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 p-8 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
         
         <?php if ($project_id == 0): ?>
             <div class="flex flex-col items-center justify-center h-[calc(100vh-140px)]">
@@ -161,6 +162,7 @@ if ($project_id > 0) {
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Item Name</th>
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Qty Received</th>
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Date Received</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="stockin-table-body" class="divide-y divide-slate-100">
@@ -170,12 +172,45 @@ if ($project_id > 0) {
                 </div>
             </div>
 
+            <!-- Edit Stock Modal -->
+            <div id="stockEditModal" class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100 m-4">
+                    <div class="bg-blue-600 px-6 py-4 border-b flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-white">Edit Received Item</h2>
+                        <button type="button" class="text-white hover:text-slate-300" onclick="closeEditStockModal()"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="p-6">
+                        <input type="hidden" id="edit_stock_id">
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Reference</label>
+                            <input id="edit_po_ref" class="w-full p-3 border rounded-lg bg-gray-50" readonly>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Item Name</label>
+                            <input id="edit_item_name" class="w-full p-3 border rounded-lg bg-gray-50" readonly>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Qty Received</label>
+                            <input id="edit_qty_received" type="number" step="0.01" min="0" class="w-full p-3 border rounded-lg">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Date Received</label>
+                            <input id="edit_date_received" type="date" class="w-full p-3 border rounded-lg">
+                        </div>
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button class="px-5 py-2.5 text-sm font-bold text-slate-600" onclick="closeEditStockModal()">Cancel</button>
+                            <button id="update_stock_btn" class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl">Update Item</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="stockModal" class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
                 <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden transform transition-all scale-100 m-4">
                     
                     <div class="bg-blue-600 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
                         <h2 class="text-lg font-bold text-white">Receive Stock - <?= htmlspecialchars($project_name) ?></h2>
-                        <button type="button" class="text-slate-400 hover:text-white" onclick="closeStockModal()">
+                        <button type="button" class="text-slate-100 hover:text-white" onclick="closeStockModal()">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>

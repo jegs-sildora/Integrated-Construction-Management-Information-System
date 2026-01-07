@@ -1,6 +1,7 @@
 <?php
     // reports.php - using centralized config
     include __DIR__ . '/project_context.php';
+    require_once __DIR__ . '/../../includes/report_print_layout.php';
     $conn = getBudgetConnection();
 
     // 1. Get selected project ID from global context
@@ -68,72 +69,8 @@
   <style>
     * { font-family: 'Inter', sans-serif; }
 
-    /* PRINT UI STYLES */
-    @media print {
-        @page { margin: 0.5in; size: landscape; }
-        
-        body { 
-            background-color: white !important; 
-            color: black !important;
-            -webkit-print-color-adjust: exact; 
-        }
-        
-        /* HIDE UI ELEMENTS */
-        header, aside, .sidebar, .top-bar, .no-print, button, .generate-btn, .report-template-card, .breadcrumb { 
-            display: none !important; 
-        }
-        
-        /* SHOW REPORT ELEMENTS */
-        .print-only { 
-            display: block !important; 
-        }
-        
-        /* RESET LAYOUT */
-        main { 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            width: 100% !important; 
-            min-height: auto !important;
-        }
-        
-        /* TABLE PRINT STYLING */
-        .bg-white { box-shadow: none !important; border: none !important; }
-        .overflow-x-auto { overflow: visible !important; }
-        table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
-        
-        thead tr { background-color: #f3f4f6 !important; }
-        thead th { 
-            border: 1px solid #9ca3af !important; 
-            padding: 8px !important; 
-            color: black !important;
-            text-transform: uppercase;
-            font-size: 9pt;
-        }
-        tbody td { 
-            border: 1px solid #e5e7eb !important; 
-            padding: 8px !important; 
-            color: black !important;
-        }
-        
-        /* Hide Action Column in Print */
-        th:last-child, td:last-child {
-            display: none !important;
-        }
-
-        /* LOGO SIZING */
-        .print-logo {
-            max-height: 80px;
-            width: auto;
-            margin: 0 auto 10px auto;
-            display: block;
-        }
-        
-        /* FOOTER SPACING */
-        .print-footer {
-            margin-top: 50px !important;
-            page-break-inside: avoid;
-        }
-    }
+    /* Shared Print Styles */
+    <?php echo renderPrintStyles(); ?>
   </style>
 </head>
 <body class="bg-gray-50 text-slate-800">
@@ -171,6 +108,22 @@
         $breadcrumbHTML .= '</div>';
         $breadcrumbHTML .= '</div>';
 
+        // Fetch project phases for the selected project (for Phase Variance template)
+        $project_phases = [];
+        if ($selected_project_id) {
+            $stmt_ph = $conn->prepare("SELECT phase_id, phase_name FROM icmis_project_phases WHERE project_id = ? ORDER BY phase_id ASC");
+            if ($stmt_ph) {
+                $stmt_ph->bind_param("i", $selected_project_id);
+                $stmt_ph->execute();
+                $res_ph = $stmt_ph->get_result();
+                if ($res_ph) {
+                    while ($rph = $res_ph->fetch_assoc()) {
+                        $project_phases[] = $rph;
+                    }
+                }
+                $stmt_ph->close();
+            }
+        }
         $pageTitle = "Financial Reports";
         $pageSection = "Budget & Cost Control";
         $pageSubTitle = $breadcrumbHTML;
@@ -180,16 +133,12 @@
   
   <main class="ml-56 mt-20 p-6 transition-all duration-300">
     
-    <div class="print-only hidden mb-6">
-        <div class="print-logo-area text-center border-b pb-4 mb-4">
-            <img src="../../assets/images/logo.png" alt="ICMIS Logo" class="print-logo" onerror="this.style.display='none';">
-            
-            <h1 class="text-2xl font-bold uppercase tracking-wide">Generated Reports Log</h1>
-            <p class="text-sm text-gray-500">ICMIS Financial Management System</p>
-            <p class="text-sm font-bold mt-1 text-[#e9922c]"><?php echo htmlspecialchars($current_project_name); ?></p>
-            <p class="text-xs mt-1">Generated on: <span id="print-date"></span></p>
-        </div>
-    </div>
+    <?php echo renderPrintHeader('Financial Reports Log', [
+        'project_name' => $current_project_name,
+        'project_code' => $current_project_code,
+        'report_type' => 'Financial Reports',
+        'generated_by' => $_SESSION['user_name'] ?? 'System'
+    ]); ?>
 
     <div class="max-w-7xl mx-auto">
       
@@ -224,11 +173,14 @@
                 <p class="text-sm text-gray-600 mb-4">Approved Proposals vs. Expenses per phase.</p>
                 <div class="mb-4">
                     <select class="phase-selector w-full text-xs bg-gray-50 border border-gray-200 px-2 py-1.5 rounded focus:border-orange-500 outline-none">
-                        <option value="">Select Phase...</option>
-                        <option value="1">Phase 1: Mobilization</option>
-                        <option value="2">Phase 2: Structural</option>
-                        <option value="3">Phase 3: MEPFS</option>
-                        <option value="4">Phase 4: Finishing</option>
+                        <?php if(empty($project_phases)): ?>
+                            <option value="">No phases available</option>
+                        <?php else: ?>
+                            <option value="">Select Phase...</option>
+                            <?php foreach($project_phases as $ph): ?>
+                                <option value="<?php echo $ph['phase_id']; ?>"><?php echo htmlspecialchars($ph['phase_name']); ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
             </div>
@@ -355,28 +307,7 @@
       
     </div>
 
-    <div class="print-only print-footer hidden">
-        <div class="grid grid-cols-3 gap-8">
-            <div class="text-center">
-                <p class="text-xs font-bold text-gray-500 uppercase mb-8">Prepared By:</p>
-                <div class="border-b border-black w-3/4 mx-auto"></div>
-                <p class="text-sm font-bold mt-2 pt-4"><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></p>
-                <p class="text-xs text-gray-500">Inventory Manager</p>
-            </div>
-            <div class="text-center">
-                <p class="text-xs font-bold text-gray-500 uppercase mb-8">Verified By:</p>
-                <div class="border-b border-black w-3/4 mx-auto"></div>
-                <p class="text-sm font-bold mt-2 pt-4">___________</p> 
-                <p class="text-xs text-gray-500">Project Engineer</p>
-            </div>
-            <div class="text-center">
-                <p class="text-xs font-bold text-gray-500 uppercase mb-8">Approved By:</p>
-                <div class="border-b border-black w-3/4 mx-auto"></div>
-                <p class="text-sm font-bold mt-2 pt-4">___________</p> 
-                <p class="text-xs text-gray-500">Project Manager</p>
-            </div>
-        </div>
-    </div>
+    <?php echo renderPrintFooter($_SESSION['user_name'] ?? 'System', 'Budget Manager'); ?>
 
   </main>
 
@@ -385,19 +316,9 @@
     lucide.createIcons();
 
     // ============================================
-    // PRINT FUNCTIONALITY
+    // PRINT FUNCTIONALITY (Shared)
     // ============================================
-    function printReport() {
-        const dateEl = document.getElementById('print-date');
-        if(dateEl) {
-            const now = new Date();
-            dateEl.innerText = now.toLocaleDateString('en-US', { 
-                year: 'numeric', month: 'long', day: 'numeric', 
-                hour: '2-digit', minute: '2-digit' 
-            });
-        }
-        window.print();
-    }
+    <?php echo renderPrintReportScript(); ?>
 
     // ============================================
     // UI STATE MANAGEMENT
@@ -480,29 +401,13 @@
             formData.append('report_type', templateType);
             if (selectedPhase) formData.append('phase', selectedPhase);
 
-            const response = await fetch('budget_expenses/export_pdf.php', { method: 'POST', body: formData });
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                const text = await response.text();
-                throw new Error("Server returned an invalid format.");
-            }
-
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const data = result.data;
-
-            switch (templateType) {
-                case 'budget-summary': generateBudgetSummaryPDF(doc, data); break;
-                case 'phase-analysis': generatePhaseAnalysisPDF(doc, data); break;
-                case 'labor-analysis': generateLaborAnalysisPDF(doc, data); break;
-                case 'expense-log': generateExpenseLogPDF(doc, data); break;
-                case 'cash-flow': generateCashFlowPDF(doc, data); break;
-            }
-
-            showSuccessState(button);
+            // Open a new blank tab and redirect to server-side generator
+            const url = `generate_report.php?project_id=${encodeURIComponent(projectId)}&report_type=${encodeURIComponent(templateType)}` + (selectedPhase ? `&phase=${encodeURIComponent(selectedPhase)}` : '');
+            window.open(url, '_blank');
+            // Reset the loading state after 2 seconds to avoid a stuck "Generating..." state
+            setTimeout(() => { try { resetLoadingState(button); } catch (e) { console.warn('resetLoadingState failed', e); } }, 2000);
+            // leave loading state to browser/tab; return early
+            return;
         } catch (error) {
             console.error('Generation Error:', error);
             if (typeof showToast === 'function') showToast('Failed: ' + error.message, 'error');
@@ -543,7 +448,8 @@
         doc.text('ICMIS - Integrated Construction Management Information System', pageWidth / 2, 36, { align: 'center' });
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(title.toUpperCase(), pageWidth / 2, 44, { align: 'center' });
+        const safeTitle = (typeof title === 'string') ? title : String(title || '');
+        doc.text(safeTitle.toUpperCase(), pageWidth / 2, 44, { align: 'center' });
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
@@ -554,15 +460,17 @@
         doc.text('Project Name:', 18, 58);
         doc.text('Project Code:', 18, 66);
         doc.setFont('helvetica', 'normal');
-        doc.text(project.name, 45, 58);
-        doc.text(project.project_code || 'N/A', 45, 66);
+        const projectNameSafe = (project && project.name) ? String(project.name) : 'N/A';
+        const projectCodeSafe = (project && project.project_code) ? String(project.project_code) : 'N/A';
+        doc.text(projectNameSafe, 45, 58);
+        doc.text(projectCodeSafe, 45, 66);
 
         doc.setFont('helvetica', 'bold');
         doc.text('Date:', 120, 58);
         doc.text('User:', 120, 66);
         doc.setFont('helvetica', 'normal');
-        doc.text(currentDate, 145, 58);
-        doc.text('<?php echo $userName; ?>', 145, 66);
+        doc.text(String(currentDate || ''), 145, 58);
+        doc.text(String(<?php echo json_encode($userName); ?> || ''), 145, 66);
         
         return 82;
     }
@@ -584,9 +492,8 @@
             doc.setFont('helvetica', 'bold');
             doc.text('Prepared By:', 20, footerY);
             doc.setDrawColor(0, 0, 0);
-            doc.line(20, footerY + 8, 70, footerY + 8); // Line
             doc.setFont('helvetica', 'bold');
-            doc.text('<?php echo $userName; ?>', 20, footerY + 13);
+            doc.text(String(<?php echo json_encode($userName); ?> || ''), 20, footerY + 13);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
@@ -598,7 +505,6 @@
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.text('Verified By:', centerBase - 25, footerY);
-            doc.line(centerBase - 25, footerY + 8, centerBase + 25, footerY + 8); // Line
             doc.setFont('helvetica', 'bold');
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
@@ -611,7 +517,6 @@
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.text('Approved By:', rightBase, footerY);
-            doc.line(rightBase, footerY + 8, rightBase + 50, footerY + 8); // Line
             doc.setFont('helvetica', 'bold');
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);

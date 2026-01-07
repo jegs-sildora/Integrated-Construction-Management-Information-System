@@ -115,15 +115,22 @@ if (!isset($pageSection) || !isset($pageTitle)) {
                 
                 <?php if ($show_project_selector): ?>
                     <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    
+
                     <div class="relative group">
-                        <select onchange="changeHeaderProject(this.value)" class="appearance-none bg-slate-50 border border-gray-200 hover:border-[#e9922c] text-gray-700 text-sm font-semibold rounded-lg pl-3 pr-8 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#e9922c] focus:border-transparent transition-all shadow-sm">
-                            <?php foreach ($header_projects as $proj): ?>
-                                <option value="<?php echo $proj['project_id']; ?>" <?php echo ($proj['project_id'] == $header_project_id) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($proj['project_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php if (!empty($header_projects)): ?>
+                            <select onchange="changeHeaderProject(this.value)" class="appearance-none bg-slate-50 border border-gray-200 hover:border-[#e9922c] text-gray-700 text-sm font-semibold rounded-lg pl-3 pr-8 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#e9922c] focus:border-transparent transition-all shadow-sm">
+                                <?php foreach ($header_projects as $proj): ?>
+                                    <option value="<?php echo $proj['project_id']; ?>" <?php echo ($proj['project_id'] == $header_project_id) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($proj['project_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        <?php else: ?>
+                            <select class="appearance-none bg-slate-50 border border-gray-200 text-gray-400 text-sm font-semibold rounded-lg pl-3 pr-8 py-1.5 cursor-not-allowed shadow-sm" disabled>
+                                <option selected>No Projects</option>
+                            </select>
+                        <?php endif; ?>
+
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>

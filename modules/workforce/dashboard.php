@@ -66,14 +66,17 @@ if ($result) {
     $stats['active_employees'] = $result->fetch_assoc()['total'];
 }
 
-// Inactive Employees
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Inactive'");
+// Inactive Employees (includes Terminated)
+$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status IN ('Inactive', 'Terminated')");
 if ($result) {
     $stats['inactive_employees'] = $result->fetch_assoc()['total'];
 }
 
-// On Leave
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'On Leave'");
+// On Leave - check attendance for On Leave status since workforce_employees doesn't have 'On Leave'
+// workforce_employees.status ENUM: 'Active','Inactive','Terminated'
+// workforce_attendance.status ENUM: 'Present','Absent','Late','On Leave'
+$result = $conn->query("SELECT COUNT(DISTINCT employee_id) as total FROM workforce_attendance 
+    WHERE attendance_date = CURDATE() AND status = 'On Leave'");
 if ($result) {
     $stats['on_leave'] = $result->fetch_assoc()['total'];
 }

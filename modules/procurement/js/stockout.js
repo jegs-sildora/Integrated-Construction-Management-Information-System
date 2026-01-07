@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadInventoryDropdown(); 
 });
 
-let currentMaxStock = 0; 
+let currentMaxStock = 0.0; 
 
 /* =========================================
    2. FETCH & RENDER HISTORY TABLE
@@ -71,21 +71,72 @@ const itemDropdown = document.getElementById("stock_itemID");
 if(itemDropdown) {
     itemDropdown.addEventListener("change", function() {
         let selectedOption = this.options[this.selectedIndex];
-        currentMaxStock = parseInt(selectedOption.getAttribute("data-max")) || 0;
-        document.getElementById("stock_unit").value = selectedOption.getAttribute("data-unit") || "units";
-        document.getElementById("stock_quantity").style.borderColor = "#e2e8f0";
+        currentMaxStock = parseFloat(selectedOption.getAttribute("data-max")) || 0.0;
+        const unit = selectedOption.getAttribute("data-unit") || "units";
+        document.getElementById("stock_unit").value = unit;
+
+        const qtyEl = document.getElementById("stock_quantity");
+        if (qtyEl) {
+            qtyEl.style.borderColor = "#e2e8f0";
+            // set max attribute so native validation can pick it up as well
+            qtyEl.setAttribute('max', currentMaxStock);
+            qtyEl.setAttribute('step', '0.01');
+        }
+        // reset any previous custom validity
+        if (qtyEl && typeof qtyEl.setCustomValidity === 'function') {
+            qtyEl.setCustomValidity('');
+        }
+        // update available display (readonly field)
+        const avail = document.getElementById('stock_available_qty');
+        if (avail) avail.value = currentMaxStock;
+        // re-enable submit and MAX button when changing item
+        const submitBtn = document.querySelector('#issueStockForm button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = false;
+        const maxBtn = document.getElementById('stock_max_btn'); if (maxBtn) maxBtn.disabled = (currentMaxStock <= 0);
+    });
+}
+
+// MAX button handler: fills qty with currentMaxStock
+const maxBtn = document.getElementById('stock_max_btn');
+if (maxBtn) {
+    maxBtn.addEventListener('click', function() {
+        const qtyEl = document.getElementById('stock_quantity');
+        const err = document.getElementById('stock_quantity_error');
+        if (currentMaxStock <= 0) {
+            if (err) err.textContent = 'No available stock to use MAX.';
+            return;
+        }
+        if (qtyEl) {
+            // set to max (preserve precision)
+            qtyEl.value = Number.isInteger(currentMaxStock) ? String(currentMaxStock) : String(currentMaxStock);
+            qtyEl.dispatchEvent(new Event('input', { bubbles: true }));
+            qtyEl.focus();
+            if (err) err.textContent = '';
+        }
     });
 }
 
 const qtyInput = document.getElementById("stock_quantity");
 if(qtyInput) {
     qtyInput.addEventListener("input", function() {
-        let qty = parseInt(this.value) || 0;
+        let qty = parseFloat(this.value) || 0.0;
+        const submitBtn = document.querySelector('#issueStockForm button[type="submit"]');
+
         if (currentMaxStock > 0 && qty > currentMaxStock) {
-            // Optional: Simple inline warning if global toast isn't available
-            this.style.borderColor = "red";
+                this.style.borderColor = "red";
+                if(typeof this.setCustomValidity === 'function') this.setCustomValidity(`Cannot issue ${qty}. Only ${currentMaxStock} in stock.`);
+                if(submitBtn) submitBtn.disabled = true;
+                const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = `Cannot issue ${qty}. Only ${currentMaxStock} in stock.`;
+        } else if (qty <= 0) {
+                this.style.borderColor = "red";
+                if(typeof this.setCustomValidity === 'function') this.setCustomValidity('Quantity must be greater than 0.');
+                if(submitBtn) submitBtn.disabled = true;
+                const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = 'Quantity must be greater than 0.';
         } else {
             this.style.borderColor = "#e2e8f0"; 
+            if(typeof this.setCustomValidity === 'function') this.setCustomValidity('');
+            if(submitBtn) submitBtn.disabled = false;
+                const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = '';
         }
     });
 }
@@ -97,11 +148,22 @@ const form = document.getElementById("issueStockForm");
 if(form) {
     form.addEventListener("submit", function(event) {
         event.preventDefault();
-        let qty = parseInt(document.getElementById("stock_quantity").value);
-        
-        if (qty > currentMaxStock) {
+        let qty = parseFloat(document.getElementById("stock_quantity").value) || 0.0;
+        const qtyEl = document.getElementById("stock_quantity");
+
+        if (qty <= 0) {
+            if(typeof showToast === 'function') showToast('Quantity must be greater than 0.', "error");
+            else alert('Quantity must be greater than 0.');
+            const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = 'Quantity must be greater than 0.';
+            if(qtyEl) qtyEl.focus();
+            return;
+        }
+
+        if (currentMaxStock > 0 && qty > currentMaxStock) {
             if(typeof showToast === 'function') showToast(`Cannot issue ${qty}. Only ${currentMaxStock} in stock!`, "error");
             else alert(`Cannot issue ${qty}. Only ${currentMaxStock} in stock!`);
+            const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = `Cannot issue ${qty}. Only ${currentMaxStock} in stock.`;
+            if(qtyEl) qtyEl.focus();
             return; 
         }
 
@@ -115,6 +177,8 @@ if(form) {
                 else alert(data.message);
                 
                 closeIssueModal();
+                const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = '';
+                const avail = document.getElementById('stock_available_qty'); if (avail) avail.value = '';
                 fetchStockOuts();       
                 loadInventoryDropdown(); 
             } else {
@@ -142,6 +206,10 @@ function openIssueModal() {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
+        // reset inline messages and available display
+        const avail = document.getElementById('stock_available_qty'); if (avail) avail.value = '';
+        const err = document.getElementById('stock_quantity_error'); if (err) err.textContent = '';
+        // refresh dropdown options
         loadInventoryDropdown(); 
     }
 }

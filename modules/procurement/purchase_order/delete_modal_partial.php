@@ -13,8 +13,9 @@
             </button>
         </div>
         
-        <form id="deleteForm" method="POST" action="php/delete_order.php">
+        <form id="deleteForm" method="POST" action="purchase_order/delete_order.php">
             <input type="hidden" name="po_id" id="delete_po_id">
+            <input type="hidden" name="project_id" id="delete_project_id" value="">
             
             <div class="p-8">
                 <div class="mb-6">
@@ -62,6 +63,9 @@
     function openDeleteModal(id, reference) {
         // Set the ID in the hidden input
         document.getElementById('delete_po_id').value = id;
+        // Set the current project id (if present on page)
+        var currentProj = document.getElementById('current_project_id');
+        if (currentProj) document.getElementById('delete_project_id').value = currentProj.value || '';
         
         // Set the display text (e.g., PO-2023-001)
         document.getElementById('delete_id_display').innerText = reference;

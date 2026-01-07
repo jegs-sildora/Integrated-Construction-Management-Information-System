@@ -41,7 +41,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $po_id = intval($data['po_id']);
         $project_id = intval($data['project_id']);
-        $phase = trim($data['phase']);
+
+        // Resolve phase_id: accept numeric `phase_id`, numeric `phase`, or lookup by `phase` name
+        $phase_id = 0;
+        if (isset($data['phase_id']) && is_numeric($data['phase_id'])) {
+            $phase_id = intval($data['phase_id']);
+        } elseif (isset($data['phase']) && is_numeric($data['phase'])) {
+            $phase_id = intval($data['phase']);
+        } elseif (isset($data['phase']) && !empty($data['phase'])) {
+            $phase_name = trim($data['phase']);
+            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE phase_name = ? AND project_id = ? LIMIT 1");
+            if ($stmt_phase) {
+                $stmt_phase->bind_param("si", $phase_name, $project_id);
+                $stmt_phase->execute();
+                $res_phase = $stmt_phase->get_result();
+                if ($row_phase = $res_phase->fetch_assoc()) {
+                    $phase_id = intval($row_phase['phase_id']);
+                }
+                $stmt_phase->close();
+            }
+        }
         $supplier_input = trim($data['supplier']); 
         $order_title = isset($data['title']) ? trim($data['title']) : 'Untitled Order';
         $status = isset($data['status']) ? trim($data['status']) : 'PENDING';
@@ -82,15 +101,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sql_header = "UPDATE procurement_purchase_orders 
                        SET project_id = ?, 
                            supplier_id = ?, 
-                           phase = ?, 
+                           phase_id = ?, 
                            order_title = ?, 
                            status = ?, 
                            total_amount = ?
                        WHERE po_id = ?";
         
         $stmt = $conn->prepare($sql_header);
-        // Types: i (proj), i (sup), s (phase), s (title), s (status), d (total), i (po_id)
-        $stmt->bind_param("iisssdi", $project_id, $supplier_id, $phase, $order_title, $status, $grand_total, $po_id);
+        // Types: i (proj), i (sup), i (phase_id), s (title), s (status), d (total), i (po_id)
+        $stmt->bind_param("iiissdi", $project_id, $supplier_id, $phase_id, $order_title, $status, $grand_total, $po_id);
         
         if (!$stmt->execute()) {
             throw new Exception("Header Update Error: " . $stmt->error);

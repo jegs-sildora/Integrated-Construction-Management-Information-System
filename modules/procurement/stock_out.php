@@ -58,7 +58,7 @@ if ($project_id > 0) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Out - <?= htmlspecialchars($project_name) ?></title>
+    <title>Stock Out | <?= htmlspecialchars($project_name) ?></title>
     <?php include '../../includes/head_assets.php'; ?>
     <link rel="stylesheet" href="css/style.css"> 
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -70,7 +70,7 @@ if ($project_id > 0) {
 
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 p-8 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
         
         <?php if ($project_id == 0): ?>
             <div class="flex flex-col items-center justify-center h-[calc(100vh-140px)]">
@@ -175,7 +175,7 @@ if ($project_id > 0) {
 
             <div id="issueStockModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
                 <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all scale-100">
-                    <div class="p-5 rounded-t-2xl flex justify-between items-center bg-gradient-to-r from-red-600 to-red-700 border-b border-red-800">
+                    <div class="p-5 rounded-t-2xl flex justify-between items-center bg-red-700 border-b border-red-800">
                         <h2 class="text-lg font-bold text-white">Issue Stock</h2>
                         <button onclick="closeIssueModal()" class="text-white/80 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
                     </div>
@@ -186,16 +186,26 @@ if ($project_id > 0) {
                                 <option value="" disabled selected>Loading Inventory...</option>
                             </select>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-3 gap-4">
                             <div class="flex flex-col gap-1.5">
-                                <label class="text-xs font-bold text-slate-500 uppercase">Quantity</label>
-                                <input type="number" id="stock_quantity" name="stock_quantity" required min="1" step="0.01" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-slate-500 uppercase">Quantity</label>
+                                    <button type="button" id="stock_max_btn" class="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded disabled:opacity-50" aria-label="Use maximum available">MAX</button>
+                                </div>
+                                <input type="number" id="stock_quantity" name="stock_quantity" required min="0.01" step="0.01" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all">
                             </div>
+
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-xs font-bold text-slate-500 uppercase">Available</label>
+                                <input type="text" id="stock_available_qty" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
+                            </div>
+
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-xs font-bold text-slate-500 uppercase">Unit</label>
                                 <input type="text" id="stock_unit" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
                             </div>
                         </div>
+                        <p id="stock_quantity_error" class="text-sm text-red-600 font-bold text-center" aria-live="polite"></p>
                         <div class="flex flex-col gap-1.5">
                             <label class="text-xs font-bold text-slate-500 uppercase">Issued To (Person/Area)</label>
                             <input type="text" id="stock_issuedTo" name="stock_issuedTo" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all">

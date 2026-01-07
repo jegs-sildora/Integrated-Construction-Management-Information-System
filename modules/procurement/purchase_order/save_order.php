@@ -49,7 +49,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $project_id = intval($data['project_id']);
-        $phase = trim($data['phase']);
+
+        // Resolve phase_id: accept numeric `phase_id`, numeric `phase`, or lookup by `phase` name
+        $phase_id = 0;
+        if (isset($data['phase_id']) && is_numeric($data['phase_id'])) {
+            $phase_id = intval($data['phase_id']);
+        } elseif (isset($data['phase']) && is_numeric($data['phase'])) {
+            $phase_id = intval($data['phase']);
+        } elseif (isset($data['phase']) && !empty($data['phase'])) {
+            $phase_name = trim($data['phase']);
+            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE phase_name = ? AND project_id = ? LIMIT 1");
+            if ($stmt_phase) {
+                $stmt_phase->bind_param("si", $phase_name, $project_id);
+                $stmt_phase->execute();
+                $res_phase = $stmt_phase->get_result();
+                if ($row_phase = $res_phase->fetch_assoc()) {
+                    $phase_id = intval($row_phase['phase_id']);
+                }
+                $stmt_phase->close();
+            }
+        }
         $supplier_input = trim($data['supplier']); 
         $order_title = isset($data['title']) ? trim($data['title']) : 'Untitled Order';
         $items = $data['items'];
@@ -92,11 +111,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // A. Insert Header
         $sql_header = "INSERT INTO procurement_purchase_orders 
-                       (po_reference, project_id, supplier_id, phase, order_title, order_date, total_amount, status, created_by_user_id) 
+                       (po_reference, project_id, supplier_id, phase_id, order_title, order_date, total_amount, status, created_by_user_id) 
                        VALUES (?, ?, ?, ?, ?, CURDATE(), ?, 'PENDING', ?)";
         
         $stmt = $conn->prepare($sql_header);
-        $stmt->bind_param("siissdi", $po_reference, $project_id, $supplier_id, $phase, $order_title, $grand_total, $created_by);
+        $stmt->bind_param("siissdi", $po_reference, $project_id, $supplier_id, $phase_id, $order_title, $grand_total, $created_by);
         
         if (!$stmt->execute()) {
             throw new Exception("Header Error: " . $stmt->error);

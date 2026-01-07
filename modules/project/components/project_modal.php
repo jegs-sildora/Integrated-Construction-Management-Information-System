@@ -59,7 +59,7 @@
                     
                     <div class="mt-4">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Location</label>
-                        <input type="text" name="location" id="location"
+                        <input type="text" name="location" id="location" autocomplete="off"
                                placeholder="Enter project location"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
                     </div>
@@ -120,7 +120,7 @@
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Total Budget (₱)</label>
                         <!-- Visible formatted input (no name) -->
-                        <input type="text" id="total_budget_display" placeholder="Enter total budget"
+                        <input type="text" id="total_budget_display" placeholder="Enter total budget" autocomplete="off"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
                         <!-- Hidden raw value submitted to server -->
                         <input type="hidden" name="total_budget" id="total_budget" value="">

@@ -44,7 +44,7 @@ if (!isset($_SESSION['user_id'])) {
     <?php include '../../includes/sidebar.php'; ?>
     <?php include '../../includes/header.php'; ?>
 
-    <main class="ml-56 pt-24 p-8 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
         
         <div class="content-wrapper space-y-6">
             <div class="flex justify-between items-end bg-white p-6 rounded-xl shadow-sm border border-slate-100">
@@ -94,7 +94,7 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="grid grid-cols-3 gap-4">
                     <div class="col-span-2 flex flex-col gap-1">
                         <label class="text-sm font-bold text-slate-600">Supplier Name</label>
-                        <input type="text" id="sup_name" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="text" id="sup_name" required autocomplete="off" class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="text-sm font-bold text-slate-600">Status</label>
@@ -108,22 +108,22 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
                         <label class="text-sm font-bold text-slate-600">Contact Person</label>
-                        <input type="text" id="sup_person" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="text" id="sup_person" required autocomplete="off" class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div class="flex flex-col gap-1">
                         <label class="text-sm font-bold text-slate-600">Contact Number</label>
-                        <input type="text" id="sup_phone" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input type="text" id="sup_phone" required autocomplete="off" class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-1">
                     <label class="text-sm font-bold text-slate-600">Email Address</label>
-                    <input type="email" id="sup_email" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="email" id="sup_email" required autocomplete="off" class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
 
                 <div class="flex flex-col gap-1">
                     <label class="text-sm font-bold text-slate-600">Address</label>
-                    <input type="text" id="sup_address" required class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="sup_address" required autocomplete="off" class="p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">

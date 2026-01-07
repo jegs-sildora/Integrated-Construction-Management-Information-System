@@ -33,8 +33,21 @@ if ($po_id <= 0 || empty($items)) sendJson(false, 'Missing PO ID or Items');
 $conn->begin_transaction();
 
 try {
-    // Helper to get unit cost from original PO item
-    $stmt_details = $conn->prepare("SELECT unit_cost, item_name FROM procurement_purchase_order_items WHERE po_item_id = ?");
+    // Fetch project_id and phase_id from the PO first
+    $po_project_id = null;
+    $po_phase_id = null;
+    $stmt_po = $conn->prepare("SELECT po.project_id, po.phase_id FROM procurement_purchase_orders po WHERE po.po_id = ?");
+    $stmt_po->bind_param('i', $po_id);
+    $stmt_po->execute();
+    $res_po = $stmt_po->get_result();
+    if ($row_po = $res_po->fetch_assoc()) {
+        $po_project_id = intval($row_po['project_id']);
+        $po_phase_id = isset($row_po['phase_id']) ? intval($row_po['phase_id']) : null;
+    }
+    $stmt_po->close();
+
+    // Helper to get unit cost, item name and referenced inventory id from original PO item
+    $stmt_details = $conn->prepare("SELECT unit_cost, item_name, inventory_item_id FROM procurement_purchase_order_items WHERE po_item_id = ?");
 
     // 1. Process Each Item - Insert into stock_in and update inventory
     foreach ($items as $item) {
@@ -50,22 +63,42 @@ try {
             $row_details = $res_details->fetch_assoc();
             $cost = $row_details['unit_cost'] ?? 0;
 
-            // Insert into procurement_stock_in
-            $stmt_stockin = $conn->prepare("INSERT INTO procurement_stock_in (po_id, item_name, quantity_received, date_received) VALUES (?, ?, ?, CURDATE())");
-            $stmt_stockin->bind_param("isi", $po_id, $name, $qty);
+            // Determine inventory item_id: prefer referenced inventory_item_id, otherwise find/create by name
+            $inv_item_id = isset($row_details['inventory_item_id']) && intval($row_details['inventory_item_id']) > 0 ? intval($row_details['inventory_item_id']) : null;
+
+            if (!$inv_item_id) {
+                // Try to find existing inventory by name and project
+                $stmt_check_inv = $conn->prepare("SELECT item_id, quantity FROM procurement_inventory WHERE item_name = ? AND project_id = ? LIMIT 1");
+                $stmt_check_inv->bind_param('si', $name, $po_project_id);
+                $stmt_check_inv->execute();
+                $res_check_inv = $stmt_check_inv->get_result();
+                if ($row_inv = $res_check_inv->fetch_assoc()) {
+                    $inv_item_id = intval($row_inv['item_id']);
+                }
+                $stmt_check_inv->close();
+            }
+
+            // If still no inventory item, create one (quantity will be set after inserting stock_in)
+            if (!$inv_item_id) {
+                $stmt_ins_inv = $conn->prepare("INSERT INTO procurement_inventory (item_name, quantity, unit_cost, unit, category, project_id, phase_id, last_updated) VALUES (?, 0, ?, 'pcs', 'General', ?, ?, NOW())");
+                $stmt_ins_inv->bind_param('sdii', $name, $cost, $po_project_id, $po_phase_id);
+                if (!$stmt_ins_inv->execute()) throw new Exception("Failed to insert inventory: " . $stmt_ins_inv->error);
+                $inv_item_id = $stmt_ins_inv->insert_id;
+                $stmt_ins_inv->close();
+            }
+
+            // Insert into procurement_stock_in using item_id
+            $total_cost = floatval($cost) * floatval($qty);
+            $stmt_stockin = $conn->prepare("INSERT INTO procurement_stock_in (po_id, item_id, quantity_received, unit_cost, total_cost, date_received) VALUES (?, ?, ?, ?, ?, CURDATE())");
+            $stmt_stockin->bind_param("iiidd", $po_id, $inv_item_id, $qty, $cost, $total_cost);
             if (!$stmt_stockin->execute()) throw new Exception("Failed to log stock in: " . $stmt_stockin->error);
             $stmt_stockin->close();
 
-            // Update Master Inventory (UPSERT)
-            $stmt_inventory = $conn->prepare("INSERT INTO procurement_inventory (item_name, quantity, unit_cost, unit, category) 
-                VALUES (?, ?, ?, 'pcs', 'General') 
-                ON DUPLICATE KEY UPDATE 
-                quantity = quantity + VALUES(quantity), 
-                unit_cost = VALUES(unit_cost),
-                last_updated = NOW()");
-            $stmt_inventory->bind_param("sdd", $name, $qty, $cost);
-            if (!$stmt_inventory->execute()) throw new Exception("Failed to update inventory: " . $stmt_inventory->error);
-            $stmt_inventory->close();
+            // Update Master Inventory (UPSERT) - increase quantity and set unit cost
+            $stmt_upd_inv = $conn->prepare("UPDATE procurement_inventory SET quantity = quantity + ?, unit_cost = ?, last_updated = NOW() WHERE item_id = ?");
+            $stmt_upd_inv->bind_param('dii', $qty, $cost, $inv_item_id);
+            if (!$stmt_upd_inv->execute()) throw new Exception("Failed to update inventory: " . $stmt_upd_inv->error);
+            $stmt_upd_inv->close();
         }
     }
     $stmt_details->close();
@@ -90,7 +123,7 @@ try {
         $conn->query("UPDATE procurement_purchase_orders SET status = 'COMPLETED' WHERE po_id = $po_id");
 
         // B. Fetch PO Data required for Expenses
-        $po_stmt = $conn->prepare("SELECT project_id, phase, supplier_id, total_amount, order_title, po_reference FROM procurement_purchase_orders WHERE po_id = ?");
+        $po_stmt = $conn->prepare("SELECT project_id, phase_id, supplier_id, total_amount, order_title, po_reference FROM procurement_purchase_orders WHERE po_id = ?");
         $po_stmt->bind_param("i", $po_id);
         $po_stmt->execute();
         $po_result = $po_stmt->get_result();
@@ -99,22 +132,10 @@ try {
             
             // C. Insert into Budget Expenses (Same database now)
             $description = $po_data['po_reference'] . " - " . ($po_data['order_title'] ?? 'Purchase Order');
-            $project_id = $po_data['project_id'];
-            $phase = $po_data['phase'];
+            $project_id = intval($po_data['project_id']);
+            $phase_id = isset($po_data['phase_id']) ? intval($po_data['phase_id']) : null;
             $supplier_id = $po_data['supplier_id'];
             $amount = $po_data['total_amount'];
-            
-            // Look up phase_id from phase name
-            $phase_id = null;
-            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name LIKE ?");
-            $phase_search = '%' . $phase . '%';
-            $stmt_phase->bind_param("is", $project_id, $phase_search);
-            $stmt_phase->execute();
-            $result_phase = $stmt_phase->get_result();
-            if ($row_phase = $result_phase->fetch_assoc()) {
-                $phase_id = $row_phase['phase_id'];
-            }
-            $stmt_phase->close();
             
             $expense_sql = "INSERT INTO budget_expenses 
                             (project_id, phase_id, category, description, supplier_id, amount, status, expense_date) 

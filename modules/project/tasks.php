@@ -113,8 +113,13 @@ $statusColors = [
         .animate-modal-slide-in { animation: modal-slide-in 0.3s ease-out forwards; }
         
         /* Kanban specific styles */
+        /* fixed-height board so all columns match height; column bodies scroll internally */
+        .kanban-board {
+            height: 65vh;
+        }
         .kanban-column {
-            min-height: 500px;
+            min-height: 0; /* allow flex children to shrink so overflow works */
+            flex: 1 1 0;
         }
         .task-card {
             cursor: grab;
@@ -217,7 +222,7 @@ $statusColors = [
             </div>
 
             <!-- Kanban Board -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 kanban-board">
                 <?php foreach ($statusColumns as $status => $tasks): ?>
                 <?php $colors = $statusColors[$status]; ?>
                 <div class="flex flex-col">

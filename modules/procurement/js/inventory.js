@@ -5,7 +5,19 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function fetchInventory() {
-    fetch('php/fetch_inventory.php')
+    // Read current project from hidden input (if present) and optional phase_id from URL
+    const projectInput = document.getElementById('current_project_id');
+    const projectId = projectInput ? projectInput.value : '';
+    const pageUrlParams = new URLSearchParams(window.location.search);
+    const phaseId = pageUrlParams.get('phase_id') || '';
+
+    let endpoint = 'php/fetch_inventory.php';
+    const params = new URLSearchParams();
+    if (projectId) params.append('project_id', projectId);
+    if (phaseId) params.append('phase_id', phaseId);
+    const url = params.toString() ? endpoint + '?' + params.toString() : endpoint;
+
+    fetch(url)
     .then(response => {
         if (!response.ok) throw new Error("HTTP error " + response.status);
         return response.json();
@@ -27,19 +39,22 @@ function fetchInventory() {
         }
 
         let lowStockCounter = 0;
-        let grandTotalValue = 0;
+        let grandTotalValuation = 0;
 
         data.forEach(item => {
-            // Values from DB
+            // Values from DB - ensure numeric parsing
             const name = item.item_name || "Unknown Item";
             const category = item.category || "General";
-            const qty = parseFloat(item.quantity || 0);
-            const cost = parseFloat(item.unit_cost || 0);
+            const qty = parseFloat(item.quantity) || 0;
+            const cost = parseFloat(item.unit_cost) || 0;
             const unit = item.unit || "pcs";
             const lastUpdated = item.last_updated || "-";
-            const totalVal = qty * cost;
-
-            grandTotalValue += totalVal;
+            
+            // Total Value = Unit Cost × Stock Level (per item)
+            const totalValue = qty * cost;
+            
+            // Add to Total Valuation (sum of all item Total Values)
+            grandTotalValuation += totalValue;
 
             // Status Logic
             let statusClass = "bg-green-100 text-green-700";
@@ -65,13 +80,13 @@ function fetchInventory() {
                         <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-bold">${category}</span>
                     </td>
                     <td class="px-6 py-3 text-center">
-                        <span class="text-sm font-bold text-slate-800 text-center">${qty}</span> <span class="text-xs text-slate-500">${unit}</span>
+                        <span class="text-sm font-bold text-slate-800">${qty.toLocaleString()}</span> <span class="text-xs text-slate-500">${unit}</span>
                     </td>
                     <td class="px-6 py-3 text-center text-sm text-slate-600">
-                        ₱${cost.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        ₱${cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </td>
                     <td class="px-6 py-3 text-center text-sm font-bold text-slate-700">
-                        ₱${totalVal.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        ₱${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                     </td>
                     <td class="px-6 py-3 text-center text-xs text-slate-500">
                         ${lastUpdated}
@@ -89,7 +104,8 @@ function fetchInventory() {
         // Update Dashboard Counters
         if(totalCountEl) totalCountEl.innerText = data.length;
         if(lowStockCountEl) lowStockCountEl.innerText = lowStockCounter;
-        if(totalValueEl) totalValueEl.innerText = '₱' + grandTotalValue.toLocaleString(undefined, {minimumFractionDigits: 2});
+        // Total Valuation = sum of all (Unit Cost × Stock Level) for fetched items
+        if(totalValueEl) totalValueEl.innerText = '₱' + grandTotalValuation.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     })
     .catch(error => {
         console.error("Error loading inventory:", error);

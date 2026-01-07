@@ -165,18 +165,33 @@ function saveAttendance($conn) {
 }
 
 // Save bulk attendance records
+// DB Schema: workforce_attendance (attendance_id, employee_id, project_id, attendance_date, time_in, time_out, status, remarks)
+// status ENUM: 'Present','Absent','Late','On Leave'
 function saveBulkAttendance($conn) {
     $rawData = file_get_contents('php://input');
     $data = json_decode($rawData, true);
     
-    if (empty($data['records']) || empty($data['project_id']) || empty($data['date'])) {
-        echo json_encode(['success' => false, 'message' => 'Records, project ID, and date are required']);
+    // Support both new format (records, project_id, date) and old format (attendance)
+    $records = $data['records'] ?? $data['attendance'] ?? [];
+    $project_id = $data['project_id'] ?? null;
+    $date = $data['date'] ?? null;
+    
+    // If using old format, extract project_id and date from first record
+    if (empty($project_id) && !empty($records) && isset($records[0]['project_id'])) {
+        $project_id = $records[0]['project_id'];
+    }
+    if (empty($date) && !empty($records) && isset($records[0]['date'])) {
+        $date = $records[0]['date'];
+    }
+    
+    if (empty($records)) {
+        echo json_encode(['success' => false, 'message' => 'No attendance records provided']);
         return;
     }
     
-    $project_id = $data['project_id'];
-    $date = $data['date'];
-    $records = $data['records'];
+    if (empty($date)) {
+        $date = date('Y-m-d');
+    }
     
     $conn->begin_transaction();
     
@@ -184,16 +199,20 @@ function saveBulkAttendance($conn) {
         $saved = 0;
         
         foreach ($records as $record) {
-            $employee_id = $record['employee_id'];
-            $time_in = $record['time_in'] ?? null;
-            $time_out = $record['time_out'] ?? null;
+            $employee_id = intval($record['employee_id']);
+            $record_project_id = isset($record['project_id']) ? intval($record['project_id']) : $project_id;
+            $record_date = $record['date'] ?? $date;
+            $time_in = !empty($record['time_in']) ? $record['time_in'] : null;
+            $time_out = !empty($record['time_out']) ? $record['time_out'] : null;
             $status = $record['status'] ?? 'Present';
             $remarks = $record['remarks'] ?? '';
             
+            if (!$employee_id || !$status) continue;
+            
             // Check if record exists
             $stmt = $conn->prepare("SELECT attendance_id FROM workforce_attendance 
-                                   WHERE employee_id = ? AND project_id = ? AND attendance_date = ?");
-            $stmt->bind_param("iis", $employee_id, $project_id, $date);
+                                   WHERE employee_id = ? AND attendance_date = ?");
+            $stmt->bind_param("is", $employee_id, $record_date);
             $stmt->execute();
             $result = $stmt->get_result();
             $existing = $result->fetch_assoc();
@@ -201,16 +220,16 @@ function saveBulkAttendance($conn) {
             
             if ($existing) {
                 $sql = "UPDATE workforce_attendance SET 
-                            time_in = ?, time_out = ?, status = ?, remarks = ?
+                            project_id = ?, time_in = ?, time_out = ?, status = ?, remarks = ?
                         WHERE attendance_id = ?";
                 $stmt = $conn->prepare($sql);
-                $stmt->bind_param("ssssi", $time_in, $time_out, $status, $remarks, $existing['attendance_id']);
+                $stmt->bind_param("issssi", $record_project_id, $time_in, $time_out, $status, $remarks, $existing['attendance_id']);
             } else {
                 $sql = "INSERT INTO workforce_attendance 
                             (employee_id, project_id, attendance_date, time_in, time_out, status, remarks)
                         VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $conn->prepare($sql);
-                $stmt->bind_param("iisssss", $employee_id, $project_id, $date, $time_in, $time_out, $status, $remarks);
+                $stmt->bind_param("iisssss", $employee_id, $record_project_id, $record_date, $time_in, $time_out, $status, $remarks);
             }
             
             if ($stmt->execute()) {

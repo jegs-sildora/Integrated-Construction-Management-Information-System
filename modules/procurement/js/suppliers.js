@@ -29,12 +29,18 @@ async function fetchSuppliers() {
         
         tbody.innerHTML = "";
 
-        if (!data || data.length === 0) {
+        // Support multiple response shapes: array, { data: [...] }, { suppliers: [...] }
+        let suppliersList = [];
+        if (Array.isArray(data)) suppliersList = data;
+        else if (data && Array.isArray(data.data)) suppliersList = data.data;
+        else if (data && Array.isArray(data.suppliers)) suppliersList = data.suppliers;
+
+        if (!suppliersList || suppliersList.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-slate-500">No suppliers found.</td></tr>';
             return;
         }
 
-        data.forEach(sup => {
+        suppliersList.forEach(sup => {
             let statusClass = "bg-green-100 text-green-700";
             if(sup.status === 'Inactive') statusClass = "bg-red-100 text-red-700";
 

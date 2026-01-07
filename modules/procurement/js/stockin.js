@@ -53,12 +53,17 @@ function fetchStockHistory() {
         tbody.innerHTML = "";
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-400 italic">No receiving records found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 italic">No receiving records found.</td></tr>`;
             return;
         }
 
+        // Ensure newest records appear first (by stock_in_id)
+        if (Array.isArray(data)) {
+            data.sort((a,b) => (b.stock_in_id || 0) - (a.stock_in_id || 0));
+        }
+
         data.forEach(item => {
-            const dateDisplay = item.created_at ? new Date(item.created_at).toLocaleDateString() : '-';
+            const dateDisplay = item.date_received ? item.date_received : (item.date_received_raw ? new Date(item.date_received_raw).toLocaleDateString() : '-');
             
             let row = `
                 <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors">
@@ -66,6 +71,9 @@ function fetchStockHistory() {
                     <td class="px-6 py-4 font-bold text-navy-dark text-sm text-center">${item.item_name}</td>
                     <td class="px-6 py-4 text-green-600 font-bold text-sm text-center">+${parseFloat(item.quantity_received).toLocaleString()}</td>
                     <td class="px-6 py-4 text-slate-500 text-sm text-center">${dateDisplay}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-gray-400 hover:text-amber-600" onclick="openEditStockModal(${item.stock_in_id}, '${(item.po_reference||'').replace(/'/g, "\\'")}', '${(item.item_name||'').replace(/'/g, "\\'")}', ${parseFloat(item.quantity_received)}, '${item.date_received_raw || ''}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </td>
                 </tr>
             `;
             tbody.innerHTML += row;
@@ -73,6 +81,76 @@ function fetchStockHistory() {
     })
     .catch(error => console.error("Fetch History Error:", error));
 }
+
+/* =========================================
+   5. EDIT MODAL HANDLERS
+   ========================================= */
+function openEditStockModal(stockId, poRef, itemName, qty, dateRaw) {
+    document.getElementById('edit_stock_id').value = stockId;
+    document.getElementById('edit_po_ref').value = poRef || '';
+    document.getElementById('edit_item_name').value = itemName || '';
+    document.getElementById('edit_qty_received').value = qty || 0;
+    // dateRaw may be formatted; try to set ISO date if provided
+    if (dateRaw) {
+        // try parse MMM DD, YYYY -> ISO
+        const parsed = new Date(dateRaw);
+        if (!isNaN(parsed)) {
+            document.getElementById('edit_date_received').value = parsed.toISOString().slice(0,10);
+        } else {
+            document.getElementById('edit_date_received').value = '';
+        }
+    } else {
+        document.getElementById('edit_date_received').value = '';
+    }
+    document.getElementById('stockEditModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEditStockModal() {
+    document.getElementById('stockEditModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+// Attach update handler
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('update_stock_btn');
+    if (btn) btn.addEventListener('click', function() {
+        const stockId = document.getElementById('edit_stock_id').value;
+        const qty = document.getElementById('edit_qty_received').value;
+        const date = document.getElementById('edit_date_received').value;
+        if (!stockId) return;
+        // Basic validation
+        if (parseFloat(qty) <= 0) { if (typeof showToast === 'function') showToast('Quantity must be greater than 0', 'error'); return; }
+
+        btn.disabled = true;
+        const original = btn.innerText;
+        btn.innerHTML = 'Updating...';
+
+        fetch('php/update_stockin.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stock_in_id: stockId, quantity_received: qty, date_received: date })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerText = original;
+            if (data.success) {
+                if (typeof showToast === 'function') showToast('Stock item updated', 'success');
+                closeEditStockModal();
+                fetchStockHistory();
+            } else {
+                if (typeof showToast === 'function') showToast('Error: ' + (data.message || 'Update failed'), 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            btn.innerText = original;
+            if (typeof showToast === 'function') showToast('Server error', 'error');
+        });
+    });
+});
 
 /* =========================================
    3. MODAL LOGIC & PO FETCHING
@@ -130,7 +208,7 @@ function loadApprovedPOs() {
             dropdown.appendChild(option);
         });
     })
-    .catch(err => alert("Error loading Purchase Orders"));
+    .catch(err => { console.error(err); if (typeof showToast === 'function') showToast('Error loading Purchase Orders', 'error'); });
 }
 
 // Fetch Items & Render as TABLE ROWS
@@ -217,7 +295,7 @@ function submitStockIn() {
     const projectId = document.getElementById("current_project_id").value;
     
     if (!poId) {
-        alert("Please select a Purchase Order first.");
+        if (typeof showToast === 'function') showToast('Please select a Purchase Order first.', 'error');
         return;
     }
 
@@ -226,7 +304,7 @@ function submitStockIn() {
     const checkboxes = document.querySelectorAll(".item-checkbox:checked");
 
     if (checkboxes.length === 0) {
-        alert("Please select at least one item to receive.");
+        if (typeof showToast === 'function') showToast('Please select at least one item to receive.', 'error');
         return;
     }
 
@@ -249,7 +327,7 @@ function submitStockIn() {
     });
 
     if (itemsToReceive.length === 0) {
-        alert("Receive quantity must be greater than 0.");
+        if (typeof showToast === 'function') showToast('Receive quantity must be greater than 0.', 'error');
         return;
     }
 
@@ -272,18 +350,18 @@ function submitStockIn() {
     .then(res => res.json())
     .then(data => {
         if(data.success) {
-            alert("Stock received successfully!");
+            if (typeof showToast === 'function') showToast('Stock received successfully!', 'success');
             closeStockModal();
             location.reload(); 
         } else {
-            alert("Error: " + data.message);
+            if (typeof showToast === 'function') showToast('Error: ' + (data.message || 'Receive failed'), 'error');
             btn.disabled = false;
             btn.innerText = originalText;
         }
     })
     .catch(err => {
         console.error(err);
-        alert("Server connection error.");
+        if (typeof showToast === 'function') showToast('Server connection error.', 'error');
         btn.disabled = false;
         btn.innerText = originalText;
     });

@@ -131,9 +131,11 @@ try {
     $conn->begin_transaction();
 
     try {
-        // Resolve phase name to phase_id (DB stores phase_id)
+        // Resolve phase_id: prefer numeric `phase_id` from client, otherwise resolve by `target_phase` name
         $phase_id = null;
-        if (!empty($target_phase)) {
+        if (isset($data['phase_id']) && intval($data['phase_id']) > 0) {
+            $phase_id = intval($data['phase_id']);
+        } elseif (!empty($target_phase)) {
             $phase_lookup = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE project_id = ? AND phase_name = ? LIMIT 1");
             if ($phase_lookup) {
                 $phase_lookup->bind_param("is", $project_id, $target_phase);
@@ -165,7 +167,9 @@ try {
         // map scope_description -> description column
         $description = $scope_description;
 
-        $update_stmt->bind_param("iisssdi", $project_id, $phase_id, $title, $description, $status, $total_amount, $proposal_id);
+        // Ensure integer for bind_param (use 0 when no phase_id provided)
+        $phase_id_for_bind = ($phase_id !== null) ? intval($phase_id) : 0;
+        $update_stmt->bind_param("iisssdi", $project_id, $phase_id_for_bind, $title, $description, $status, $total_amount, $proposal_id);
         
         if (!$update_stmt->execute()) {
             throw new Exception('Failed to update proposal: ' . $update_stmt->error);

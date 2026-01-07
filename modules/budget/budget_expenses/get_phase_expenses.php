@@ -41,33 +41,39 @@ try {
     $project_id = intval($_GET['project_id']);
     $phase_name = trim($_GET['phase']);
 
-    // Fetch completed Purchase Orders for the phase
-    // We're sourcing expense data from the Procurement module's purchase_orders table
-    // Only POs with status = 'COMPLETED' are considered actual expenses
-    $sql = "SELECT 
+    // Fetch completed Purchase Orders for the phase (use procurement tables)
+    // Join project phases to obtain the human-readable phase name
+    $sql_base = "SELECT 
                 po.po_id as expense_id,
                 po.po_id,
                 po.po_reference,
                 po.order_date as expense_date,
-                po.phase,
+                COALESCE(pp.phase_name, '') as phase,
                 'MATERIALS' as category,
                 CONCAT(po.order_title, ' (', po.po_reference, ')') as description,
                 po.total_amount as amount,
                 'APPROVED' as status,
-                s.supplierName as supplier_name
-            FROM purchase_orders po
-            LEFT JOIN suppliers s ON po.supplier_id = s.supplierID
-            WHERE po.project_id = ? 
-              AND po.phase = ?
-              AND po.status = 'COMPLETED'
-            ORDER BY po.order_date DESC, po.po_id DESC";
-    
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Query preparation failed: " . $conn->error);
+                s.supplier_name as supplier_name
+            FROM procurement_purchase_orders po
+            LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
+            LEFT JOIN icmis_project_phases pp ON po.phase_id = pp.phase_id
+            WHERE po.project_id = ? AND po.status = 'COMPLETED'";
+
+    // If phase input is numeric, filter by phase_id; otherwise filter by phase name
+    if (ctype_digit($phase_name)) {
+        $sql = $sql_base . " AND po.phase_id = ? ORDER BY po.order_date DESC, po.po_id DESC";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) throw new Exception("Query preparation failed: " . $conn->error);
+        $phase_param = intval($phase_name);
+        $stmt->bind_param("ii", $project_id, $phase_param);
+    } else {
+        $sql = $sql_base . " AND pp.phase_name LIKE ? ORDER BY po.order_date DESC, po.po_id DESC";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) throw new Exception("Query preparation failed: " . $conn->error);
+        $phase_search = '%' . $phase_name . '%';
+        $stmt->bind_param("is", $project_id, $phase_search);
     }
-    
-    $stmt->bind_param("is", $project_id, $phase_name);
+
     $stmt->execute();
     $result = $stmt->get_result();
 

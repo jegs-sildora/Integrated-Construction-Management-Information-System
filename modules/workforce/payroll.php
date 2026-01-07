@@ -58,11 +58,15 @@ $employees = [];
 $payroll_data = [];
 
 if ($selected_project_id) {
-    // Get assigned employees
+    // Get assigned employees with their job titles for daily rate
+    // DB Schema: workforce_employees (employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status, hire_date)
+    // DB Schema: workforce_job_titles (job_title_id, title_name, department, description, default_daily_rate, is_active)
+    // DB Schema: workforce_assignments (assignment_id, employee_id, project_id, phase_id, role, task_description, start_date, end_date, status)
     $sql = "SELECT DISTINCT e.employee_id, e.employee_code, e.first_name, e.last_name, 
-                   a.role, e.status
+                   a.role, e.status, jt.default_daily_rate, jt.title_name as job_title
             FROM workforce_employees e
             JOIN workforce_assignments a ON e.employee_id = a.employee_id
+            LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
             WHERE a.project_id = ? AND a.status = 'Active' AND e.status = 'Active'
             ORDER BY e.last_name, e.first_name";
     $stmt = $conn->prepare($sql);
@@ -78,12 +82,15 @@ if ($selected_project_id) {
     // Calculate payroll for each employee
     foreach ($employees as $emp) {
         // Get attendance counts for the period
+        // DB Schema: workforce_attendance (attendance_id, employee_id, project_id, attendance_date, time_in, time_out, status, remarks)
+        // status ENUM: 'Present','Absent','Late','On Leave'
         $att_sql = "SELECT 
                         COUNT(CASE WHEN status = 'Present' THEN 1 END) as present_days,
-                        COUNT(CASE WHEN status = 'Half-day' THEN 1 END) as half_days,
+                        COUNT(CASE WHEN status = 'Late' THEN 1 END) as late_days,
                         COUNT(CASE WHEN status = 'Absent' THEN 1 END) as absent_days,
-                        COUNT(CASE WHEN status = 'Leave' THEN 1 END) as leave_days,
-                        SUM(TIMESTAMPDIFF(HOUR, time_in, time_out)) as total_hours
+                        COUNT(CASE WHEN status = 'On Leave' THEN 1 END) as leave_days,
+                        SUM(CASE WHEN time_in IS NOT NULL AND time_out IS NOT NULL 
+                            THEN TIMESTAMPDIFF(HOUR, time_in, time_out) ELSE 0 END) as total_hours
                     FROM workforce_attendance 
                     WHERE employee_id = ? AND project_id = ? 
                     AND attendance_date BETWEEN ? AND ?";
@@ -94,11 +101,14 @@ if ($selected_project_id) {
         $attendance = $att_result->fetch_assoc();
         $stmt->close();
         
-        // Calculate basic payroll (example: daily rate * days worked)
-        $daily_rate = 800; // Default daily rate - can be customized per employee
-        $present_days = ($attendance['present_days'] ?? 0) + (($attendance['half_days'] ?? 0) * 0.5);
+        // Get daily rate from job title (default to 800 if not set)
+        $daily_rate = floatval($emp['default_daily_rate'] ?? 800);
+        
+        // Calculate basic payroll (daily rate * days worked)
+        // Late days count as full days for payroll purposes
+        $present_days = ($attendance['present_days'] ?? 0) + ($attendance['late_days'] ?? 0);
         $gross_pay = $present_days * $daily_rate;
-        $deductions = $gross_pay * 0.05; // 5% deductions placeholder
+        $deductions = $gross_pay * 0.05; // 5% deductions placeholder (SSS, PhilHealth, PagIBIG)
         $net_pay = $gross_pay - $deductions;
         
         $payroll_data[] = [
@@ -107,6 +117,7 @@ if ($selected_project_id) {
             'first_name' => $emp['first_name'],
             'last_name' => $emp['last_name'],
             'role' => $emp['role'],
+            'job_title' => $emp['job_title'] ?? 'N/A',
             'present_days' => $present_days,
             'absent_days' => $attendance['absent_days'] ?? 0,
             'leave_days' => $attendance['leave_days'] ?? 0,

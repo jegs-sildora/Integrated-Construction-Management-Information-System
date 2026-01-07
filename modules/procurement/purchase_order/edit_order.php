@@ -46,14 +46,51 @@ $stmt_items->close();
 // 5. Fetch Dropdown Data
 $result_projects = $conn->query("SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_name ASC");
 
-// Fetch Phases
-$result_phases = $conn->query("SELECT DISTINCT phase FROM budget_proposals WHERE status = 'APPROVED' ORDER BY phase ASC");
+// Fetch the phase_name for this PO's phase_id (display-only)
+$po_phase_name = '';
+$po_phase_id = $po_data['phase_id'] ?? 0;
+if ($po_phase_id > 0) {
+    $stmt_phase = $conn->prepare("SELECT phase_name FROM icmis_project_phases WHERE phase_id = ? LIMIT 1");
+    if ($stmt_phase) {
+        $stmt_phase->bind_param('i', $po_phase_id);
+        $stmt_phase->execute();
+        $res_phase = $stmt_phase->get_result();
+        if ($r = $res_phase->fetch_assoc()) {
+            $po_phase_name = $r['phase_name'];
+        }
+        $stmt_phase->close();
+    }
+}
+
+// Fetch the project display name for this PO's project_id (read-only)
+$po_project_name = '';
+$po_project_id = $po_data['project_id'] ?? 0;
+if ($po_project_id > 0) {
+    $stmt_proj_name = $conn->prepare("SELECT project_code, project_name FROM icmis_projects WHERE project_id = ? LIMIT 1");
+    if ($stmt_proj_name) {
+        $stmt_proj_name->bind_param('i', $po_project_id);
+        $stmt_proj_name->execute();
+        $res_proj = $stmt_proj_name->get_result();
+        if ($rp = $res_proj->fetch_assoc()) {
+            $po_project_name = $rp['project_code'] . ' - ' . $rp['project_name'];
+        }
+        $stmt_proj_name->close();
+    }
+}
 
 // Fetch Suppliers
 $result_suppliers = $conn->query("SELECT supplier_id, supplier_name FROM procurement_suppliers ORDER BY supplier_name ASC");
 
-// Fetch Budget Items
-$result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.unit_cost FROM budget_line_items bli JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id WHERE bp.status = 'APPROVED' ORDER BY bli.item_name ASC");
+// Fetch Budget Items (optionally filter by proposal_id)
+$selected_proposal_id = isset($_GET['proposal_id']) ? intval($_GET['proposal_id']) : 0;
+if ($selected_proposal_id > 0) {
+    $stmt_bli = $conn->prepare("SELECT line_item_id, item_name, quantity, unit_cost FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id ASC");
+    $stmt_bli->bind_param('i', $selected_proposal_id);
+    $stmt_bli->execute();
+    $result_budget_items = $stmt_bli->get_result();
+} else {
+    $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.unit_cost FROM budget_line_items bli JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id WHERE bp.status = 'APPROVED' ORDER BY bli.item_name ASC");
+}
 
 ?>
 
@@ -75,18 +112,20 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
         $pageSubTitle = "Edit PO: " . htmlspecialchars($po_data['po_reference']);
         include __DIR__ . '/../../../includes/header.php';
     ?>
+    <?php include __DIR__ . '/../../../includes/toast.php'; ?>
 
-    <main class="ml-56 pt-24 p-6 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-20 p-6 min-h-screen transition-all duration-300">
         <div class="max-w-7xl mx-auto pt-6">
             
             <a href="../orders.php" class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors underline">
-                <i class="fa-solid fa-arrow-left mr-2"></i>
-                Back to Dashboard
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
             </a>
 
             <div class="mb-8 text-center">
-                <h1 class="text-2xl font-bold text-navy-dark">Edit Purchase Order</h1>
-                <p class="text-slate-500 mt-1">Update details for Reference ID: <strong><?= htmlspecialchars($po_data['po_reference']) ?></strong></p>
+                <h1 class="text-3xl font-bold text-navy-dark">Edit Purchase Order</h1>
+                <p class="text-gray-600 font-semibold">Puchase Order Reference Code: <span class="font-bold text-[#e9922c]"><?= htmlspecialchars($po_data['po_reference']) ?></span></p>
             </div>
 
             <div class="grid grid-cols-2 gap-6">
@@ -96,29 +135,16 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
 
                     <div class="mb-6">
                         <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Project Destination</label>
-                        <select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
-                            <option value="">-- Select Project --</option>
-                            <?php if ($result_projects): while($proj = $result_projects->fetch_assoc()): ?>
-                                <option value="<?= $proj['project_id'] ?>" 
-                                        data-name="<?= htmlspecialchars($proj['project_name']) ?>"
-                                        <?= ($proj['project_id'] == $po_data['project_id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($proj['project_code'] . " - " . $proj['project_name']) ?>
-                                </option>
-                            <?php endwhile; endif; ?>
-                        </select>
+                        <input type="hidden" id="project" value="<?= htmlspecialchars($po_project_id) ?>">
+                        <input type="text" id="project_display" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 outline-none" readonly value="<?= htmlspecialchars($po_project_name) ?>">
+                        <p class="text-xs text-slate-400 mt-2">Project is read-only and comes from the original Purchase Order.</p>
                     </div>
 
                     <div class="mb-6">
                         <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Target Phase</label>
-                        <select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
-                            <option value="">Select Approved Phase...</option>
-                            <?php if ($result_phases): while($phase = $result_phases->fetch_assoc()): ?>
-                                <option value="<?= htmlspecialchars($phase['phase']) ?>"
-                                        <?= ($phase['phase'] == $po_data['phase']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($phase['phase']) ?>
-                                </option>
-                            <?php endwhile; endif; ?>
-                        </select>
+                        <input type="hidden" id="targetPhase" value="<?= htmlspecialchars($po_phase_id) ?>">
+                        <input type="text" id="targetPhase_display" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 outline-none" readonly value="<?= htmlspecialchars($po_phase_name) ?>">
+                        <p class="text-xs text-slate-400 mt-2">Phase is read-only and comes from the original Purchase Order.</p>
                     </div>
 
                     <div class="mb-6">
@@ -168,18 +194,14 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm text-gray-600 mb-1">Approved Budget Item</label>
-                                <select id="item-name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
-                                    <option value="">-- Select Approved Item --</option>
-                                    <?php if ($result_budget_items): 
-                                        $result_budget_items->data_seek(0); 
-                                        while($item = $result_budget_items->fetch_assoc()): ?>
-                                            <option value="<?= htmlspecialchars($item['item_name']) ?>"
-                                                    data-qty="<?= $item['quantity'] ?>" 
-                                                    data-price="<?= $item['unit_cost'] ?>">
-                                                <?= htmlspecialchars($item['item_name']) ?>
-                                            </option>
-                                    <?php endwhile; endif; ?>
-                                </select>
+                                    <input id="item-name" list="item-name-list" placeholder="-- Select Approved Item --" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
+                                    <datalist id="item-name-list">
+                                        <?php if ($result_budget_items): 
+                                            $result_budget_items->data_seek(0); 
+                                            while($item = $result_budget_items->fetch_assoc()): ?>
+                                                <option value="<?= htmlspecialchars($item['item_name']) ?>" data-qty="<?= $item['quantity'] ?>" data-price="<?= $item['unit_cost'] ?>"></option>
+                                        <?php endwhile; endif; ?>
+                                    </datalist>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
@@ -220,8 +242,8 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
                         </div>
                         <div class="bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500 rounded-lg p-4">
                             <span class="text-xs font-bold text-purple-700 uppercase tracking-widest">Target Milestone</span>
-                            <p id="preview-phase" class="text-sm font-bold text-gray-900 mt-1 italic">
-                                <?= htmlspecialchars($po_data['phase']) ?>
+                                <p id="preview-phase" class="text-sm font-bold text-gray-900 mt-1 italic">
+                                <?= htmlspecialchars($po_data['phase'] ?? '') ?>
                             </p>
                         </div>
                         <div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg p-4">
@@ -252,36 +274,7 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
     </main>
 
     <script>
-    // --- 0. Helper: Toast Notification (ADDED MISSING FUNCTION) ---
-    function showToast(message, type = 'success') {
-        const existingToast = document.querySelector('.toast-notification');
-        if (existingToast) existingToast.remove();
-
-        const toast = document.createElement('div');
-        toast.className = `toast-notification fixed bottom-5 right-5 px-6 py-4 rounded-xl shadow-2xl text-white font-bold transform transition-all duration-300 translate-y-20 opacity-0 z-50 flex items-center gap-3`;
-        
-        if (type === 'success') {
-            toast.classList.add('bg-green-600');
-            toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`;
-        } else if (type === 'error') {
-            toast.classList.add('bg-red-600');
-            toast.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> <span>${message}</span>`;
-        } else {
-            toast.classList.add('bg-blue-600');
-            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${message}</span>`;
-        }
-
-        document.body.appendChild(toast);
-
-        requestAnimationFrame(() => {
-            toast.classList.remove('translate-y-20', 'opacity-0');
-        });
-
-        setTimeout(() => {
-            toast.classList.add('translate-y-20', 'opacity-0');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
+    // showToast is provided globally by includes/toast.php
 
     // Load existing items from PHP
     let orderItems = <?= json_encode($existing_items) ?>;
@@ -296,15 +289,21 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
     
     // Update Previews based on selections
     function updatePreviews() {
-        // Project
-        const projectSelect = document.getElementById('project');
-        if (projectSelect.selectedIndex >= 0) {
-            const selectedProj = projectSelect.options[projectSelect.selectedIndex];
-            document.getElementById('preview-project').innerText = selectedProj.dataset.name || 'No project selected';
+        // Project (use display input if present)
+        const projectDisplay = document.getElementById('project_display');
+        if (projectDisplay) {
+            document.getElementById('preview-project').innerText = projectDisplay.value || 'No project selected';
+        } else {
+            const projectSelect = document.getElementById('project');
+            if (projectSelect && projectSelect.selectedIndex >= 0) {
+                const selectedProj = projectSelect.options[projectSelect.selectedIndex];
+                document.getElementById('preview-project').innerText = selectedProj.dataset.name || 'No project selected';
+            }
         }
         
-        // Phase
-        const phaseVal = document.getElementById('targetPhase').value;
+        // Phase (use display input if present)
+        const phaseDisplay = document.getElementById('targetPhase_display');
+        const phaseVal = phaseDisplay ? phaseDisplay.value : document.getElementById('targetPhase').value;
         document.getElementById('preview-phase').innerText = phaseVal || 'No phase selected';
         
         // Supplier
@@ -312,19 +311,33 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
         document.getElementById('preview-supplier').innerText = supVal || 'No supplier selected';
     }
 
-    // Attach listeners
-    document.getElementById('project').addEventListener('change', updatePreviews);
-    document.getElementById('targetPhase').addEventListener('change', updatePreviews);
+    // Attach listeners (only if the elements are interactive selects)
+    const _projectEl = document.getElementById('project');
+    if (_projectEl && _projectEl.tagName === 'SELECT') _projectEl.addEventListener('change', updatePreviews);
+    const _targetEl = document.getElementById('targetPhase');
+    if (_targetEl && _targetEl.tagName === 'SELECT') _targetEl.addEventListener('change', updatePreviews);
     document.getElementById('supplier').addEventListener('input', updatePreviews);
 
-    // Auto-fill Item Inputs from Select Data attributes
+    // Auto-fill Item Inputs from datalist options (works with input + datalist)
     document.getElementById('item-name').addEventListener('change', function() {
-        // Only auto-fill if NOT in edit mode (to prevent overwriting manually edited values during a load)
         if (editingItemId === null) {
-            const selected = this.options[this.selectedIndex];
-            if (this.value) {
-                document.getElementById('item-qty').value = selected.dataset.qty;
-                document.getElementById('item-price').value = selected.dataset.price;
+            const val = this.value;
+            const dataList = document.getElementById('item-name-list');
+            let foundQty = null, foundPrice = null;
+            if (dataList) {
+                const opts = dataList.querySelectorAll('option');
+                for (let opt of opts) {
+                    if (opt.value === val) {
+                        foundQty = opt.getAttribute('data-qty');
+                        foundPrice = opt.getAttribute('data-price');
+                        break;
+                    }
+                }
+            }
+
+            if (val) {
+                document.getElementById('item-qty').value = (foundQty !== null && foundQty !== '') ? foundQty : '';
+                document.getElementById('item-price').value = (foundPrice !== null && foundPrice !== '') ? foundPrice : '';
             } else {
                 clearItemInputs();
             }
@@ -496,7 +509,6 @@ $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.uni
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                showToast(data.message, 'success');
                 setTimeout(() => window.location.href = '../orders.php?msg=updated', 500);
             } else {
                 showToast('Error: ' + data.message, 'error');

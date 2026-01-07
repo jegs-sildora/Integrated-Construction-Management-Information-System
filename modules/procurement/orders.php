@@ -87,11 +87,12 @@ if ($project_id > 0) {
 <body class="bg-gray-50">
     <?php include '../../includes/sidebar.php'; ?>
     <?php include '../../includes/header.php'; ?>
+    <?php include '../../includes/toast.php'; ?>
     <?php if(file_exists('purchase_order/order_modal.php')) include 'purchase_order/order_modal.php'; ?>
 
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 p-8 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
         <div class="content-wrapper space-y-6">
             
             <div class="flex justify-between items-end bg-white p-6 rounded-xl shadow-sm border border-slate-100">
@@ -167,7 +168,7 @@ if ($project_id > 0) {
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">
+                            <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 italic">
                                 <?= ($project_id > 0) ? 'No orders found.' : 'Please select a project above.' ?>
                             </td></tr>
                         <?php endif; ?>

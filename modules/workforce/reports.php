@@ -6,6 +6,7 @@
  * Following the UI pattern from budget/reports.php
  */
 include __DIR__ . '/project_context.php';
+require_once __DIR__ . '/../../includes/report_print_layout.php';
 
 $conn = getWorkforceConnection();
 $selected_project_id = getProjectContext($conn);
@@ -37,9 +38,9 @@ if ($result) {
 
 // Fetch recent generated reports (if table exists)
 $recent_reports = [];
-$tableExists = $conn->query("SHOW TABLES LIKE 'workforce_generated_reports'");
+$tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
 if ($tableExists && $tableExists->num_rows > 0 && $selected_project_id) {
-    $report_sql = "SELECT * FROM workforce_generated_reports 
+    $report_sql = "SELECT report_id, report_type, report_name, project_id, generated_by, created_at FROM budget_generated_reports 
                    WHERE project_id = ? 
                    ORDER BY created_at DESC 
                    LIMIT 50";
@@ -126,21 +127,7 @@ $pageSubTitle = $breadcrumbHTML;
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     
     <style>
-        @media print {
-            @page { margin: 0.5in; size: landscape; }
-            body { background-color: white !important; color: black !important; }
-            header, aside, .sidebar, .top-bar, .no-print, button, .generate-btn, .report-template-card, .breadcrumb { display: none !important; }
-            .print-only { display: block !important; }
-            main { margin: 0 !important; padding: 0 !important; width: 100% !important; min-height: auto !important; }
-            .bg-white { box-shadow: none !important; border: none !important; }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
-            thead tr { background-color: #f3f4f6 !important; }
-            thead th { border: 1px solid #9ca3af !important; padding: 8px !important; }
-            tbody td { border: 1px solid #e5e7eb !important; padding: 8px !important; }
-            th:last-child, td:last-child { display: none !important; }
-            .print-logo { max-height: 80px; width: auto; margin: 0 auto 10px auto; display: block; }
-            .print-footer { margin-top: 50px !important; page-break-inside: avoid; }
-        }
+        <?php echo renderPrintStyles(); ?>
     </style>
 </head>
 <body class="bg-gray-50 text-slate-800">
@@ -154,15 +141,12 @@ $pageSubTitle = $breadcrumbHTML;
     </div>
 
     <!-- Print Header -->
-    <div class="print-only hidden mb-6">
-        <div class="print-logo-area text-center border-b pb-4 mb-4">
-            <img src="../../assets/images/logo.png" alt="ICMIS Logo" class="print-logo" onerror="this.style.display='none';">
-            <h1 class="text-2xl font-bold uppercase tracking-wide">Generated Reports Log</h1>
-            <p class="text-sm text-gray-500">ICMIS Workforce Management System</p>
-            <p class="text-sm font-bold mt-1 text-[#e9922c]"><?php echo htmlspecialchars($current_project_name); ?></p>
-            <p class="text-xs mt-1">Generated on: <span id="print-date"></span></p>
-        </div>
-    </div>
+    <?php echo renderPrintHeader('Workforce Reports Log', [
+        'project_name' => $current_project_name,
+        'project_code' => $current_project_code,
+        'report_type' => 'Workforce Reports',
+        'generated_by' => $userName
+    ]); ?>
 
     <main class="ml-56 mt-20 p-6 transition-all duration-300">
         <div class="max-w-7xl mx-auto">
@@ -347,46 +331,15 @@ $pageSubTitle = $breadcrumbHTML;
         </div>
 
         <!-- Print Footer -->
-        <div class="print-only print-footer hidden">
-            <div class="grid grid-cols-3 gap-8">
-                <div class="text-center">
-                    <p class="text-xs font-bold text-gray-500 uppercase mb-8">Prepared By:</p>
-                    <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4"><?php echo htmlspecialchars($userName); ?></p>
-                    <p class="text-xs text-gray-500">HR Officer</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-xs font-bold text-gray-500 uppercase mb-8">Verified By:</p>
-                    <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4">___________</p> 
-                    <p class="text-xs text-gray-500">Project Engineer</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-xs font-bold text-gray-500 uppercase mb-8">Approved By:</p>
-                    <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4">___________</p> 
-                    <p class="text-xs text-gray-500">Project Manager</p>
-                </div>
-            </div>
-        </div>
+        <?php echo renderPrintFooter($userName, 'Workforce Manager'); ?>
     </main>
 
     <script>
         // Initialize Icons
         lucide.createIcons();
 
-        // Print functionality
-        function printReport() {
-            const dateEl = document.getElementById('print-date');
-            if(dateEl) {
-                const now = new Date();
-                dateEl.innerText = now.toLocaleDateString('en-US', { 
-                    year: 'numeric', month: 'long', day: 'numeric', 
-                    hour: '2-digit', minute: '2-digit' 
-                });
-            }
-            window.print();
-        }
+        // Print functionality (shared)
+        <?php echo renderPrintReportScript(); ?>
 
         // Loading state management
         function setLoadingState(button) {

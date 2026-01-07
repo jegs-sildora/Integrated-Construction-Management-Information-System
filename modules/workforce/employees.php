@@ -56,10 +56,11 @@ $thisMonth = date('Y-m-01');
 $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE hire_date >= '$thisMonth'");
 if ($result) $stats['new_this_month'] = $result->fetch_assoc()['total'];
 
-// Fetch employees
+// Fetch employees with job titles
+// DB Schema: workforce_employees (employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status, hire_date)
+// DB Schema: workforce_job_titles (job_title_id, title_name, department, description, default_daily_rate, is_active)
 $employees = [];
-// FIX: Changed 'jt.job_title' to 'jt.title_name as job_title'
-$sql = "SELECT e.*, jt.title_name as job_title 
+$sql = "SELECT e.*, jt.title_name as job_title, jt.department, jt.default_daily_rate
         FROM workforce_employees e 
         LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
         ORDER BY e.employee_id DESC";
@@ -124,7 +125,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                     <h1 class="text-2xl text-gray-900 font-bold">Employee Management</h1>
                     <p class="text-sm text-gray-500 mt-1">Manage, View, and Edit Employee Profiles</p>
                 </div>
-                <button onclick="openModal()" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
+                <button onclick="openModal()" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm font-bold">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
                     Add Employee
                 </button>
@@ -190,10 +191,10 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             <input type="text" id="searchInput" placeholder="Search by name, role, or ID" class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none w-72">
                         </div>
                         <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none">
-                            <option value="">Filter</option>
+                            <option value="">All Status</option>
                             <option value="Active">Active</option>
                             <option value="Inactive">Inactive</option>
-                            <option value="On Leave">On Leave</option>
+                            <option value="Terminated">Terminated</option>
                         </select>
                     </div>
                     <p class="text-sm text-gray-500">Showing <span id="showingCount"><?php echo count($employees); ?></span> employees</p>
@@ -207,8 +208,8 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         <tr>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Position</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Skill</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Department</th>
+                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Daily Rate</th>
                             <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                             <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -219,7 +220,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             $statusClass = match(strtolower($emp['status'])) {
                                 'active' => 'bg-green-100 text-green-700',
                                 'inactive' => 'bg-red-100 text-red-700',
-                                'on leave' => 'bg-yellow-100 text-yellow-700',
+                                'terminated' => 'bg-gray-100 text-gray-700',
                                 default => 'bg-gray-100 text-gray-700'
                             };
                         ?>
@@ -236,10 +237,10 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($emp['job_title'] ?? 'N/A'); ?></td>
-                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($emp['skill'] ?? 'General'); ?></td>
+                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($emp['department'] ?? 'General'); ?></td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                    <?php echo htmlspecialchars($emp['employee_type'] ?? 'Regular'); ?>
+                                    ₱<?php echo number_format($emp['default_daily_rate'] ?? 0, 2); ?>
                                 </span>
                             </td>
                             <td class="px-6 py-4">
@@ -249,14 +250,21 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center justify-center gap-2">
-                                    <button onclick="viewEmployee(<?php echo $emp['employee_id']; ?>)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="View">
-                                        <i data-lucide="eye" class="w-4 h-4 text-blue-600"></i>
+                                    <button onclick="viewEmployee(<?php echo $emp['employee_id']; ?>)" class="text-gray-500 p-2 rounded-lg hover:text-blue-600 transition-colors duration-200" title="View Details">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
                                     </button>
-                                    <button onclick="editEmployee(<?php echo $emp['employee_id']; ?>)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Edit">
-                                        <i data-lucide="pencil" class="w-4 h-4 text-gray-600"></i>
+                                    <button onclick="editEmployee(<?php echo $emp['employee_id']; ?>)"  class="text-gray-500 p-2 rounded-lg hover:text-green-600 transition-colors duration-200" title="Edit">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
                                     </button>
-                                    <button onclick="deleteEmployee(<?php echo $emp['employee_id']; ?>)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Delete">
-                                        <i data-lucide="trash-2" class="w-4 h-4 text-red-600"></i>
+                                    <button onclick="deleteEmployee(<?php echo $emp['employee_id']; ?>)" class="text-gray-500 p-2 rounded-lg hover:text-red-600 transition-colors duration-200" title="Delete">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
                                     </button>
                                 </div>
                             </td>
@@ -369,14 +377,36 @@ $userName = $_SESSION['user_name'] ?? "Admin";
             document.getElementById('showingCount').textContent = count;
         }
 
+        function showEmployeeModal() {
+            const modal = document.getElementById('employeeModal');
+            const content = modal.querySelector('.modal-content');
+            // ensure visible
+            modal.classList.remove('hidden');
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            // play open animation
+            content.classList.remove('modal-close');
+            void content.offsetWidth; // force reflow
+            content.classList.add('modal-open');
+        }
+
         function openModal() {
-            document.getElementById('employeeModal').classList.remove('hidden');
             document.getElementById('modalTitle').textContent = 'Add New Employee';
             document.getElementById('employeeForm').reset();
+            showEmployeeModal();
         }
 
         function closeModal() {
-            document.getElementById('employeeModal').classList.add('hidden');
+            const modal = document.getElementById('employeeModal');
+            const content = modal.querySelector('.modal-content');
+            // play close animation then hide
+            content.classList.remove('modal-open');
+            content.classList.add('modal-close');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.style.display = '';
+                document.body.style.overflow = '';
+            }, 240);
         }
 
         function viewEmployee(id) {
@@ -389,7 +419,6 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('employeeModal').classList.remove('hidden');
                         document.getElementById('modalTitle').textContent = 'Edit Employee';
                         // Populate form fields
                         document.getElementById('employee_id').value = data.employee.employee_id;
@@ -398,6 +427,8 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         document.getElementById('email').value = data.employee.email || '';
                         document.getElementById('phone').value = data.employee.phone || '';
                         document.getElementById('status').value = data.employee.status;
+                        // Show modal with animation
+                        showEmployeeModal();
                     }
                 });
         }

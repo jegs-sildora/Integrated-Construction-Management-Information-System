@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Group Reports - Workforce Management System</title>
+  <link rel="stylesheet" href="../common/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="toggle-sidebar">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </div>
+    <div class="logo">
+      <div class="logo-icon">I</div>
+      <div class="logo-text">ICMIS</div>
+    </div>
+
+    <div class="module-title">Workforce & Labor Management</div>
+
+    <ul class="menu">
+      <li>
+        <span class="material-symbols-outlined icon">dashboard</span>
+        <a href="../dashboard/dashboard.html" style="text-decoration: none; color: inherit;">Dashboard</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">group</span>
+        <a href="../employees/employees.html" style="text-decoration: none; color: inherit;">Employees</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">event_available</span>
+        <a href="../attendance/attendance.html" style="text-decoration: none; color: inherit;">Attendance</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">assignment</span>
+        <a href="../assignments/assignments.html" style="text-decoration: none; color: inherit;">Assignments</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">apartment</span>
+        <a href="../projects/projects.html" style="text-decoration: none; color: inherit;">Projects</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">schedule</span>
+        <a href="../payroll/time_payroll.html" style="text-decoration: none; color: inherit;">Time & Payroll</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">bar_chart</span>
+        <a href="../reports/reports.html" style="text-decoration: none; color: inherit;">Reports</a>
+      </li>
+    </ul>
+  </aside>
+
+  <main class="dashboard-container">
+    <div class="page-header">
+      <div class="header-content">
+        <h2>Group Reports</h2>
+        <p>Comprehensive analytics for group performance and utilization</p>
+      </div>
+      <div class="user-info">
+        <span class="material-symbols-outlined">search</span>
+        <span class="material-symbols-outlined">notifications</span>
+        <div>
+          <p style="margin: 0; font-weight: bold; font-size: 14px; text-align: right;">Manager</p>
+          <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: right;">Admin</p>
+        </div>
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDAiIGZpbGw9IiNmNWFlMGIiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM1IiByPSIxMCIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0zMCA2NSBRNzAgNjUgNzAgNjUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIi8+PC9zdmc+" alt="User" style="width: 50px; height: 50px; border-radius: 50%;">
+      </div>
+    </div>
+
+    <!-- Report Filters -->
+    <div class="report-filters">
+      <div class="filter-group">
+        <label for="groupFilter">Group</label>
+        <select id="groupFilter">
+          <option value="all">All Groups</option>
+          <option value="foundation">Foundation Crew A</option>
+          <option value="electrical">Electrical Team 1</option>
+          <option value="night">Night Shift Laborers</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="periodFilter">Period</label>
+        <select id="periodFilter">
+          <option value="last-month">Last Month</option>
+          <option value="last-quarter">Last Quarter</option>
+          <option value="last-year">Last Year</option>
+          <option value="custom">Custom Range</option>
+        </select>
+      </div>
+      
+      <div class="filter-group" id="customDateRange" style="display: none;">
+        <label>Custom Range</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="date" id="startDate">
+          <input type="date" id="endDate">
+        </div>
+      </div>
+      
+      <button class="btn-primary" onclick="generateReport()">Generate Report</button>
+    </div>
+
+    <!-- Utilization Section -->
+    <section class="report-section">
+      <div class="section-header">
+        <h3>Group Utilization</h3>
+        <div class="section-actions">
+          <button class="export-btn">
+            <span class="material-symbols-outlined">download</span>
+            Export CSV
+          </button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <canvas id="utilizationChart"></canvas>
+      </div>
+      
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">85%</div>
+          <div class="metric-label">Average Utilization</div>
+          <div class="metric-change positive">+2.3% from last month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">1240 hrs</div>
+          <div class="metric-label">Total Group Hours</div>
+          <div class="metric-change positive">+150 hrs from last month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">92%</div>
+          <div class="metric-label">On-Time Attendance</div>
+          <div class="metric-change negative">-1.2% from last month</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">3</div>
+          <div class="metric-label">Groups Fully Allocated</div>
+          <div class="metric-change positive">+1 from last month</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance Section -->
+    <section class="report-section">
+      <div class="section-header">
+        <h3>Performance Metrics</h3>
+      </div>
+      
+      <div class="card">
+        <canvas id="performanceChart"></canvas>
+      </div>
+      
+      <div class="performance-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Completion Rate</th>
+              <th>Avg. Task Duration</th>
+              <th>Quality Score</th>
+              <th>Productivity Index</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Foundation Crew A</td>
+              <td>94%</td>
+              <td>18.5 days</td>
+              <td>4.2/5</td>
+              <td>87</td>
+            </tr>
+            <tr>
+              <td>Electrical Team 1</td>
+              <td>89%</td>
+              <td>12.3 days</td>
+              <td>4.5/5</td>
+              <td>92</td>
+            </tr>
+            <tr>
+              <td>Night Shift Laborers</td>
+              <td>96%</td>
+              <td>7.8 days</td>
+              <td>4.0/5</td>
+              <td>85</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Detailed Group Report Section -->
+    <section class="report-section">
+      <div class="section-header">
+        <h3>Detailed Group Reports</h3>
+      </div>
+      
+      <div class="tabs">
+        <button class="tab-button active" data-tab="foundation">Foundation Crew A</button>
+        <button class="tab-button" data-tab="electrical">Electrical Team 1</button>
+        <button class="tab-button" data-tab="night">Night Shift Laborers</button>
+      </div>
+      
+      <div class="tab-content active" id="foundation-report">
+        <div class="card">
+          <h4>Foundation Crew A - Detailed Report</h4>
+          
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Members</div>
+              <div class="info-value">8 members</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Current Projects</div>
+              <div class="info-value">2 projects</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Avg. Utilization</div>
+              <div class="info-value">87%</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Completion Rate</div>
+              <div class="info-value">94%</div>
+            </div>
+          </div>
+          
+          <h5>Recent Assignments</h5>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Task</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Status</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Makati Skyline Tower</td>
+                <td>Foundation Work</td>
+                <td>2023-10-01</td>
+                <td>2023-12-15</td>
+                <td>In Progress</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 75%"></div>
+                  </div>
+                  <span>75%</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Cebu Commercial Complex</td>
+                <td>Basement Construction</td>
+                <td>2023-08-15</td>
+                <td>2023-11-30</td>
+                <td>Completed</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%"></div>
+                  </div>
+                  <span>100%</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="tab-content" id="electrical-report">
+        <div class="card">
+          <h4>Electrical Team 1 - Detailed Report</h4>
+          
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Members</div>
+              <div class="info-value">6 members</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Current Projects</div>
+              <div class="info-value">1 project</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Avg. Utilization</div>
+              <div class="info-value">83%</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Completion Rate</div>
+              <div class="info-value">89%</div>
+            </div>
+          </div>
+          
+          <h5>Recent Assignments</h5>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Task</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Status</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Riverside Apartments</td>
+                <td>Electrical Installation</td>
+                <td>2023-11-01</td>
+                <td>2024-01-31</td>
+                <td>In Progress</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 60%"></div>
+                  </div>
+                  <span>60%</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="tab-content" id="night-report">
+        <div class="card">
+          <h4>Night Shift Laborers - Detailed Report</h4>
+          
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Members</div>
+              <div class="info-value">10 members</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Current Projects</div>
+              <div class="info-value">1 project</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Avg. Utilization</div>
+              <div class="info-value">90%</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Completion Rate</div>
+              <div class="info-value">96%</div>
+            </div>
+          </div>
+          
+          <h5>Recent Assignments</h5>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Task</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Status</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Central Business Tower</td>
+                <td>Night Security</td>
+                <td>2023-09-01</td>
+                <td>2024-03-31</td>
+                <td>In Progress</td>
+                <td>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 85%"></div>
+                  </div>
+                  <span>85%</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../common/main.js"></script>
+  <script>
+    // Initialize charts when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize utilization chart
+      const utilizationCtx = document.getElementById('utilizationChart').getContext('2d');
+      const utilizationChart = new Chart(utilizationCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Foundation Crew A', 'Electrical Team 1', 'Night Shift Laborers'],
+          datasets: [{
+            label: 'Utilization %',
+            data: [87, 83, 90],
+            backgroundColor: [
+              '#3b82f6',
+              '#10b981',
+              '#8b5cf6'
+            ],
+            borderColor: [
+              '#2563eb',
+              '#059669',
+              '#7c3aed'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: 'Group Utilization Rates'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // Initialize performance chart
+      const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+      const performanceChart = new Chart(performanceCtx, {
+        type: 'radar',
+        data: {
+          labels: ['Completion Rate', 'Quality', 'Productivity', 'Punctuality', 'Teamwork'],
+          datasets: [{
+            label: 'Foundation Crew A',
+            data: [94, 84, 87, 92, 88],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.2)'
+          }, {
+            label: 'Electrical Team 1',
+            data: [89, 90, 92, 85, 91],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.2)'
+          }, {
+            label: 'Night Shift Laborers',
+            data: [96, 80, 85, 94, 82],
+            borderColor: '#8b5cf6',
+            backgroundColor: 'rgba(139, 92, 246, 0.2)'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Group Performance Comparison'
+            }
+          },
+          scales: {
+            r: {
+              angleLines: {
+                display: true
+              },
+              suggestedMin: 70,
+              suggestedMax: 100
+            }
+          }
+        }
+      });
+      
+      // Tab switching functionality
+      const tabButtons = document.querySelectorAll('.tab-button');
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          // Remove active class from all buttons and content
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+          
+          // Add active class to clicked button
+          this.classList.add('active');
+          
+          // Show corresponding content
+          const tabId = this.getAttribute('data-tab');
+          document.getElementById(`${tabId}-report`).classList.add('active');
+        });
+      });
+      
+      // Period filter change handler
+      document.getElementById('periodFilter').addEventListener('change', function() {
+        const customDateRange = document.getElementById('customDateRange');
+        if (this.value === 'custom') {
+          customDateRange.style.display = 'block';
+        } else {
+          customDateRange.style.display = 'none';
+        }
+      });
+    });
+    
+    // Generate report function
+    function generateReport() {
+      alert('Group report generated successfully! In a real application, this would generate a detailed group report based on the selected filters.');
+    }
+  </script>
+</body>
+</html>

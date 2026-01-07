@@ -56,7 +56,7 @@
                     
                     <div class="mt-4">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Task Name <span class="text-red-500">*</span></label>
-                        <input type="text" name="task_name" id="task_name" required
+                        <input type="text" name="task_name" id="task_name" required autocomplete="off"
                                placeholder="Enter task name"
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
                     </div>

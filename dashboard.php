@@ -13,6 +13,17 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Ensure project context is applied to top-level pages
+// Include project context helper (uses DB constants from config)
+require_once __DIR__ . '/modules/workforce/project_context.php';
+$ctxConn = getWorkforceConnection();
+$selected_project_id = getProjectContext($ctxConn);
+// If a project context exists but URL doesn't include project_id, redirect to attach it
+if (!isset($_GET['project_id']) && !empty($selected_project_id)) {
+    header('Location: ' . BASE_URL . 'dashboard.php?project_id=' . intval($selected_project_id));
+    exit();
+}
+
 // // 3. Data Fetching for Dashboard Widgets
 // // A. Active Projects
 // $sql_proj = "SELECT COUNT(*) as total FROM projects WHERE status = 'ONGOING'";

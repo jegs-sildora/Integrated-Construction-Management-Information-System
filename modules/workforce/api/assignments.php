@@ -104,6 +104,7 @@ function listAssignments($conn) {
 }
 
 // Get single assignment by ID
+// DB Schema: workforce_assignments (assignment_id, employee_id, project_id, phase_id, role, task_description, start_date, end_date, status)
 function getAssignment($conn, $id) {
     if (!$id) {
         echo json_encode(['success' => false, 'message' => 'Assignment ID required']);
@@ -126,7 +127,7 @@ function getAssignment($conn, $id) {
     $result = $stmt->get_result();
     
     if ($row = $result->fetch_assoc()) {
-        echo json_encode(['success' => true, 'data' => $row]);
+        echo json_encode(['success' => true, 'assignment' => $row, 'data' => $row]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Assignment not found']);
     }
@@ -134,6 +135,8 @@ function getAssignment($conn, $id) {
 }
 
 // Create new assignment
+// DB Schema: workforce_assignments (assignment_id, employee_id, project_id, phase_id, role, task_description, start_date, end_date, status)
+// status ENUM: 'Active','Completed','Cancelled'
 function createAssignment($conn) {
     $data = $_POST;
     
@@ -156,18 +159,20 @@ function createAssignment($conn) {
     $stmt->close();
     
     $sql = "INSERT INTO workforce_assignments 
-                (employee_id, project_id, phase_id, role, start_date, end_date, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
+                (employee_id, project_id, phase_id, role, task_description, start_date, end_date, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $conn->prepare($sql);
-    $phase_id = !empty($data['phase_id']) ? $data['phase_id'] : null;
+    $phase_id = !empty($data['phase_id']) ? intval($data['phase_id']) : null;
     $status = $data['status'] ?? 'Active';
+    $task_description = $data['task_description'] ?? null;
     
-    $stmt->bind_param("iiissss",
+    $stmt->bind_param("iiisssss",
         $data['employee_id'],
         $data['project_id'],
         $phase_id,
         $data['role'],
+        $task_description,
         $data['start_date'],
         $data['end_date'],
         $status
@@ -186,6 +191,7 @@ function createAssignment($conn) {
 }
 
 // Update existing assignment
+// DB Schema: workforce_assignments (assignment_id, employee_id, project_id, phase_id, role, task_description, start_date, end_date, status)
 function updateAssignment($conn) {
     $data = $_POST;
     
@@ -199,19 +205,22 @@ function updateAssignment($conn) {
                 project_id = ?,
                 phase_id = ?,
                 role = ?,
+                task_description = ?,
                 start_date = ?,
                 end_date = ?,
                 status = ?
             WHERE assignment_id = ?";
     
     $stmt = $conn->prepare($sql);
-    $phase_id = !empty($data['phase_id']) ? $data['phase_id'] : null;
+    $phase_id = !empty($data['phase_id']) ? intval($data['phase_id']) : null;
+    $task_description = $data['task_description'] ?? null;
     
-    $stmt->bind_param("iiissssi",
+    $stmt->bind_param("iiisssssi",
         $data['employee_id'],
         $data['project_id'],
         $phase_id,
         $data['role'],
+        $task_description,
         $data['start_date'],
         $data['end_date'],
         $data['status'],

@@ -19,7 +19,7 @@ if ($po_id <= 0) {
 }
 
 // 1. Fetch PO Header Info
-$po_sql = "SELECT po.po_reference, po.project_id, po.phase, po.order_title, po.status, po.total_amount,
+$po_sql = "SELECT po.po_reference, po.project_id, po.phase_id, po.order_title, po.status, po.total_amount,
                   s.supplier_name, p.project_name
            FROM procurement_purchase_orders po
            LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
@@ -38,7 +38,7 @@ if (!$po_data) {
 }
 
 // 2. Fetch PO Items
-$items_sql = "SELECT po_item_id, item_name, quantity, unit_cost, total_cost 
+$items_sql = "SELECT po_item_id AS id, item_name, quantity, unit_cost, total_cost 
               FROM procurement_purchase_order_items 
               WHERE po_id = ?";
 

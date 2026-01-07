@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workforce & Labor - Notifications</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link rel="stylesheet" href="../common/style.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="toggle-sidebar">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </div>
+    <div class="logo">
+      <div class="logo-icon">I</div>
+      <div class="logo-text">ICMIS</div>
+    </div>
+
+    <div class="module-title">Workforce & Labor</div>
+
+    <ul class="menu">
+      <li>
+        <span class="material-symbols-outlined icon">dashboard</span>
+        <a href="../dashboard/dashboard.html" style="text-decoration: none; color: inherit;">Dashboard</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">group</span>
+        <a href="../employees/employees.html" style="text-decoration: none; color: inherit;">Employees</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">event_available</span>
+        <a href="../attendance/attendance.html" style="text-decoration: none; color: inherit;">Attendance</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">assignment</span>
+        <a href="../assignments/assignments.html" style="text-decoration: none; color: inherit;">Assignments</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">apartment</span>
+        <a href="../projects/projects.html" style="text-decoration: none; color: inherit;">Projects</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">schedule</span>
+        <a href="../payroll/time_payroll.html" style="text-decoration: none; color: inherit;">Time & Payroll</a>
+      </li>
+      <li>
+        <span class="material-symbols-outlined icon">bar_chart</span>
+        <a href="../reports/reports.html" style="text-decoration: none; color: inherit;">Reports</a>
+      </li>
+    </ul>
+  </aside>
+
+  <main class="dashboard-container">
+    <header class="top-header">
+      <div class="welcome-text">
+        <h2>Notifications</h2>
+        <p>Manage and view all system notifications and reminders.</p>
+      </div>
+      <div class="user-info">
+        <span class="material-symbols-outlined">search</span>
+        <span class="material-symbols-outlined">notifications</span>
+        <div>
+          <p style="margin: 0; font-weight: bold; font-size: 14px; text-align: right;">Manager</p>
+          <p style="margin: 0; font-size: 12px; color: #6b7280; text-align: right;">Admin</p>
+        </div>
+        <img src="placeholder-avatar.jpg" alt="User Avatar" style="background: #e0e7ff;">
+      </div>
+    </header>
+
+    <!-- NOTIFICATIONS SUMMARY -->
+    <section class="stats">
+      <div class="stat-card">
+        <h4>Upcoming Notifications</h4>
+        <h2>7</h2>
+        <p>In the next 7 days</p>
+      </div>
+      <div class="stat-card">
+        <h4>Overdue Notifications</h4>
+        <h2>3</h2>
+        <p>Require immediate attention</p>
+      </div>
+      <div class="stat-card">
+        <h4>Assignment Reminders</h4>
+        <h2>12</h2>
+        <p>Pending completion updates</p>
+      </div>
+      <div class="stat-card">
+        <h4>System Alerts</h4>
+        <h2>2</h2>
+        <p>Important announcements</p>
+      </div>
+    </section>
+
+    <!-- NOTIFICATIONS SECTION -->
+    <section class="employee-assignments">
+      <header class="section-header">
+        <h3>Notification Center</h3>
+        <p>View and manage all scheduled notifications and reminders.</p>
+      </header>
+
+      <!-- NOTIFICATION CONTROLS -->
+      <div class="card" style="margin-bottom: 25px;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="notificationType">Notification Type</label>
+            <select id="notificationType">
+              <option value="">All Types</option>
+              <option value="assignment_reminder">Assignment Reminders</option>
+              <option value="deadline_warning">Deadline Warnings</option>
+              <option value="system_alert">System Alerts</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="notificationStatus">Status</label>
+            <select id="notificationStatus">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="sent">Sent</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="dateRange">Date Range</label>
+            <select id="dateRange">
+              <option value="week">Next 7 Days</option>
+              <option value="month">Next 30 Days</option>
+              <option value="all">All Dates</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="refreshNotifications()">Refresh</button>
+          <button class="btn-secondary" onclick="clearAllNotifications()">Clear All</button>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS LIST -->
+      <div class="card">
+        <div class="table-header">
+          <h4>Scheduled Notifications</h4>
+          <div class="controls">
+            <button class="filter-btn">
+              <span class="material-symbols-outlined">filter_list</span>
+              Filter
+            </button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="notificationsTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Recipient</th>
+                <th>Message</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Mar 12, 2025</td>
+                <td>Assignment Reminder</td>
+                <td>Juan Dela Cruz</td>
+                <td>Assignment for Makati Skyline Tower ends in 3 days</td>
+                <td><span class="status-badge status-pending">Pending</span></td>
+                <td>Jan 20, 2025</td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="action-btn view-btn" title="View Details">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </button>
+                    <button class="action-btn edit-btn" title="Edit Notification">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="action-btn delete-btn" title="Delete Notification">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Apr 12, 2025</td>
+                <td>Assignment Reminder</td>
+                <td>Maria Santos</td>
+                <td>Assignment for Cebu Commercial Complex ends in 3 days</td>
+                <td><span class="status-badge status-pending">Pending</span></td>
+                <td>Feb 5, 2025</td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="action-btn view-btn" title="View Details">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </button>
+                    <button class="action-btn edit-btn" title="Edit Notification">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="action-btn delete-btn" title="Delete Notification">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>Feb 28, 2025</td>
+                <td>Deadline Warning</td>
+                <td>Pedro Reyes</td>
+                <td>Foundation Work phase is approaching deadline</td>
+                <td><span class="status-badge status-overdue">Overdue</span></td>
+                <td>Jan 15, 2025</td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="action-btn view-btn" title="View Details">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </button>
+                    <button class="action-btn edit-btn" title="Edit Notification">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="action-btn delete-btn" title="Delete Notification">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../common/main.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize DataTables for the notifications table
+      $('#notificationsTable').DataTable({
+        "paging": true,
+        "pageLength": 10,
+        "lengthChange": true,
+        "searching": true,
+        "ordering": true,
+        "info": true,
+        "autoWidth": false,
+        "responsive": true
+      });
+    });
+    
+    function refreshNotifications() {
+      alert('Notifications would be refreshed with selected filters');
+      // In a real application, this would re-fetch data based on filters
+    }
+    
+    function clearAllNotifications() {
+      if (confirm('Are you sure you want to clear all notifications?')) {
+        // In a real application, this would clear notifications from storage
+        alert('All notifications cleared');
+      }
+    }
+  </script>
+</body>
+</html>

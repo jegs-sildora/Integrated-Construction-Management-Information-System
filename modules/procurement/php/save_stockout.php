@@ -13,7 +13,7 @@ $conn->set_charset("utf8mb4");
 
 // Get POST data
 $item_id = intval($_POST['stock_itemID'] ?? 0);
-$qty = intval($_POST['stock_quantity'] ?? 0);
+$qty = floatval($_POST['stock_quantity'] ?? 0);
 $issued_to = trim($_POST['stock_issuedTo'] ?? '');
 $project_id = intval($_POST['stock_projectID'] ?? 0);
 
@@ -38,13 +38,13 @@ try {
         throw new Exception("Item not found in inventory.");
     }
 
-    if ($item['quantity'] < $qty) {
+    if (floatval($item['quantity']) < $qty) {
         throw new Exception("Insufficient stock! Available: " . $item['quantity']);
     }
 
     // 2. Deduct from Inventory
     $updateStmt = $conn->prepare("UPDATE procurement_inventory SET quantity = quantity - ? WHERE item_id = ?");
-    $updateStmt->bind_param("ii", $qty, $item_id);
+    $updateStmt->bind_param("di", $qty, $item_id);
     if (!$updateStmt->execute()) {
         throw new Exception("Failed to update inventory.");
     }
@@ -53,7 +53,7 @@ try {
     // 3. Insert into Stock Out Log
     $insertStmt = $conn->prepare("INSERT INTO procurement_stock_out (item_id, quantity, issued_to, date_issued, project_id) VALUES (?, ?, ?, CURDATE(), ?)");
     $project_id_param = $project_id > 0 ? $project_id : null;
-    $insertStmt->bind_param("iisi", $item_id, $qty, $issued_to, $project_id_param);
+    $insertStmt->bind_param("idsi", $item_id, $qty, $issued_to, $project_id_param);
     if (!$insertStmt->execute()) {
         throw new Exception("Failed to save stock out log.");
     }

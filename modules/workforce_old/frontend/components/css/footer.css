@@ -1,0 +1,19 @@
+footer {
+  margin-top: auto;              
+  text-align: center;
+  padding: 12px 0;
+  font-size: 0.50rem;
+  color: #64748b;
+}
+
+.elink {
+  color: var(--primary-orange);
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+
+
+
+

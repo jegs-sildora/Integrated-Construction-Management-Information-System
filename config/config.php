@@ -18,6 +18,9 @@ define('DB_NAME', 'icmis_db');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+// Set default timezone
+date_default_timezone_set('Asia/Manila');
+ini_set('date.timezone', 'Asia/Manila');
 
 // 5. Error Reporting (Useful for debugging)
 error_reporting(E_ALL);

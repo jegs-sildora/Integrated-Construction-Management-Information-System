@@ -27,7 +27,7 @@
   
   foreach ($projects as $proj) {
     $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
+    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name'] ?? '', ENT_QUOTES, 'UTF-8') . '</option>';
   }
   
   $breadcrumbHTML .= '</select>';
@@ -101,7 +101,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
-        <span class="font-medium">New Proposal</span>
+        <span class="font-bold">New Proposal</span>
       </a>
     </div>
 
@@ -122,7 +122,7 @@
           request budget adjustments, or plan upcoming expenditures.
         </p>
 
-        <a href="budget_proposal/create_proposal.php" class="inline-flex items-center gap-2 bg-[#e9922c] text-white px-6 py-3 rounded-lg hover:bg-[#d17f1f] transition-all duration-200 shadow-md hover:shadow-lg font-medium">
+        <a href="budget_proposal/create_proposal.php" class="inline-flex items-center gap-2 bg-[#e9922c] text-white px-6 py-3 rounded-lg hover:bg-[#d17f1f] transition-all duration-200 shadow-md hover:shadow-lg font-bold">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -190,16 +190,16 @@
                   <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
-                  <span class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($proposal['code']); ?></span>
+                  <span class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($proposal['code'] ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
               </td>
               <td class="px-6 py-4">
-                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($proposal['title']); ?></div>
-                <div class="text-xs text-gray-500 mt-1"><?php echo htmlspecialchars($proposal['description']); ?></div>
+                <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($proposal['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="text-xs text-gray-500 mt-1"><?php echo htmlspecialchars($proposal['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></div>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-900"><?php echo htmlspecialchars($proposal['project_name'] ?? 'N/A'); ?></span>
+                  <span class="text-sm text-gray-900"><?php echo htmlspecialchars($proposal['project_name'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -211,11 +211,11 @@
                       ($proposal['status'] === 'REJECTED' ? 'bg-red-100 text-red-700' : 
                       ($proposal['status'] === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'));
                 ?>">
-                  <?php echo htmlspecialchars($proposal['status']); ?>
+                  <?php echo htmlspecialchars($proposal['status'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900"><?php echo htmlspecialchars($proposal['user_name'] ?? 'Unknown User'); ?></span>
+                <span class="text-sm text-gray-900"><?php echo htmlspecialchars($proposal['user_name'] ?? 'Unknown User', ENT_QUOTES, 'UTF-8'); ?></span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center gap-2">
@@ -237,7 +237,7 @@
                     </svg>
                   </a>
                   
-                  <button onclick="openDeleteModal(<?php echo $proposal['proposal_id']; ?>, '<?php echo htmlspecialchars($proposal['code'], ENT_QUOTES); ?>')" class="text-gray-500 p-2 rounded-lg hover:text-red-600 transition-colors duration-200" title="Delete">
+                  <button onclick="openDeleteModal(<?php echo $proposal['proposal_id']; ?>, '<?php echo htmlspecialchars($proposal['code'] ?? '', ENT_QUOTES, 'UTF-8'); ?>')" class="text-gray-500 p-2 rounded-lg hover:text-red-600 transition-colors duration-200" title="Delete">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>

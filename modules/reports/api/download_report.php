@@ -22,8 +22,8 @@ if ($report_id <= 0) {
     exit;
 }
 
-// Fetch report details
-$stmt = $conn->prepare("SELECT * FROM generated_reports WHERE id = ?");
+// Fetch report details from budget_generated_reports table
+$stmt = $conn->prepare("SELECT report_id, report_type, report_name, project_id, generated_by, created_at FROM budget_generated_reports WHERE report_id = ?");
 $stmt->bind_param("i", $report_id);
 $stmt->execute();
 $result = $stmt->get_result();

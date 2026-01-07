@@ -108,19 +108,23 @@ function listEmployees($conn) {
 }
 
 // Get single employee by ID
+// DB Schema: workforce_employees (employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status, hire_date)
 function getEmployee($conn, $id) {
     if (!$id) {
         echo json_encode(['success' => false, 'message' => 'Employee ID required']);
         return;
     }
     
-    $stmt = $conn->prepare("SELECT * FROM workforce_employees WHERE employee_id = ?");
+    $stmt = $conn->prepare("SELECT e.*, jt.title_name as job_title, jt.department, jt.default_daily_rate
+            FROM workforce_employees e 
+            LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
+            WHERE e.employee_id = ?");
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $result = $stmt->get_result();
     
     if ($row = $result->fetch_assoc()) {
-        echo json_encode(['success' => true, 'data' => $row]);
+        echo json_encode(['success' => true, 'employee' => $row, 'data' => $row]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Employee not found']);
     }
@@ -128,6 +132,7 @@ function getEmployee($conn, $id) {
 }
 
 // Create new employee
+// DB Schema: workforce_employees (employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status, hire_date)
 function createEmployee($conn) {
     $data = $_POST;
     
@@ -137,23 +142,26 @@ function createEmployee($conn) {
         return;
     }
     
-    // Generate employee code if not provided
+    // Generate employee code if not provided (format: EMP-YYYY-XXX)
     if (empty($data['employee_code'])) {
+        $year = date('Y');
         $result = $conn->query("SELECT MAX(employee_id) as max_id FROM workforce_employees");
         $row = $result->fetch_assoc();
         $next_id = ($row['max_id'] ?? 0) + 1;
-        $data['employee_code'] = 'EMP-' . str_pad($next_id, 4, '0', STR_PAD_LEFT);
+        $data['employee_code'] = 'EMP-' . $year . '-' . str_pad($next_id, 3, '0', STR_PAD_LEFT);
     }
     
-    $sql = "INSERT INTO workforce_employees (employee_code, first_name, last_name, email, phone, status, hire_date) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO workforce_employees (employee_code, job_title_id, first_name, last_name, email, phone, status, hire_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $conn->prepare($sql);
     $status = $data['status'] ?? 'Active';
-    $hire_date = $data['hire_date'] ?: date('Y-m-d');
+    $hire_date = !empty($data['hire_date']) ? $data['hire_date'] : date('Y-m-d');
+    $job_title_id = !empty($data['job_title_id']) ? intval($data['job_title_id']) : null;
     
-    $stmt->bind_param("sssssss", 
+    $stmt->bind_param("sissssss", 
         $data['employee_code'],
+        $job_title_id,
         $data['first_name'],
         $data['last_name'],
         $data['email'],
@@ -175,6 +183,7 @@ function createEmployee($conn) {
 }
 
 // Update existing employee
+// DB Schema: workforce_employees (employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status, hire_date)
 function updateEmployee($conn) {
     $data = $_POST;
     
@@ -184,22 +193,24 @@ function updateEmployee($conn) {
     }
     
     $sql = "UPDATE workforce_employees SET 
-                employee_code = ?,
                 first_name = ?,
                 last_name = ?,
                 email = ?,
                 phone = ?,
+                job_title_id = ?,
                 status = ?,
                 hire_date = ?
             WHERE employee_id = ?";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssssssi",
-        $data['employee_code'],
+    $job_title_id = !empty($data['job_title_id']) ? intval($data['job_title_id']) : null;
+    
+    $stmt->bind_param("ssssissi",
         $data['first_name'],
         $data['last_name'],
         $data['email'],
         $data['phone'],
+        $job_title_id,
         $data['status'],
         $data['hire_date'],
         $data['employee_id']

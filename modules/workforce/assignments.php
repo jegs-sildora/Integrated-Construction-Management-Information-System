@@ -266,7 +266,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['project_name'] ?? 'N/A'); ?></td>
-                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['task'] ?? '-'); ?></td>
+                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['task_description'] ?? '-'); ?></td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['phase_name'] ?? 'N/A'); ?></td>
                             <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($a['role'] ?? 'N/A'); ?></td>
                             <td class="px-6 py-4 text-gray-600 text-sm">

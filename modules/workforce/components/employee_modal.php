@@ -1,13 +1,29 @@
 <!-- Employee Modal (Professional UI) -->
+<style>
+/* Modal open/close animations used by page JS (.modal-open / .modal-close) */
+.modal-content{
+    transform: translateY(-10px) scale(0.98);
+    opacity: 0;
+    transition: transform 240ms cubic-bezier(.4,0,.2,1), opacity 240ms cubic-bezier(.4,0,.2,1);
+}
+.modal-open{
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+.modal-close{
+    transform: translateY(-10px) scale(0.98);
+    opacity: 0;
+}
+</style>
 <div id="employeeModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4 py-8">
         <!-- Backdrop with Blur -->
         <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
         
         <!-- Modal Content -->
-        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full z-10 overflow-hidden transform transition-all">
+        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full z-10 overflow-hidden transform transition-all modal-content">
             <!-- Modal Header -->
-            <div class="bg-gradient-to-r from-[#e9922c] to-orange-500 px-6 py-4">
+            <div class="bg-[#d17f1f] px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
@@ -35,7 +51,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 First Name <span class="text-red-500">*</span>
                             </label>
-                            <input type="text" id="first_name" name="first_name" required 
+                            <input type="text" id="first_name" name="first_name" required autocomplete="off"
                                 class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all"
                                 placeholder="John">
                         </div>
@@ -43,22 +59,9 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 Last Name <span class="text-red-500">*</span>
                             </label>
-                            <input type="text" id="last_name" name="last_name" required 
+                            <input type="text" id="last_name" name="last_name" required autocomplete="off"
                                 class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all"
                                 placeholder="Doe">
-                        </div>
-                    </div>
-
-                    <!-- Employee Code -->
-                    <div class="mb-5">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Employee Code</label>
-                        <div class="relative">
-                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                <i data-lucide="hash" class="w-4 h-4"></i>
-                            </span>
-                            <input type="text" id="employee_code" name="employee_code" 
-                                placeholder="Auto-generated if empty" 
-                                class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all">
                         </div>
                     </div>
 
@@ -69,8 +72,10 @@
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                                 <i data-lucide="mail" class="w-4 h-4"></i>
                             </span>
-                            <input type="email" id="email" name="email" 
-                                placeholder="john.doe@company.com"
+                            <input type="email" id="email" name="email" readonly
+                                pattern="^[a-zA-Z0-9._%+-]+@icmis\.com$"
+                                title="Automatically generated from First and Last name (readonly)"
+                                placeholder="name@icmis.com"
                                 class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all">
                         </div>
                     </div>
@@ -82,7 +87,7 @@
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                                 <i data-lucide="phone" class="w-4 h-4"></i>
                             </span>
-                            <input type="tel" id="phone" name="phone" 
+                            <input type="tel" id="phone" name="phone" value="+63 "
                                 placeholder="+63 912 345 6789"
                                 class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all">
                         </div>
@@ -92,11 +97,12 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                            <!-- workforce_employees.status ENUM: Active, Inactive, Terminated (from icmis_db.sql) -->
                             <select id="status" name="status" 
                                 class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all bg-white">
                                 <option value="Active">Active</option>
                                 <option value="Inactive">Inactive</option>
-                                <option value="On Leave">On Leave</option>
+                                <option value="Terminated">Terminated</option>
                             </select>
                         </div>
                         <div>
@@ -123,3 +129,97 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const first = document.getElementById('first_name');
+    const last = document.getElementById('last_name');
+    const email = document.getElementById('email');
+
+    function sanitizePart(s){
+        return s.trim().toLowerCase()
+            .replace(/\s+/g, '.')
+            .replace(/[^a-z0-9.]/g, '')
+            .replace(/\.+/g, '.')
+            .replace(/^\.+|\.+$/g, '');
+    }
+
+    function buildEmail(){
+        const f = first ? sanitizePart(first.value) : '';
+        const l = last ? sanitizePart(last.value) : '';
+        let local = '';
+        if(f && l) local = f + '.' + l;
+        else local = f || l;
+        if(local) email.value = local + '@icmis.com';
+        else email.value = '';
+    }
+
+    if(first) first.addEventListener('input', buildEmail);
+    if(last) last.addEventListener('input', buildEmail);
+    buildEmail();
+
+    // Phone prefix lock and sanitization
+    const phone = document.getElementById('phone');
+    const prefix = '+63 ';
+
+    function ensurePhonePrefix(){
+        if(!phone) return;
+        if(!phone.value.startsWith(prefix)){
+            // strip common leading codes and non-digits
+            let v = phone.value.replace(/^\s*/, '')
+                .replace(/^(\+?63\s*|63\s*|0+)/, '')
+                .replace(/[^0-9 ]/g, '');
+            phone.value = prefix + v;
+        }
+    }
+
+    if(phone){
+        ensurePhonePrefix();
+
+        phone.addEventListener('input', function(){
+            const selStart = phone.selectionStart || 0;
+            ensurePhonePrefix();
+            if(selStart <= prefix.length) phone.setSelectionRange(prefix.length, prefix.length);
+        });
+
+        phone.addEventListener('keydown', function(e){
+            const start = phone.selectionStart || 0;
+            const end = phone.selectionEnd || 0;
+            // prevent deleting the prefix
+            if((e.key === 'Backspace' || e.key === 'Delete') && start <= prefix.length){
+                e.preventDefault();
+            }
+            // prevent cutting the prefix
+            if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x'){
+                if(start < prefix.length) e.preventDefault();
+            }
+        });
+
+        phone.addEventListener('paste', function(e){
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+            const cleaned = text.replace(/[^0-9]/g, '');
+            phone.value = prefix + cleaned;
+            phone.setSelectionRange(phone.value.length, phone.value.length);
+        });
+
+        phone.addEventListener('cut', function(e){
+            const start = phone.selectionStart || 0;
+            if(start < prefix.length) e.preventDefault();
+        });
+
+        phone.addEventListener('focus', function(){
+            if(phone.selectionStart < prefix.length) phone.setSelectionRange(prefix.length, prefix.length);
+        });
+    }
+
+    // Default hire date to today if empty
+    const hire = document.getElementById('hire_date');
+    if(hire && !hire.value){
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+        hire.value = `${yyyy}-${mm}-${dd}`;
+    }
+});
+</script>

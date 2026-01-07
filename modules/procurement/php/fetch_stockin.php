@@ -18,12 +18,14 @@ try {
                 si.stock_in_id, 
                 si.po_id,
                 po.po_reference, 
-                si.item_name, 
+                COALESCE(i.item_name, '') as item_name,
                 si.quantity_received, 
                 DATE_FORMAT(si.date_received, '%b %d, %Y') as date_received,
+                DATE_FORMAT(si.date_received, '%Y-%m-%d') as date_received_raw,
                 u.full_name as received_by_name
             FROM procurement_stock_in si
             LEFT JOIN procurement_purchase_orders po ON si.po_id = po.po_id
+            LEFT JOIN procurement_inventory i ON si.item_id = i.item_id
             LEFT JOIN icmis_users u ON po.created_by_user_id = u.user_id
             ORDER BY si.date_received DESC, si.stock_in_id DESC
             LIMIT 50";

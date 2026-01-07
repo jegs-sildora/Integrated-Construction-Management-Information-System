@@ -3,6 +3,14 @@
  * Reports API - Workforce Module
  * 
  * Provides data for generating PDF reports
+ * 
+ * DATABASE SCHEMA (from icmis_db.sql):
+ * - workforce_employees: employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status (ENUM: Active, Inactive, Terminated), hire_date
+ * - workforce_job_titles: job_title_id, title_name, department, description, default_daily_rate, is_active
+ * - workforce_assignments: assignment_id, employee_id, project_id, phase_id, role, task_description, start_date, end_date, status (ENUM: Active, Completed, Cancelled)
+ * - workforce_attendance: attendance_id, employee_id, project_id, attendance_date, time_in, time_out, status (ENUM: Present, Absent, Late, On Leave), remarks
+ * - icmis_projects: project_id, project_code, project_name, etc.
+ * - icmis_project_phases: phase_id, project_id, phase_name, etc.
  */
 header('Content-Type: application/json');
 
@@ -94,7 +102,7 @@ function getAttendanceSummaryData($conn, $project_id, $month) {
                    CONCAT(e.first_name, ' ', e.last_name) as employee_name,
                    COUNT(CASE WHEN att.status = 'Present' THEN 1 END) as present_days,
                    COUNT(CASE WHEN att.status = 'Absent' THEN 1 END) as absent_days,
-                   COUNT(CASE WHEN att.status = 'Leave' THEN 1 END) as leave_days,
+                   COUNT(CASE WHEN att.status = 'On Leave' THEN 1 END) as leave_days,
                    COALESCE(SUM(TIMESTAMPDIFF(HOUR, att.time_in, att.time_out)), 0) as total_hours
             FROM workforce_employees e
             JOIN workforce_assignments a ON e.employee_id = a.employee_id
@@ -153,21 +161,25 @@ function getAssignmentReportData($conn, $project_id) {
 }
 
 // Payroll Report Data
+// Uses workforce_job_titles.default_daily_rate for each employee's rate
 function getPayrollReportData($conn, $project_id, $month) {
     $start_date = $month . '-01';
     $end_date = date('Y-m-t', strtotime($start_date));
-    $daily_rate = 800; // Default daily rate
     
+    // Join with workforce_job_titles to get default_daily_rate per employee
     $sql = "SELECT e.employee_id, e.employee_code,
                    CONCAT(e.first_name, ' ', e.last_name) as employee_name,
+                   COALESCE(jt.default_daily_rate, 800) as daily_rate,
+                   jt.title_name as job_title,
                    COUNT(CASE WHEN att.status = 'Present' THEN 1 END) + 
-                   (COUNT(CASE WHEN att.status = 'Half-day' THEN 1 END) * 0.5) as days_worked
+                   COUNT(CASE WHEN att.status = 'Late' THEN 1 END) as days_worked
             FROM workforce_employees e
             JOIN workforce_assignments a ON e.employee_id = a.employee_id
+            LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
             LEFT JOIN workforce_attendance att ON e.employee_id = att.employee_id 
                 AND att.project_id = ? AND att.attendance_date BETWEEN ? AND ?
             WHERE a.project_id = ? AND a.status = 'Active'
-            GROUP BY e.employee_id, e.employee_code, e.first_name, e.last_name
+            GROUP BY e.employee_id, e.employee_code, e.first_name, e.last_name, jt.default_daily_rate, jt.title_name
             ORDER BY e.last_name, e.first_name";
     
     $stmt = $conn->prepare($sql);
@@ -179,11 +191,11 @@ function getPayrollReportData($conn, $project_id, $month) {
     $totals = ['gross' => 0, 'deductions' => 0, 'net' => 0];
     
     while ($row = $result->fetch_assoc()) {
+        $daily_rate = floatval($row['daily_rate']);
         $gross = $row['days_worked'] * $daily_rate;
         $deductions = $gross * 0.05; // 5% deductions
         $net = $gross - $deductions;
         
-        $row['daily_rate'] = $daily_rate;
         $row['gross_pay'] = $gross;
         $row['deductions'] = $deductions;
         $row['net_pay'] = $net;

@@ -15,11 +15,11 @@ try {
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
     if ($search !== '') {
-        $sql = "SELECT supplier_id, supplier_name, contact_person, contact_number, email, address, status
-                FROM procurement_suppliers
-                WHERE (supplier_name LIKE ? OR contact_person LIKE ?) AND UPPER(TRIM(status)) = 'ACTIVE'
-                ORDER BY supplier_name
-                LIMIT 200";
+    $sql = "SELECT supplier_id, supplier_name, contact_person, contact_number, email, address, status
+        FROM procurement_suppliers
+        WHERE (supplier_name LIKE ? OR contact_person LIKE ?) AND UPPER(TRIM(status)) = 'ACTIVE'
+        ORDER BY supplier_id ASC
+        LIMIT 200";
         $stmt = $conn->prepare($sql);
         $param = '%' . $search . '%';
         $stmt->bind_param('ss', $param, $param);
@@ -27,10 +27,10 @@ try {
         $res = $stmt->get_result();
     } else {
         $sql = "SELECT supplier_id, supplier_name, contact_person, contact_number, email, address, status
-                FROM procurement_suppliers
-                WHERE UPPER(TRIM(status)) = 'ACTIVE'
-                ORDER BY supplier_name
-                LIMIT 500";
+            FROM procurement_suppliers
+            WHERE UPPER(TRIM(status)) = 'ACTIVE'
+            ORDER BY supplier_id ASC
+            LIMIT 500";
         $res = $conn->query($sql);
     }
 

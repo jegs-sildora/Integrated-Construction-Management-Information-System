@@ -24,6 +24,30 @@ if ($result && $result->num_rows > 0) {
   }
 }
 
+// Get selected project and phase from global context
+$selected_project_id = getProjectContext($conn);
+$selected_phase_id = getPhaseContext();
+
+// Normalize phase id if provided via URL or numeric string
+if (isset($_GET['phase_id']) && !empty($_GET['phase_id'])) {
+    $selected_phase_id = intval($_GET['phase_id']);
+} else {
+    $selected_phase_id = is_numeric($selected_phase_id) ? intval($selected_phase_id) : 0;
+}
+
+// Preload phases for the selected project (if any)
+$result_phases = null;
+if ($selected_project_id && $selected_project_id > 0) {
+    $sql_ph = "SELECT phase_id, phase_name, start_date, end_date FROM icmis_project_phases WHERE project_id = ? ORDER BY start_date ASC";
+    $stmt_ph = $conn->prepare($sql_ph);
+    if ($stmt_ph) {
+        $stmt_ph->bind_param('i', $selected_project_id);
+        $stmt_ph->execute();
+        $result_phases = $stmt_ph->get_result();
+        $stmt_ph->close();
+    }
+}
+
 // Header variables
 $pageTitle = "Budget Proposals";
 $pageSubTitle = "Create New Proposal";
@@ -46,11 +70,11 @@ $pageSection = "Budget & Cost Control";
     include __DIR__ . '/../../../includes/header.php'; 
   ?>
 
-    <main class="ml-56 mt-24 p-6">
+    <main class="ml-56 mt-18 p-6">
         <div class="max-w-7xl mx-auto">
             <a href="../proposals.php" class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors underline">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
             </a>
 
@@ -67,10 +91,11 @@ $pageSection = "Budget & Cost Control";
                         <label for="project" class="block text-sm text-gray-700 mb-2">Select Project</label>
                         <select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                             <option value="">-- Select a Project --</option>
-                            <?php foreach ($projects as $project): ?>
-                            <option value="<?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['project_name']); ?>" data-id="<?php echo $project['project_id']; ?>">
-                                <?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['project_name']); ?>
-                            </option>
+                            <?php foreach ($projects as $project):
+                                $isSelected = ($selected_project_id && $selected_project_id == $project['project_id']) ? 'selected' : ''; ?>
+                                <option value="<?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['project_name']); ?>" data-id="<?php echo $project['project_id']; ?>" <?php echo $isSelected; ?>>
+                                    <?php echo htmlspecialchars($project['project_code'] . ' - ' . $project['project_name']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -79,10 +104,13 @@ $pageSection = "Budget & Cost Control";
                         <label for="targetPhase" class="block text-sm text-gray-700 mb-2">Target Milestone / Phase</label>
                         <select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                             <option value="">Select Phase...</option>
-                            <option value="Phase 1: Mobilization">Phase 1: Mobilization</option>
-                            <option value="Phase 2: Structural">Phase 2: Structural</option>
-                            <option value="Phase 3: MEPFS">Phase 3: MEPFS</option>
-                            <option value="Phase 4: Finishing">Phase 4: Finishing</option>
+                            <?php if ($result_phases && $result_phases->num_rows > 0):
+                                while ($ph = $result_phases->fetch_assoc()): ?>
+                                    <option value="<?php echo intval($ph['phase_id']); ?>" data-id="<?php echo intval($ph['phase_id']); ?>" data-start="<?php echo htmlspecialchars($ph['start_date']); ?>" data-end="<?php echo htmlspecialchars($ph['end_date']); ?>" <?php echo ($selected_phase_id && $selected_phase_id == $ph['phase_id']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($ph['phase_name']); ?>
+                                    </option>
+                                <?php endwhile; 
+                            endif; ?>
                         </select>
                     </div>
 
@@ -702,8 +730,8 @@ $pageSection = "Budget & Cost Control";
         if (selectedOption.value) {
             const startDate = selectedOption.dataset.start;
             const endDate = selectedOption.dataset.end;
-            const phaseName = selectedOption.textContent; // Use textContent for the display name
-            
+            const phaseName = (selectedOption.textContent || '').trim().replace(/\s+/g, ' '); // normalized display name
+
             // Update Phase Preview Text (The Fix)
             previewPhase.textContent = phaseName;
             previewPhase.classList.remove('italic', 'text-gray-500');
@@ -715,7 +743,8 @@ $pageSection = "Budget & Cost Control";
             
             // Auto-fill Proposal Title
             const titleInput = document.getElementById('proposalTitle');
-            titleInput.value = `${phaseName} Budget Proposal`;
+            // Use an em-dash to separate phase and static suffix and collapse extra whitespace
+            titleInput.value = `${phaseName} — Budget Proposal`;
             
             // Trigger input event to update the live preview for title
             titleInput.dispatchEvent(new Event('input'));
@@ -776,6 +805,27 @@ $pageSection = "Budget & Cost Control";
                 previewScopeContainer.style.display = 'block';
             } else {
                 previewScopeContainer.style.display = 'none';
+            }
+        });
+
+        // Initialize previews when page loads if context selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const projectSelect = document.getElementById('project');
+            if (projectSelect) {
+                const sel = projectSelect.options[projectSelect.selectedIndex];
+                if (sel && sel.getAttribute('data-id')) {
+                    const previewProject = document.getElementById('preview-project');
+                    previewProject.textContent = sel.textContent || 'No project selected';
+                    previewProject.classList.remove('italic');
+                }
+            }
+
+            const phaseSelect = document.getElementById('targetPhase');
+            if (phaseSelect) {
+                const selPhase = phaseSelect.options[phaseSelect.selectedIndex];
+                if (selPhase && selPhase.value) {
+                    phaseSelect.dispatchEvent(new Event('change'));
+                }
             }
         });
 

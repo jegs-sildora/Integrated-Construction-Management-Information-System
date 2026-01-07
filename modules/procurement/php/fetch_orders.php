@@ -22,7 +22,7 @@ $sql = "SELECT
             po.po_reference,
             po.project_id,
             po.supplier_id,
-            po.phase,
+            po.phase_id,
             po.order_title,
             DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
             po.total_amount,

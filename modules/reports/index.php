@@ -9,6 +9,7 @@
 
 session_start();
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../includes/report_print_layout.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -61,9 +62,9 @@ if ($result_projects && $result_projects->num_rows > 0) {
 
 // Fetch recent generated reports (if table exists)
 $recent_reports = [];
-$tableExists = $conn->query("SHOW TABLES LIKE 'generated_reports'");
+$tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
 if ($tableExists && $tableExists->num_rows > 0) {
-    $report_sql = "SELECT * FROM generated_reports ORDER BY created_at DESC LIMIT 20";
+    $report_sql = "SELECT report_id, report_type, report_name, project_id, generated_by, created_at FROM budget_generated_reports ORDER BY created_at DESC LIMIT 20";
     $result = $conn->query($report_sql);
     if ($result) {
         while ($row = $result->fetch_assoc()) {
@@ -116,61 +117,8 @@ $userName = $_SESSION['user_name'] ?? "Admin";
             transform: translateY(-2px);
         }
 
-        /* PRINT STYLES */
-        @media print {
-            @page { margin: 0.5in; size: landscape; }
-            
-            body { 
-                background-color: white !important; 
-                color: black !important;
-                -webkit-print-color-adjust: exact; 
-            }
-            
-            header, aside, .sidebar, .top-bar, .no-print, button, .generate-btn, .report-template-card, .breadcrumb, .category-tabs { 
-                display: none !important; 
-            }
-            
-            .print-only { 
-                display: block !important; 
-            }
-            
-            main { 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                width: 100% !important; 
-                min-height: auto !important;
-            }
-            
-            .bg-white { box-shadow: none !important; border: none !important; }
-            .overflow-x-auto { overflow: visible !important; }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
-            
-            thead tr { background-color: #f3f4f6 !important; }
-            thead th { 
-                border: 1px solid #9ca3af !important; 
-                padding: 8px !important; 
-                color: black !important;
-                text-transform: uppercase;
-                font-size: 9pt;
-            }
-            tbody td { 
-                border: 1px solid #e5e7eb !important; 
-                padding: 8px !important; 
-                color: black !important;
-            }
-
-            .print-logo {
-                max-height: 80px;
-                width: auto;
-                margin: 0 auto 10px auto;
-                display: block;
-            }
-            
-            .print-footer {
-                margin-top: 50px !important;
-                page-break-inside: avoid;
-            }
-        }
+        /* Shared Print Styles */
+        <?php echo renderPrintStyles(); ?>
     </style>
 </head>
 <body class="bg-gray-50 text-slate-800">
@@ -206,15 +154,12 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     </div>
 
     <!-- Print Header (Hidden on Screen) -->
-    <div class="print-only hidden mb-6">
-        <div class="print-logo-area text-center border-b pb-4 mb-4">
-            <img src="../../assets/images/nobg_logo.png" alt="ICMIS Logo" class="print-logo" onerror="this.style.display='none';">
-            <h1 class="text-2xl font-bold uppercase tracking-wide">ICMIS Reports Center</h1>
-            <p class="text-sm text-gray-500">Integrated Construction Management Information System</p>
-            <p class="text-sm font-bold mt-1 text-[#e9922c]"><?php echo htmlspecialchars($current_project_name); ?></p>
-            <p class="text-xs mt-1">Generated on: <span id="print-date"></span></p>
-        </div>
-    </div>
+    <?php echo renderPrintHeader('ICMIS Reports Center', [
+        'project_name' => $current_project_name,
+        'project_code' => $current_project_code,
+        'report_type' => 'Reports Dashboard',
+        'generated_by' => $userName
+    ]); ?>
 
     <main class="ml-56 mt-20 p-6 transition-all duration-300">
         <div class="max-w-7xl mx-auto">
@@ -643,28 +588,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         </div>
 
         <!-- Print Footer -->
-        <div class="print-only print-footer hidden">
-            <div class="grid grid-cols-3 gap-8">
-                <div class="text-center">
-                    <p class="text-xs font-bold text-gray-500 uppercase mb-8">Prepared By:</p>
-                    <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4"><?php echo htmlspecialchars($userName); ?></p>
-                    <p class="text-xs text-gray-500">Reports Administrator</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-xs font-bold text-gray-500 uppercase mb-8">Verified By:</p>
-                    <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4">___________</p>
-                    <p class="text-xs text-gray-500">Project Engineer</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-xs font-bold text-gray-500 uppercase mb-8">Approved By:</p>
-                    <div class="border-b border-black w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 pt-4">___________</p>
-                    <p class="text-xs text-gray-500">Project Manager</p>
-                </div>
-            </div>
-        </div>
+        <?php echo renderPrintFooter($userName, 'Reports Admin'); ?>
     </main>
 
     <!-- Toast Container -->
@@ -700,19 +624,9 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         }
 
         // ============================================
-        // PRINT FUNCTIONALITY
+        // PRINT FUNCTIONALITY (Shared)
         // ============================================
-        function printReport() {
-            const dateEl = document.getElementById('print-date');
-            if (dateEl) {
-                const now = new Date();
-                dateEl.innerText = now.toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'long', day: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
-            }
-            window.print();
-        }
+        <?php echo renderPrintReportScript(); ?>
 
         // ============================================
         // UI STATE MANAGEMENT

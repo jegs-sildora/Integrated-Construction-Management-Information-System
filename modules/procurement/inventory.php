@@ -5,6 +5,7 @@ require_once '../../config/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
 require_once '../../config/database.php';
+require_once '../../includes/report_print_layout.php';
 
 // ==========================================================================
 // 1. SESSION BASED CONTEXT LOGIC
@@ -23,14 +24,18 @@ elseif (isset($_SESSION['current_project_id'])) {
 // 2. FETCH DATA
 // ==========================================================================
 $project_name = 'All Projects (Global View)';
+$project_code = '';
 $projects_list = [];
 
 if ($project_id > 0) {
-    $stmt = $conn->prepare("SELECT project_name FROM icmis_projects WHERE project_id = ?");
+    $stmt = $conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
     $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) $project_name = $row['project_name'];
+    if ($row = $res->fetch_assoc()) {
+        $project_name = $row['project_name'];
+        $project_code = $row['project_code'] ?? '';
+    }
 }
 
 // Fetch All Projects for Dropdown
@@ -47,10 +52,7 @@ if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
     <?php include '../../includes/head_assets.php'; ?>
     <link rel="stylesheet" href="css/style.css"> 
     <style>
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-        }
+        <?php echo renderPrintStyles(); ?>
     </style>
 </head>
 <body class="bg-slate-50 font-sans text-slate-800">
@@ -62,21 +64,21 @@ if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
     
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 p-8 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
         
-        <div class="print-only hidden mb-6">
-            <div class="text-center border-b pb-4 mb-4">
-                <h1 class="text-2xl font-bold uppercase">Inventory Masterlist</h1>
-                <h2 class="text-lg"><?= htmlspecialchars($project_name) ?></h2>
-                <p class="text-xs mt-1">Generated: <span id="print-date"></span></p>
-            </div>
-        </div>
+        <?php echo renderPrintHeader('Inventory Masterlist', [
+            'project_name' => $project_name,
+            'project_code' => $project_code,
+            'report_type' => 'Inventory Masterlist',
+            'generated_by' => $_SESSION['user_name'] ?? 'System'
+        ]); ?>
 
         <div class="content-wrapper space-y-6">
             <div class="flex justify-between items-end bg-white p-6 rounded-xl shadow-sm border border-slate-100 no-print">
                 <div>
                     <h1 class="text-2xl font-black text-navy-dark">Inventory Masterlist</h1>
                     <p class="text-slate-500 mt-1">Real-time view of stock levels for <span class="text-amber-600 font-bold"><?= htmlspecialchars($project_name) ?></span>.</p>
+
                 </div>
                 <button class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2" onclick="printReport()">
                     <i class="fa-solid fa-print"></i> Print Report
@@ -108,6 +110,7 @@ if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
                                 <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Stock Level</th>
                                 <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Unit Cost</th>
                                 <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Total Value</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Last Updated</th>
                                 <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Status</th>
                             </tr>
                         </thead>
@@ -116,15 +119,27 @@ if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
                     </table>
                 </div>
             </div>
+            
+            <?php echo renderPrintFooter($_SESSION['user_name'] ?? 'System', 'Inventory Manager'); ?>
         </div>
     </main>
 
     <script src="js/inventory.js"></script>
     <script>
-        function printReport() {
-            const dateEl = document.getElementById('print-date');
-            if(dateEl) dateEl.innerText = new Date().toLocaleString();
-            window.print();
+        <?php echo renderPrintReportScript(); ?>
+
+        function changeProject(projectId) {
+            const hidden = document.getElementById('current_project_id');
+            if (hidden) hidden.value = projectId;
+
+            // Update the URL without reloading so the context is preserved
+            const url = new URL(window.location.href);
+            if (projectId && parseInt(projectId, 10) > 0) url.searchParams.set('project_id', projectId);
+            else url.searchParams.delete('project_id');
+            window.history.replaceState({}, '', url.toString());
+
+            // Re-fetch inventory for the selected project
+            if (typeof fetchInventory === 'function') fetchInventory();
         }
     </script>
 </body>

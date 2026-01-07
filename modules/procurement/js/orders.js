@@ -7,14 +7,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. CHECK FOR URL PARAMETERS
     const urlParams = new URLSearchParams(window.location.search);
     const msg = urlParams.get('msg');
-
     if (msg === 'updated') {
         showToast('Purchase Order updated successfully!', 'success');
         window.history.replaceState(null, null, window.location.pathname);
-    } 
-    else if (msg === 'created') {
+    } else if (msg === 'created') {
         showToast('New Purchase Order created successfully!', 'success');
         window.history.replaceState(null, null, window.location.pathname);
+    } else if (msg === 'deleted') {
+        const ref = urlParams.get('ref') || '';
+        const text = ref ? `Order ${ref} deleted successfully` : 'Order deleted successfully';
+        showToast(text, 'success');
+        // Remove query params so refresh doesn't re-show or re-trigger anything
+        window.history.replaceState(null, null, window.location.pathname);
+        // Do not reload again; this ensures the toast shows once and no further reloads occur
     }
 
     // 2. Initialize handlers
@@ -52,6 +57,10 @@ function setupDeleteHandler() {
     const deleteForm = document.getElementById('deleteForm');
     
     if (deleteForm) {
+        // If the form opts out of AJAX (data-no-ajax="1"), allow normal form submit/redirect
+        if (deleteForm.dataset && deleteForm.dataset.noAjax && deleteForm.dataset.noAjax !== '0') {
+            return; // do not attach AJAX submit handler
+        }
         deleteForm.addEventListener('submit', function(e) {
             e.preventDefault(); 
             
@@ -73,7 +82,7 @@ function setupDeleteHandler() {
             const formData = new FormData();
             formData.append('po_id', idToDelete);
 
-            fetch('php/delete_order.php', { 
+            fetch('purchase_order/delete_order.php', { 
                 method: 'POST', 
                 body: formData 
             }) 
@@ -88,12 +97,18 @@ function setupDeleteHandler() {
                 }
             })
             .then(data => {
-                if(data.success) {
-                    showToast("Order deleted successfully", "success");
+                if (data.success) {
+                    const ref = data.po_reference || '';
+                    // Redirect immediately to orders page with msg=deleted so toast displays after reload
+                    const currentProj = document.getElementById('current_project_id');
+                    const params = new URLSearchParams();
+                    if (currentProj && currentProj.value) params.set('project_id', currentProj.value);
+                    params.set('msg', 'deleted');
+                    if (ref) params.set('ref', ref);
                     closeDeleteModal();
-                    setTimeout(() => window.location.reload(), 500);
+                    window.location = window.location.pathname + '?' + params.toString();
                 } else {
-                    showToast(data.message || "Failed to delete order", "error");
+                    showToast(data.message || 'Failed to delete order', 'error');
                     btn.disabled = false;
                     btn.innerHTML = originalText;
                 }
@@ -118,37 +133,4 @@ window.onclick = function(event) {
     if (event.target === deleteModal) {
         closeDeleteModal();
     }
-}
-
-/* =========================================
-   4. TOAST NOTIFICATION HELPER
-   ========================================= */
-function showToast(message, type = 'success') {
-    const existingToast = document.querySelector('.toast-notification');
-    if (existingToast) existingToast.remove(); 
-
-    const toast = document.createElement('div');
-    toast.className = `toast-notification fixed bottom-5 right-5 px-6 py-4 rounded-xl shadow-2xl text-white font-bold transform transition-all duration-300 translate-y-20 opacity-0 z-50 flex items-center gap-3`;
-    
-    if (type === 'success') {
-        toast.classList.add('bg-green-600');
-        toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`;
-    } else if (type === 'error') {
-        toast.classList.add('bg-red-600');
-        toast.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> <span>${message}</span>`;
-    } else {
-        toast.classList.add('bg-blue-600');
-        toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${message}</span>`;
-    }
-
-    document.body.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-20', 'opacity-0');
-    });
-
-    setTimeout(() => {
-        toast.classList.add('translate-y-20', 'opacity-0');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
 }

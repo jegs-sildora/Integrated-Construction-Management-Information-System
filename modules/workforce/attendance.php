@@ -258,8 +258,9 @@ $userName = $_SESSION['user_name'] ?? "Admin";
 
         function saveAllAttendance() {
             const date = document.getElementById('attendanceDate').value;
+            const projectId = <?php echo $selected_project_id; ?>;
             const rows = document.querySelectorAll('.attendance-row');
-            const attendanceData = [];
+            const records = [];
 
             rows.forEach(row => {
                 const employeeId = row.dataset.employeeId;
@@ -269,18 +270,17 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                 const remarks = row.querySelector('input[name="remarks"]').value;
 
                 if (status) {
-                    attendanceData.push({
-                        employee_id: employeeId,
-                        date: date,
-                        time_in: timeIn,
-                        time_out: timeOut,
+                    records.push({
+                        employee_id: parseInt(employeeId),
+                        time_in: timeIn || null,
+                        time_out: timeOut || null,
                         status: status,
                         remarks: remarks
                     });
                 }
             });
 
-            if (attendanceData.length === 0) {
+            if (records.length === 0) {
                 showToast('Please select status for at least one employee', 'warning');
                 return;
             }
@@ -288,7 +288,12 @@ $userName = $_SESSION['user_name'] ?? "Admin";
             fetch('api/attendance.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'save_bulk', attendance: attendanceData })
+                body: JSON.stringify({ 
+                    action: 'save_bulk', 
+                    project_id: projectId,
+                    date: date,
+                    records: records 
+                })
             })
             .then(res => res.json())
             .then(data => {

@@ -32,7 +32,9 @@ if (empty($template)) {
 // Get project info if specified
 $project = null;
 if ($project_id > 0) {
-    $stmt = $conn->prepare("SELECT project_id, project_name, project_code, location, total_budget, actual_spending FROM icmis_projects WHERE project_id = ?");
+    $stmt = $conn->prepare("SELECT p.project_id, p.project_name, p.project_code, p.location, p.total_budget,
+                                   COALESCE((SELECT SUM(e.amount) FROM budget_expenses e WHERE e.project_id = p.project_id AND e.status = 'APPROVED'), 0) as actual_spending
+                            FROM icmis_projects p WHERE p.project_id = ?");
     $stmt->bind_param("i", $project_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -95,13 +97,14 @@ try {
         case 'expense-log':
             $data['headers'] = ['Date', 'Category', 'Description', 'Supplier', 'Amount'];
             
-            $sql = "SELECT expense_date, category, description, supplier_name, amount 
-                    FROM budget_expenses 
+            $sql = "SELECT e.expense_date, e.category, e.description, s.supplier_name, e.amount 
+                    FROM budget_expenses e
+                    LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
                     WHERE 1=1";
             if ($project_id > 0) {
-                $sql .= " AND project_id = $project_id";
+                $sql .= " AND e.project_id = $project_id";
             }
-            $sql .= " ORDER BY expense_date DESC LIMIT 100";
+            $sql .= " ORDER BY e.expense_date DESC LIMIT 100";
             
             $result = $conn->query($sql);
             if ($result) {
@@ -154,20 +157,20 @@ try {
         // PROCUREMENT REPORTS
         // ========================================
         case 'inventory-status':
-            $data['headers'] = ['Item Code', 'Item Name', 'Category', 'In Stock', 'Unit', 'Status'];
+            $data['headers'] = ['Item ID', 'Item Name', 'Category', 'In Stock', 'Unit', 'Status'];
             
-            $sql = "SELECT item_code, item_name, category, quantity_in_stock, unit 
+            $sql = "SELECT item_id, item_name, category, quantity, unit 
                     FROM procurement_inventory 
                     ORDER BY item_name";
             
             $result = $conn->query($sql);
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
-                    $qty = intval($row['quantity_in_stock']);
+                    $qty = intval($row['quantity']);
                     $status = $qty <= 10 ? 'Low Stock' : ($qty <= 50 ? 'Normal' : 'Well Stocked');
                     
                     $data['rows'][] = [
-                        $row['item_code'],
+                        $row['item_id'],
                         $row['item_name'],
                         $row['category'],
                         $qty,
@@ -181,8 +184,8 @@ try {
         case 'purchase-orders':
             $data['headers'] = ['PO Number', 'Supplier', 'Date', 'Total Amount', 'Status'];
             
-            $sql = "SELECT po.po_number, s.supplier_name, po.order_date, po.total_amount, po.status 
-                    FROM procurement_orders po
+            $sql = "SELECT po.po_reference, s.supplier_name, po.order_date, po.total_amount, po.status 
+                    FROM procurement_purchase_orders po
                     LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
                     ORDER BY po.order_date DESC LIMIT 50";
             
@@ -190,7 +193,7 @@ try {
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $data['rows'][] = [
-                        $row['po_number'],
+                        $row['po_reference'],
                         $row['supplier_name'] ?: 'N/A',
                         date('M j, Y', strtotime($row['order_date'])),
                         'PHP ' . number_format($row['total_amount'], 2),
@@ -201,16 +204,17 @@ try {
             break;
 
         case 'stock-movement':
-            $data['headers'] = ['Date', 'Item', 'Type', 'Quantity', 'Reference', 'Handled By'];
+            $data['headers'] = ['Date', 'Item', 'Type', 'Quantity', 'PO Reference', 'Issued To/From'];
             
             // Try stock_in table first
             $movements = [];
             
-            $sql = "SELECT si.date_received as movement_date, i.item_name, 'Stock In' as type, 
-                           si.quantity, si.reference_number, si.received_by
-                    FROM procurement_stock_in si
-                    LEFT JOIN procurement_inventory i ON si.item_id = i.item_id
-                    ORDER BY si.date_received DESC LIMIT 25";
+                 $sql = "SELECT si.date_received as movement_date, COALESCE(i.item_name, '') as item_name, 'Stock In' as type, 
+                          si.quantity_received as quantity, po.po_reference, 'Supplier' as handler
+                      FROM procurement_stock_in si
+                      LEFT JOIN procurement_purchase_orders po ON si.po_id = po.po_id
+                      LEFT JOIN procurement_inventory i ON si.item_id = i.item_id
+                      ORDER BY si.date_received DESC LIMIT 25";
             
             $result = $conn->query($sql);
             if ($result) {
@@ -220,7 +224,7 @@ try {
             }
             
             $sql = "SELECT so.date_issued as movement_date, i.item_name, 'Stock Out' as type,
-                           so.quantity, so.reference_number, so.issued_by
+                           so.quantity, NULL as po_reference, so.issued_to as handler
                     FROM procurement_stock_out so
                     LEFT JOIN procurement_inventory i ON so.item_id = i.item_id
                     ORDER BY so.date_issued DESC LIMIT 25";
@@ -243,8 +247,8 @@ try {
                     $row['item_name'] ?: 'N/A',
                     $row['type'],
                     $row['quantity'],
-                    $row['reference_number'] ?: '-',
-                    $row['received_by'] ?? $row['issued_by'] ?? '-'
+                    $row['po_reference'] ?: '-',
+                    $row['handler'] ?? '-'
                 ];
             }
             break;
@@ -277,9 +281,9 @@ try {
             break;
 
         case 'phase-progress':
-            $data['headers'] = ['Phase', 'Project', 'Start Date', 'End Date', 'Progress', 'Status'];
+            $data['headers'] = ['Phase', 'Project', 'Start Date', 'End Date', 'Duration', 'Status'];
             
-            $sql = "SELECT pp.phase_name, p.project_name, pp.start_date, pp.end_date, pp.progress, pp.status 
+            $sql = "SELECT pp.phase_name, p.project_name, pp.start_date, pp.end_date, pp.duration, pp.status 
                     FROM icmis_project_phases pp
                     LEFT JOIN icmis_projects p ON pp.project_id = p.project_id
                     WHERE 1=1";
@@ -296,8 +300,8 @@ try {
                         $row['project_name'],
                         $row['start_date'] ? date('M j, Y', strtotime($row['start_date'])) : '-',
                         $row['end_date'] ? date('M j, Y', strtotime($row['end_date'])) : '-',
-                        ($row['progress'] ?? 0) . '%',
-                        ucfirst($row['status'] ?? 'Pending')
+                        ($row['duration'] ?? 0) . ' days',
+                        ucfirst($row['status'] ?? 'Not Started')
                     ];
                 }
             }
@@ -306,9 +310,12 @@ try {
         case 'task-status':
             $data['headers'] = ['Task', 'Phase', 'Assignee', 'Due Date', 'Priority', 'Status'];
             
-            $sql = "SELECT t.task_name, pp.phase_name, t.assigned_to, t.due_date, t.priority, t.status 
+            $sql = "SELECT t.task_name, pp.phase_name, 
+                           CONCAT(e.first_name, ' ', e.last_name) as assigned_to, 
+                           t.due_date, t.priority, t.status 
                     FROM icmis_tasks t
                     LEFT JOIN icmis_project_phases pp ON t.phase_id = pp.phase_id
+                    LEFT JOIN workforce_employees e ON t.assigned_to_employee_id = e.employee_id
                     WHERE 1=1";
             if ($project_id > 0) {
                 $sql .= " AND t.project_id = $project_id";
@@ -336,10 +343,11 @@ try {
         case 'employee-roster':
             $data['headers'] = ['Employee ID', 'Name', 'Position', 'Department', 'Contact', 'Status'];
             
-            $sql = "SELECT employee_id, CONCAT(first_name, ' ', last_name) as full_name, 
-                           position, department, phone, status 
-                    FROM workforce_employees 
-                    ORDER BY last_name, first_name";
+            $sql = "SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) as full_name, 
+                           j.title_name as position, j.department, e.phone, e.status 
+                    FROM workforce_employees e
+                    LEFT JOIN workforce_job_titles j ON e.job_title_id = j.job_title_id
+                    ORDER BY e.last_name, e.first_name";
             
             $result = $conn->query($sql);
             if ($result) {
@@ -359,10 +367,10 @@ try {
         case 'attendance-summary':
             $data['headers'] = ['Employee', 'Date', 'Time In', 'Time Out', 'Hours Worked', 'Status'];
             
-            $sql = "SELECT e.first_name, e.last_name, a.date, a.time_in, a.time_out, a.status 
+            $sql = "SELECT e.first_name, e.last_name, a.attendance_date, a.time_in, a.time_out, a.status 
                     FROM workforce_attendance a
                     LEFT JOIN workforce_employees e ON a.employee_id = e.employee_id
-                    ORDER BY a.date DESC, e.last_name LIMIT 100";
+                    ORDER BY a.attendance_date DESC, e.last_name LIMIT 100";
             
             $result = $conn->query($sql);
             if ($result) {
@@ -375,7 +383,7 @@ try {
                     
                     $data['rows'][] = [
                         $row['first_name'] . ' ' . $row['last_name'],
-                        date('M j, Y', strtotime($row['date'])),
+                        date('M j, Y', strtotime($row['attendance_date'])),
                         $row['time_in'] ? date('h:i A', strtotime($row['time_in'])) : '-',
                         $row['time_out'] ? date('h:i A', strtotime($row['time_out'])) : '-',
                         $hours,
@@ -386,27 +394,28 @@ try {
             break;
 
         case 'payroll-report':
-            $data['headers'] = ['Employee', 'Period', 'Days Worked', 'Daily Rate', 'Gross Pay', 'Deductions', 'Net Pay'];
+            $data['headers'] = ['Employee', 'Period', 'Hours Worked', 'Gross Pay', 'Net Pay', 'Status'];
             
-            $sql = "SELECT e.first_name, e.last_name, p.pay_period_start, p.pay_period_end,
-                           p.days_worked, p.daily_rate, p.gross_pay, p.deductions, p.net_pay 
+            $sql = "SELECT e.first_name, e.last_name, pp.period_name, pp.start_date, pp.end_date,
+                           p.hours_worked, p.gross_pay, p.net_pay, p.status 
                     FROM workforce_payroll p
                     LEFT JOIN workforce_employees e ON p.employee_id = e.employee_id
-                    ORDER BY p.pay_period_end DESC, e.last_name LIMIT 100";
+                    LEFT JOIN workforce_payroll_periods pp ON p.period_id = pp.period_id
+                    ORDER BY pp.end_date DESC, e.last_name LIMIT 100";
             
             $result = $conn->query($sql);
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
-                    $period = date('M j', strtotime($row['pay_period_start'])) . ' - ' . date('M j, Y', strtotime($row['pay_period_end']));
+                    $period = $row['period_name'] ?: (date('M j', strtotime($row['start_date'])) . ' - ' . date('M j, Y', strtotime($row['end_date'])));
+                    $deductions = floatval($row['gross_pay']) - floatval($row['net_pay']);
                     
                     $data['rows'][] = [
                         $row['first_name'] . ' ' . $row['last_name'],
                         $period,
-                        $row['days_worked'],
-                        'PHP ' . number_format($row['daily_rate'], 2),
+                        $row['hours_worked'] . ' hrs',
                         'PHP ' . number_format($row['gross_pay'], 2),
-                        'PHP ' . number_format($row['deductions'], 2),
-                        'PHP ' . number_format($row['net_pay'], 2)
+                        'PHP ' . number_format($row['net_pay'], 2),
+                        ucfirst($row['status'] ?? 'Calculated')
                     ];
                 }
             }
@@ -419,14 +428,13 @@ try {
 
     // Log the report generation (if table exists)
     $userName = $_SESSION['user_name'] ?? 'Admin';
-    $tableExists = $conn->query("SHOW TABLES LIKE 'generated_reports'");
+    $tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
     if ($tableExists && $tableExists->num_rows > 0) {
         $category = explode('-', $template)[0];
         $reportName = ucwords(str_replace('-', ' ', $template));
         
-        $stmt = $conn->prepare("INSERT INTO generated_reports (report_name, category, project_id, project_name, generated_by, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-        $projectName = $project['name'] ?? 'All Projects';
-        $stmt->bind_param("ssiss", $reportName, $category, $project_id, $projectName, $userName);
+        $stmt = $conn->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, ?, ?, NOW())");
+        $stmt->bind_param("ssis", $category, $reportName, $project_id, $userName);
         $stmt->execute();
         $stmt->close();
     }
