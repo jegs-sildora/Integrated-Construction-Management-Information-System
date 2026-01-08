@@ -14,7 +14,7 @@ include '../components/head.php';
       <?php
         $title = "Payroll Periods";
         $breadcrumbs = [
-          ['label' => 'Labor & Workforce > Payroll', 'link' => null],
+          ['label' => 'Labor & Workforce > Payroll ', 'link' => null],
           ['label' => $title, 'link' => null]
         ];
         include '../components/top-bar.php';

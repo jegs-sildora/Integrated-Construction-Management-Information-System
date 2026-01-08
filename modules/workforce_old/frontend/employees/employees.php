@@ -17,7 +17,7 @@
       <?php
         $title = "Employee Profiles";
         $breadcrumbs = [
-          ['label' => 'Labor & Workforce', 'link' => null],
+          ['label' => 'Labor & Workforce > Employees', 'link' => null],
           ['label' => $title, 'link' => null]
         ];
         include '../components/top-bar.php';
@@ -257,6 +257,12 @@ $(document).ready(function () {
         $("#employeeModal").fadeIn();
     });
 
+    $(document).on('click', '.view-btn', function () {
+        const employeeId = $(this).data('id');
+        window.location.href = `employee_profile.php?id=${employeeId}`;
+      });
+
+
     // ------------------ Edit Employee ------------------
     $(document).on("click", ".edit-btn", function () {
         const employeeId = $(this).data("id");
@@ -323,6 +329,67 @@ $(document).ready(function () {
             }
         });
     });
+
+
+
+ $('#employment_type').change(function() {
+    const type = $(this).val();
+
+    if (type === 'Daily') {
+        $('#daily_rate').prop('disabled', false);
+        $('#monthly_salary').prop('disabled', true).val('');
+        $('#end_date').prop('disabled', true).val('');
+        $('#payment_type').val('Daily').prop('disabled', true);
+    } 
+    else if (type === 'Regular') {
+        $('#monthly_salary').prop('disabled', false);
+        $('#daily_rate').prop('disabled', true).val('');
+        $('#end_date').prop('disabled', true).val('');
+        $('#payment_type').val('Monthly').prop('disabled', true);
+    } 
+    else if (type === 'Contractual') {
+        $('#end_date').prop('disabled', false);
+        $('#payment_type').prop('disabled', false);
+
+        // Apply payment type logic immediately
+        const payment = $('#payment_type').val();
+        if (payment === 'Daily') {
+            $('#daily_rate').prop('disabled', false);
+            $('#monthly_salary').prop('disabled', true).val('');
+        } else if (payment === 'Monthly') {
+            $('#monthly_salary').prop('disabled', false);
+            $('#daily_rate').prop('disabled', true).val('');
+        } else {
+            $('#daily_rate, #monthly_salary').prop('disabled', false);
+        }
+    } 
+    else {
+        $('#daily_rate, #monthly_salary').prop('disabled', false);
+        $('#end_date').prop('disabled', true).val('');
+        $('#payment_type').prop('disabled', true);
+    }
+});
+
+
+$('#payment_type').change(function() {
+    const payment = $(this).val();
+    const type = $('#employment_type').val();
+
+    if (type === 'Contractual') {
+        if (payment === 'Daily') {
+            $('#daily_rate').prop('disabled', false);
+            $('#monthly_salary').prop('disabled', true).val('');
+        } else if (payment === 'Monthly') {
+            $('#monthly_salary').prop('disabled', false);
+            $('#daily_rate').prop('disabled', true).val('');
+        } else {
+            $('#daily_rate, #monthly_salary').prop('disabled', false);
+        }
+    }
+});
+
+
+
 });
 </script>
   </body>

@@ -85,7 +85,7 @@ if ($project_id > 0) {
             </div>
 
         <?php elseif (!$has_orders): ?>
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 h-[calc(100vh-128px)] flex items-center justify-center mt-2">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 h-[calc(100vh-128px)] flex items-center justify-center mt-2 mx-8">
                 <div class="max-w-md mx-auto text-center">
                     
                     <div class="flex justify-center mb-6">

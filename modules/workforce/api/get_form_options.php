@@ -18,8 +18,8 @@ try {
         'supervisors' => []
     ];
 
-    // job titles
-    $stmt = $conn->prepare("SELECT job_title_id, title_name, department FROM workforce_job_titles WHERE is_active = 1 ORDER BY title_name");
+    // job titles (include default rates)
+    $stmt = $conn->prepare("SELECT job_title_id, title_name, department, default_daily_rate, default_monthly_salary FROM workforce_job_titles WHERE is_active = 1 ORDER BY title_name");
     $stmt->execute();
     $out['job_titles'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 

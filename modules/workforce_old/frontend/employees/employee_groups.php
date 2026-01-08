@@ -17,7 +17,7 @@
       <?php
         $title = "Employee Groups";
         $breadcrumbs = [
-          ['label' => 'Labor & Workforce', 'link' => null],
+          ['label' => 'Labor & Workforce > Employees', 'link' => null],
           ['label' => $title, 'link' => null]
         ];
         include '../components/top-bar.php';

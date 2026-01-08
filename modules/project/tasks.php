@@ -98,10 +98,8 @@ $statusColors = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Management - Kanban | ICMIS</title>
     
-    <!-- Global Head Assets -->
     <?php include __DIR__ . '/../../includes/head_assets.php'; ?>
     
-    <!-- SortableJS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     <style>
@@ -113,12 +111,11 @@ $statusColors = [
         .animate-modal-slide-in { animation: modal-slide-in 0.3s ease-out forwards; }
         
         /* Kanban specific styles */
-        /* fixed-height board so all columns match height; column bodies scroll internally */
         .kanban-board {
             height: 65vh;
         }
         .kanban-column {
-            min-height: 0; /* allow flex children to shrink so overflow works */
+            min-height: 0;
             flex: 1 1 0;
         }
         .task-card {
@@ -172,7 +169,6 @@ $statusColors = [
     <main class="ml-56 mt-16 p-6">
         <div class="max-w-full mx-auto">
             
-            <!-- Tabs -->
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
                 <a href="projects.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
                     Projects
@@ -188,7 +184,6 @@ $statusColors = [
                 </a>
             </div>
 
-            <!-- Page Header with Stats -->
             <div class="flex items-center justify-between mb-6">
                 <div class="flex items-center gap-6">
                     <div>
@@ -200,16 +195,15 @@ $statusColors = [
                             <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                            <span class="text-sm font-semibold text-gray-700"><?php echo $totalTasks; ?> Tasks</span>
+                            <span class="text-sm font-semibold text-gray-700"><span id="statTotalTasks"><?php echo $totalTasks; ?></span> Tasks</span>
                         </div>
-                        <?php if ($overdueCount > 0): ?>
-                        <div class="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-lg border border-red-200">
+                        
+                        <div id="statOverdueWrapper" class="<?php echo ($overdueCount > 0) ? 'flex' : 'hidden'; ?> items-center gap-2 px-4 py-2 bg-red-50 rounded-lg border border-red-200">
                             <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span class="text-sm font-semibold text-red-700"><?php echo $overdueCount; ?> Overdue</span>
+                            <span class="text-sm font-semibold text-red-700"><span id="statOverdueTasks"><?php echo $overdueCount; ?></span> Overdue</span>
                         </div>
-                        <?php endif; ?>
                     </div>
                 </div>
                 
@@ -221,12 +215,10 @@ $statusColors = [
                 </button>
             </div>
 
-            <!-- Kanban Board -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 kanban-board">
+            <div id="kanbanBoardContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 kanban-board">
                 <?php foreach ($statusColumns as $status => $tasks): ?>
                 <?php $colors = $statusColors[$status]; ?>
                 <div class="flex flex-col">
-                    <!-- Column Header -->
                     <div class="<?php echo $colors['header']; ?> rounded-t-xl px-4 py-3 flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <h3 class="font-bold text-white text-sm uppercase tracking-wide"><?php echo $status; ?></h3>
@@ -234,7 +226,6 @@ $statusColors = [
                         </div>
                     </div>
                     
-                    <!-- Column Body -->
                     <div class="kanban-column <?php echo $colors['bg']; ?> border-l border-r border-b <?php echo $colors['border']; ?> rounded-b-xl p-3 kanban-scroll overflow-y-auto" 
                          data-status="<?php echo htmlspecialchars($status); ?>" 
                          id="column-<?php echo str_replace(' ', '-', strtolower($status)); ?>">
@@ -269,7 +260,6 @@ $statusColors = [
                         ?>
                         <div class="task-card group bg-white rounded-lg p-3 mb-2 shadow-sm border border-gray-200 hover:shadow-md transition-shadow" 
                              data-id="<?php echo $task['task_id']; ?>">
-                            <!-- Task Header -->
                             <div class="flex items-start justify-between mb-2">
                                 <h4 class="font-semibold text-gray-900 text-sm leading-tight flex-1 pr-2"><?php echo htmlspecialchars($task['task_name']); ?></h4>
                                 <span class="<?php echo $priorityClass; ?> text-xs font-bold px-2 py-0.5 rounded shrink-0">
@@ -277,7 +267,6 @@ $statusColors = [
                                 </span>
                             </div>
                             
-                            <!-- Project Name -->
                             <p class="text-xs text-gray-500 mb-2 truncate">
                                 <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -285,9 +274,7 @@ $statusColors = [
                                 <?php echo htmlspecialchars($task['project_name'] ?? 'No Project'); ?>
                             </p>
                             
-                            <!-- Task Footer -->
                             <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
-                                <!-- Due Date -->
                                 <div class="flex items-center gap-1 <?php echo $isOverdue ? 'text-red-600' : 'text-gray-400'; ?>">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -297,7 +284,6 @@ $statusColors = [
                                     </span>
                                 </div>
                                 
-                                <!-- Assignee Avatar -->
                                 <?php if (!empty($task['assignee_name'])): ?>
                                 <div class="flex items-center gap-1.5" title="<?php echo htmlspecialchars($task['assignee_name']); ?>">
                                     <div class="w-6 h-6 rounded-full bg-[#e9922c] flex items-center justify-center">
@@ -313,7 +299,6 @@ $statusColors = [
                                 <?php endif; ?>
                             </div>
                             
-                            <!-- Quick Actions (on hover) -->
                             <div class="hidden group-hover:flex items-center justify-end gap-1 mt-2 pt-2 border-t border-gray-100">
                                 <button class="edit-btn p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" 
                                         data-id="<?php echo $task['task_id']; ?>" title="Edit">
@@ -338,10 +323,8 @@ $statusColors = [
         </div>
     </main>
 
-    <!-- Task Modal -->
     <?php include __DIR__ . '/components/task_modal.php'; ?>
 
-    <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-modal-slide-in">
             <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 rounded-t-2xl">
@@ -403,256 +386,7 @@ $statusColors = [
         const projectsData = <?php echo json_encode($allProjects); ?>;
         const phasesData = <?php echo json_encode($allPhases); ?>;
         const employeesData = <?php echo json_encode($allEmployees); ?>;
-        let taskToDelete = null;
-
-        // Initialize SortableJS for each column
-        document.addEventListener('DOMContentLoaded', function() {
-            const columns = document.querySelectorAll('.kanban-column');
-            
-            columns.forEach(column => {
-                new Sortable(column, {
-                    group: 'kanban',
-                    animation: 150,
-                    ghostClass: 'sortable-ghost',
-                    chosenClass: 'sortable-chosen',
-                    dragClass: 'sortable-drag',
-                    filter: '.empty-state',
-                    onEnd: function(evt) {
-                        const taskId = evt.item.dataset.id;
-                        const newStatus = evt.to.dataset.status;
-                        const oldStatus = evt.from.dataset.status;
-                        
-                        if (newStatus !== oldStatus) {
-                            updateTaskStatus(taskId, newStatus, evt.item);
-                        }
-                    }
-                });
-            });
-        });
-
-        // Update task status via AJAX
-        function updateTaskStatus(taskId, newStatus, cardElement) {
-            const formData = new FormData();
-            formData.append('task_id', taskId);
-            formData.append('status', newStatus);
-
-            fetch(updateStatusUrl, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    showToast(`Task moved to "${newStatus}"`, 'success');
-                    
-                    // Update column counts
-                    updateColumnCounts();
-                    
-                    // Remove empty state if present in target column
-                    const targetColumn = cardElement.parentElement;
-                    const emptyState = targetColumn.querySelector('.empty-state');
-                    if (emptyState) {
-                        emptyState.remove();
-                    }
-                } else {
-                    showToast(data.message || 'Failed to update task status', 'error');
-                    // Revert the drag - reload page
-                    setTimeout(() => window.location.reload(), 500);
-                }
-            })
-            .catch(err => {
-                showToast('Error updating task: ' + err.message, 'error');
-                setTimeout(() => window.location.reload(), 500);
-            });
-        }
-
-        // Update column task counts
-        function updateColumnCounts() {
-            const columns = document.querySelectorAll('.kanban-column');
-            columns.forEach(column => {
-                const count = column.querySelectorAll('.task-card').length;
-                const header = column.previousElementSibling;
-                const badge = header.querySelector('span');
-                if (badge) {
-                    badge.textContent = count;
-                }
-            });
-        }
-
-        // Populate project select in modal
-        function populateProjectSelect(selectedProjectId = null) {
-            const select = document.getElementById('task_project_id');
-            if (!select) return;
-            select.innerHTML = '<option value="">Select Project</option>';
-            projectsData.forEach(proj => {
-                const selected = selectedProjectId == proj.project_id ? 'selected' : '';
-                select.innerHTML += `<option value="${proj.project_id}" ${selected}>${proj.project_name}</option>`;
-            });
-        }
-
-        // Populate phase select based on project
-        function populatePhaseSelect(selectedProjectId = null, selectedPhaseId = null) {
-            const select = document.getElementById('task_phase_id');
-            if (!select) return;
-            select.innerHTML = '<option value="">Select Phase (Optional)</option>';
-            
-            phasesData.forEach(phase => {
-                if (!selectedProjectId || phase.project_id == selectedProjectId) {
-                    const selected = selectedPhaseId == phase.phase_id ? 'selected' : '';
-                    select.innerHTML += `<option value="${phase.phase_id}" ${selected}>${phase.phase_name} (${phase.project_name})</option>`;
-                }
-            });
-        }
-
-        // Populate assignee select
-        function populateAssigneeSelect(selectedEmployeeId = null) {
-            const select = document.getElementById('task_assignee');
-            if (!select) return;
-            select.innerHTML = '<option value="">Unassigned</option>';
-            employeesData.forEach(emp => {
-                const fullName = emp.first_name + ' ' + emp.last_name;
-                const selected = selectedEmployeeId == emp.employee_id ? 'selected' : '';
-                select.innerHTML += `<option value="${emp.employee_id}" ${selected}>${fullName} (${emp.employee_code})</option>`;
-            });
-        }
-
-        // Update phase dropdown when project changes
-        document.getElementById('task_project_id')?.addEventListener('change', function() {
-            populatePhaseSelect(this.value);
-        });
-
-        // ------------------ Add Task ------------------
-        document.getElementById('addTaskBtn')?.addEventListener('click', function() {
-            document.getElementById('taskForm').reset();
-            document.getElementById('taskModalTitle').textContent = 'Add Task';
-            document.getElementById('taskModalBtnText').textContent = 'Add Task';
-            document.getElementById('task_id').value = '';
-            populateProjectSelect();
-            populatePhaseSelect();
-            populateAssigneeSelect();
-            document.getElementById('taskModal').style.display = 'flex';
-        });
-
-        // ------------------ Edit Task ------------------
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const taskId = this.dataset.id;
-
-                fetch(backendUrl + '?fetch_id=' + taskId)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            const task = data.task;
-                            document.getElementById('task_id').value = task.task_id;
-                            populateProjectSelect(task.project_id);
-                            populatePhaseSelect(task.project_id, task.phase_id);
-                            populateAssigneeSelect(task.assigned_to_employee_id);
-                            document.getElementById('task_name').value = task.task_name;
-                            document.getElementById('task_description').value = task.description || '';
-                            document.getElementById('task_start_date').value = task.start_date || '';
-                            document.getElementById('task_due_date').value = task.due_date || '';
-                            document.getElementById('task_priority').value = task.priority || 'Medium';
-                            document.getElementById('task_status').value = task.status || 'Not Started';
-                            
-                            document.getElementById('taskModalTitle').textContent = 'Edit Task';
-                            document.getElementById('taskModalBtnText').textContent = 'Save Changes';
-                            document.getElementById('taskModal').style.display = 'flex';
-                        } else {
-                            showToast(data.message || 'Error fetching task', 'error');
-                        }
-                    });
-            });
-        });
-
-        // ------------------ Delete Task ------------------
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                taskToDelete = this.dataset.id;
-                document.getElementById('deleteTaskName').textContent = this.dataset.name;
-                document.getElementById('deleteModal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-            });
-        });
-
-        function closeDeleteModal() {
-            taskToDelete = null;
-            document.getElementById('deleteModal').classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-
-        function confirmDelete() {
-            if (!taskToDelete) return;
-
-            const btn = document.getElementById('confirmDeleteBtn');
-            const originalContent = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Deleting...`;
-
-            const formData = new FormData();
-            formData.append('delete_id', taskToDelete);
-
-            fetch(backendUrl, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message || 'Task deleted successfully', 'success', true);
-                        closeDeleteModal();
-                        setTimeout(() => window.location.reload(), 300);
-                    } else {
-                        showToast(data.message || 'Error deleting task', 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = originalContent;
-                    }
-                })
-                .catch(err => {
-                    showToast('Error deleting task: ' + err.message, 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                });
-        }
-
-        // Close modal on outside click
-        document.getElementById('deleteModal')?.addEventListener('click', function(e) {
-            if (e.target === this) closeDeleteModal();
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && !document.getElementById('deleteModal').classList.contains('hidden')) {
-                closeDeleteModal();
-            }
-        });
-
-        // ------------------ Close Task Modal ------------------
-        function closeTaskModal() {
-            document.getElementById('taskForm').reset();
-            document.getElementById('taskModal').style.display = 'none';
-        }
-        document.getElementById('closeTaskModal')?.addEventListener('click', closeTaskModal);
-        document.getElementById('cancelTaskModal')?.addEventListener('click', closeTaskModal);
-
-        // ------------------ Submit Add/Edit ------------------
-        document.getElementById('taskForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-
-            fetch(backendUrl, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message || 'Task saved successfully', 'success', true);
-                        closeTaskModal();
-                        setTimeout(() => window.location.reload(), 300);
-                    } else {
-                        showToast(data.message || 'Error saving task', 'error');
-                    }
-                })
-                .catch(err => {
-                    showToast('Error: ' + err.message, 'error');
-                });
-        });
     </script>
+    <script src="js/tasks.js"></script>
 </body>
 </html>

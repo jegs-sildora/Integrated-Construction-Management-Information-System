@@ -1,7 +1,7 @@
 <?php
 
 $host = 'localhost';        
-$db   = 'icmis';  
+$db   = 'workforce_db';  
 $user = 'root';    
 $pass = '';    
 $charset = 'utf8mb4';       

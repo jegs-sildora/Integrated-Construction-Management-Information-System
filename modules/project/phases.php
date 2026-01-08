@@ -63,7 +63,6 @@ while ($row = $projectsResult->fetch_assoc()) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phase Management | ICMIS</title>
     
-    <!-- Global Head Assets -->
     <?php include __DIR__ . '/../../includes/head_assets.php'; ?>
     
     <style>
@@ -91,7 +90,6 @@ while ($row = $projectsResult->fetch_assoc()) {
     <main class="ml-56 mt-16 p-6">
         <div class="max-w-7xl mx-auto">
             
-            <!-- Tabs -->
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
                 <a href="projects.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
                     Projects
@@ -107,7 +105,6 @@ while ($row = $projectsResult->fetch_assoc()) {
                 </a>
             </div>
 
-        <!-- Page Header -->
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-2xl text-gray-900 font-bold">Phase Management</h1>
@@ -115,10 +112,8 @@ while ($row = $projectsResult->fetch_assoc()) {
             </div>
         </div>
 
-        <!-- Search, Filter, and Add Button -->
         <div class="flex items-center justify-between gap-4 mb-6">
             <div class="flex items-center gap-4 flex-1">
-                <!-- Search -->
                 <div class="relative flex-1 max-w-md">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -126,7 +121,6 @@ while ($row = $projectsResult->fetch_assoc()) {
                     <input type="text" id="searchInput" placeholder="Search phase or project" class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] text-sm">
                 </div>
                 
-                <!-- Filter -->
                 <select id="projectFilter" class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c]">
                     <option value="">Filter</option>
                     <?php foreach ($allProjects as $proj): ?>
@@ -143,7 +137,6 @@ while ($row = $projectsResult->fetch_assoc()) {
             </button>
         </div>
 
-        <!-- Stat Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                 <div class="flex items-center gap-3">
@@ -154,7 +147,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Total Phases</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $totalPhases; ?></h2>
+                        <h2 id="statTotalPhases" class="text-2xl font-bold text-gray-900"><?php echo $totalPhases; ?></h2>
                         <p class="text-xs text-gray-400">Across all projects</p>
                     </div>
                 </div>
@@ -169,7 +162,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Active Phases</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $activeCount; ?></h2>
+                        <h2 id="statActivePhases" class="text-2xl font-bold text-gray-900"><?php echo $activeCount; ?></h2>
                         <p class="text-xs text-gray-400">Currently in progress</p>
                     </div>
                 </div>
@@ -184,7 +177,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Completed Phases</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $completedCount; ?></h2>
+                        <h2 id="statCompletedPhases" class="text-2xl font-bold text-gray-900"><?php echo $completedCount; ?></h2>
                         <p class="text-xs text-gray-400">Successfully finished</p>
                     </div>
                 </div>
@@ -199,15 +192,14 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Upcoming Phases</p>
-                        <h2 class="text-2xl font-bold text-gray-900"><?php echo $upcomingCount; ?></h2>
+                        <h2 id="statUpcomingPhases" class="text-2xl font-bold text-gray-900"><?php echo $upcomingCount; ?></h2>
                         <p class="text-xs text-gray-400">Scheduled to start</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Phases Table -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div id="phasesTableContainer" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full" id="phasesTable">
                     <thead>
@@ -304,7 +296,6 @@ while ($row = $projectsResult->fetch_assoc()) {
                 </table>
             </div>
             
-            <!-- Pagination -->
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
                 <p class="text-sm text-gray-500" id="paginationInfo">Showing 0-0 of 0</p>
                 <div class="flex items-center gap-2">
@@ -319,10 +310,8 @@ while ($row = $projectsResult->fetch_assoc()) {
         </div>
     </main>
 
-    <!-- Phase Modal -->
     <?php include __DIR__ . '/components/phase_modal.php'; ?>
 
-    <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-modal-slide-in">
             <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 rounded-t-2xl">
@@ -378,225 +367,11 @@ while ($row = $projectsResult->fetch_assoc()) {
             </div>
         </div>
     </div>
-
+        
     <script>
         const backendUrl = "api/phases.php";
         const projectsData = <?php echo json_encode($allProjects); ?>;
-        let phaseToDelete = null;
-        
-        // Pagination
-        let currentPage = 1;
-        const itemsPerPage = 10;
-        let filteredRows = [];
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            updateTable();
-        });
-
-        // Search and Filter
-        document.getElementById('searchInput')?.addEventListener('input', updateTable);
-        document.getElementById('projectFilter')?.addEventListener('change', updateTable);
-
-        function updateTable() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const projectFilter = document.getElementById('projectFilter').value;
-            const rows = document.querySelectorAll('.phase-row');
-            
-            filteredRows = [];
-            rows.forEach(row => {
-                const name = row.dataset.name || '';
-                const projectName = row.dataset.projectName || '';
-                const projectId = row.dataset.project;
-                
-                const matchesSearch = name.includes(searchTerm) || projectName.includes(searchTerm);
-                const matchesProject = !projectFilter || projectId === projectFilter;
-                
-                if (matchesSearch && matchesProject) {
-                    filteredRows.push(row);
-                }
-            });
-            
-            currentPage = 1;
-            renderPage();
-        }
-
-        function renderPage() {
-            const rows = document.querySelectorAll('.phase-row');
-            const start = (currentPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            
-            rows.forEach(row => row.style.display = 'none');
-            
-            filteredRows.forEach((row, index) => {
-                if (index >= start && index < end) {
-                    row.style.display = '';
-                }
-            });
-            
-            // Update pagination info
-            const total = filteredRows.length;
-            const showStart = total > 0 ? start + 1 : 0;
-            const showEnd = Math.min(end, total);
-            document.getElementById('paginationInfo').textContent = `Showing ${showStart}-${showEnd} of ${total}`;
-            
-            // Update buttons
-            document.getElementById('prevPage').disabled = currentPage === 1;
-            document.getElementById('nextPage').disabled = end >= total;
-        }
-
-        document.getElementById('prevPage')?.addEventListener('click', function() {
-            if (currentPage > 1) {
-                currentPage--;
-                renderPage();
-            }
-        });
-
-        document.getElementById('nextPage')?.addEventListener('click', function() {
-            const maxPage = Math.ceil(filteredRows.length / itemsPerPage);
-            if (currentPage < maxPage) {
-                currentPage++;
-                renderPage();
-            }
-        });
-
-        // Populate project select in modal
-        function populateProjectSelect(selectedProjectId = null) {
-            const select = document.getElementById('phase_project_id');
-            if (!select) return;
-            select.innerHTML = '<option value="">Select Project</option>';
-            projectsData.forEach(proj => {
-                const selected = selectedProjectId == proj.project_id ? 'selected' : '';
-                select.innerHTML += `<option value="${proj.project_id}" ${selected}>${proj.project_name}</option>`;
-            });
-        }
-
-        // ------------------ Add Phase ------------------
-        document.getElementById('addPhaseBtn')?.addEventListener('click', function() {
-            document.getElementById('phaseForm').reset();
-            document.getElementById('phaseModalTitle').textContent = 'Add Phase';
-            document.getElementById('phaseModalBtnText').textContent = 'Add Phase';
-            document.getElementById('phase_id').value = '';
-            populateProjectSelect();
-            document.getElementById('phaseModal').style.display = 'flex';
-        });
-
-        // ------------------ Edit Phase ------------------
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const phaseId = this.dataset.id;
-
-                fetch(backendUrl + '?fetch_id=' + phaseId)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            const phase = data.phase;
-                            document.getElementById('phase_id').value = phase.phase_id;
-                            populateProjectSelect(phase.project_id);
-                            document.getElementById('phase_name').value = phase.phase_name;
-                            document.getElementById('phase_description').value = phase.description || '';
-                            document.getElementById('phase_start_date').value = phase.start_date || '';
-                            document.getElementById('phase_end_date').value = phase.end_date || '';
-                            document.getElementById('phase_duration').value = phase.duration || '';
-                            document.getElementById('phase_status').value = phase.status || 'Not Started';
-                            
-                            document.getElementById('phaseModalTitle').textContent = 'Edit Phase';
-                            document.getElementById('phaseModalBtnText').textContent = 'Save Changes';
-                            document.getElementById('phaseModal').style.display = 'flex';
-                        } else {
-                            showToast(data.message || 'Error fetching phase', 'error');
-                        }
-                    });
-            });
-        });
-
-        // ------------------ Delete Phase ------------------
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                phaseToDelete = this.dataset.id;
-                document.getElementById('deletePhaseName').textContent = this.dataset.name;
-                document.getElementById('deleteModal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-            });
-        });
-
-        function closeDeleteModal() {
-            phaseToDelete = null;
-            document.getElementById('deleteModal').classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-
-        function confirmDelete() {
-            if (!phaseToDelete) return;
-
-            const btn = document.getElementById('confirmDeleteBtn');
-            const originalContent = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = `<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Deleting...`;
-
-            const formData = new FormData();
-            formData.append('delete_id', phaseToDelete);
-
-            fetch(backendUrl, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message || 'Phase deleted successfully', 'success', true);
-                        closeDeleteModal();
-                        setTimeout(() => window.location.reload(), 300);
-                    } else {
-                        showToast(data.message || 'Error deleting phase', 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = originalContent;
-                    }
-                })
-                .catch(err => {
-                    showToast('Error deleting phase: ' + err.message, 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                });
-        }
-
-        // Close modal on outside click
-        document.getElementById('deleteModal')?.addEventListener('click', function(e) {
-            if (e.target === this) closeDeleteModal();
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && !document.getElementById('deleteModal').classList.contains('hidden')) {
-                closeDeleteModal();
-            }
-        });
-
-        // ------------------ Close Phase Modal ------------------
-        function closePhaseModal() {
-            document.getElementById('phaseForm').reset();
-            document.getElementById('phaseModal').style.display = 'none';
-        }
-        document.getElementById('closePhaseModal')?.addEventListener('click', closePhaseModal);
-        document.getElementById('cancelPhaseModal')?.addEventListener('click', closePhaseModal);
-
-        // ------------------ Submit Add/Edit ------------------
-        document.getElementById('phaseForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-
-            fetch(backendUrl, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message || 'Phase saved successfully', 'success', true);
-                        closePhaseModal();
-                        setTimeout(() => window.location.reload(), 300);
-                    } else {
-                        showToast(data.message || 'Error saving phase', 'error');
-                    }
-                })
-                .catch(err => {
-                    showToast('Error: ' + err.message, 'error');
-                });
-        });
     </script>
+    <script src="js/phases.js"></script>
 </body>
 </html>

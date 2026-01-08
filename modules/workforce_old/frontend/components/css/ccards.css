@@ -16,9 +16,9 @@
 
 /* Hover effect */
 .stat-card:hover {
-  transform: translateY(-5px); 
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-  opacity: 0.95;
+  transform: translateY(-5px); /* Moves the card slightly up */
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1); /* Increased shadow for depth */
+  opacity: 0.95; /* Slight fade effect */
 }
 
 /* General Card Content */

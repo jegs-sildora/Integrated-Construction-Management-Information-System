@@ -1,11 +1,43 @@
 .modal { 
-  position: fixed; 
-  top: 50%; 
-  left: 50%; 
-  transform: translate(-50%, -50%);
+  position: fixed; /* Fixed positioning to overlay on screen */
+  top: 50%; /* Vertically center */
+  left: 50%; /* Horizontally center */
+  transform: translate(-50%, -50%); /* Adjust position to truly center */
 }
 
 .modal-content { 
-  max-height: 80vh;
-  overflow-y: auto; 
+  max-height: 80vh; /* Limit the height to 80% of the viewport height */
+  overflow-y: auto; /* Enable vertical scrolling when content overflows */
 }
+
+
+/* Modal textareas and inputs */
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+    border-color: var(--primary-orange);
+    box-shadow: var(--primary-orange);
+    outline: none;
+}
+
+/* Beautify the textarea specifically */
+.modal-content textarea {
+    min-height: 80px;
+    max-height: 150px;
+    resize: vertical; 
+    padding: 10px 12px;
+    background-color: #fafafa;
+    border: 1px solid #ccc;
+}
+

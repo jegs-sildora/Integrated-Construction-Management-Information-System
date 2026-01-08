@@ -1,3 +1,6 @@
+// animateStats.js
+
+// Animate multiple stat cards at once
 function animateStats(stats, duration = 800, isCurrency = false) {
     stats.forEach(stat => {
         const { element, value } = stat;

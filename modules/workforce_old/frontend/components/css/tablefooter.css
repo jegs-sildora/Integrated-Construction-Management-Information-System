@@ -8,7 +8,7 @@
     padding: 12px 20px;
     background-color: var(--white);
     border-top: 1px solid var(--border-color);
-    border-radius: 0 0 10px 10px;
+    border-radius: 0 0 10px 10px; /* rounded bottom corners for table card */
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     margin-top: 10px;
     font-size: 0.9rem;
@@ -21,11 +21,11 @@
 .footer-right {
     display: flex;
     align-items: center;
-    gap: 5px; 
+    gap: 5px; /* keep small consistent gap */
 }
 
 .page-btn {
-    padding: 6px 12px; 
+    padding: 6px 12px; /* slightly reduce horizontal padding */
     border-radius: 6px;
     border: 1px solid var(--border-color);
     background-color: var(--white);

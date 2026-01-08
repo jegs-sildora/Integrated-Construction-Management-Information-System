@@ -8,17 +8,14 @@ things working but has some small flawed logic yet to be fixed:
 
 to do:
 -fix minor design changes
--flawed Unfinished logic
--payslips
+done - attendance flawed Unfinished logic
+done - payslips
 -employee profile
--add more employee inputs
--assignments logic
--tasks not yet implemented
+done - add more employee inputs
 -dashboard under construction
 -reports under construction
--print preview and export pdf to be implemented.
--assignments backend need to be consolidated to one file.
--implement session from the server 
+- reports print preview and export pdf to be implemented.
+done - assignments backend need to be consolidated to one file.
 
 somewhat ready to be stitched. next update will be dec 29.
 

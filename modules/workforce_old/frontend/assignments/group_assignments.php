@@ -19,7 +19,7 @@
       <?php
         $title = "Group Assignments";
         $breadcrumbs = [
-          ['label' => 'Labor & Workforce', 'link' => null],
+          ['label' => 'Labor & Workforce > Assignments', 'link' => null],
           ['label' => 'Group Assignments', 'link' => null]
         ];
         include '../components/top-bar.php';
@@ -134,6 +134,8 @@
 <script>
 $(document).ready(function () {
 
+  const backendUrl = "../../backend/assignments/backend_group_assignments.php";
+
   /* =====================================================
    * TABLE MANAGER
    * ===================================================== */
@@ -167,7 +169,7 @@ $(document).ready(function () {
   });
 
   function loadProjectFilter() {
-    $.getJSON("../../backend/projects/fetch_projects.php", res => {
+    $.getJSON("../../backend/projects/backend_projects.php",{ fetch_all: 1 }, res => {
       if (!res.success) return;
       $("#groupAssignmentProjectFilter").html(
         `<option value="">All Projects</option>` +
@@ -177,14 +179,13 @@ $(document).ready(function () {
       );
     });
   }
-
   loadProjectFilter();
 
   /* =====================================================
    * LOAD GROUP ASSIGNMENTS
    * ===================================================== */
   function loadGroupAssignments() {
-    $.getJSON("../../backend/assignments/fetch_group_assignments.php", res => {
+    $.getJSON(backendUrl, { action: 'fetch_all' }, res => {
       if (!res.success) {
         showToast("Error fetching group assignments", "error");
         return;
@@ -192,7 +193,7 @@ $(document).ready(function () {
 
       tableManager.clear();
 
-      res.assignments.forEach(a => {
+      res.records.forEach(a => {
         const statusClass = a.status.replace(" ", "-");
         const row = document.createElement("tr");
 
@@ -224,14 +225,12 @@ $(document).ready(function () {
                style="color:var(--icon-delete);cursor:pointer;margin-left:10px"></i>
           </td>
         `;
-
         tableManager.addRow(row);
       });
 
       tableManager.render();
     });
   }
-
   loadGroupAssignments();
 
   /* =====================================================
@@ -247,9 +246,9 @@ $(document).ready(function () {
     groupForm[0].reset();
     $("#groupModalTitle").text("Add New Group Assignment");
 
-    $.getJSON("../../backend/assignments/get_next_group_assignment_id.php", res => {
-      if (res.success) $("#group_assignment_id").val(res.group_assignment_id);
-    });
+    $.getJSON(`${backendUrl}?get_next_id=1`, (res) => {
+            if (res.success) $("#group_assignment_id").val(res.next_id);
+          });
 
     groupModal.fadeIn();
   });
@@ -273,7 +272,7 @@ $(document).ready(function () {
       );
     });
 
-    $.getJSON("../../backend/projects/fetch_projects.php", res => {
+    $.getJSON("../../backend/projects/backend_projects.php",{ fetch_all: 1 }, res => {
       if (!res.success) return;
       $("#projectSelectGroup").html(
         `<option value="">Select Project</option>` +
@@ -283,14 +282,18 @@ $(document).ready(function () {
       );
     });
   }
-
   loadDropdowns();
 
   $("#projectSelectGroup").change(function () {
-    if (!this.value) return;
+    const projectId = this.value;
 
-    $.post("../../backend/phase/fetch_phases.php",
-      { project_id: this.value },
+          if (!projectId) {
+            $("#phaseSelect").html('<option value="">Select Phase</option>');
+            return;
+          }
+
+    $.post("../../backend/projects/backend_phases.php",
+            { project_id: projectId },
       res => {
         if (!res.success) return;
         $("#phaseSelectGroup").html(
@@ -310,14 +313,13 @@ $(document).ready(function () {
   groupForm.submit(e => {
     e.preventDefault();
 
-    $.post("../../backend/assignments/save_group_assignment.php",
-      groupForm.serialize(),
+    $.post(backendUrl,
+      groupForm.serialize(), // backend reads POST data for add/update
       res => {
         if (!res.success) {
           showToast(res.message, "error");
           return;
         }
-
         showToast(res.message, "success");
         groupModal.fadeOut();
         loadGroupAssignments();
@@ -330,29 +332,25 @@ $(document).ready(function () {
    * EDIT GROUP ASSIGNMENT
    * ===================================================== */
   $(document).on("click", ".edit-btn", function () {
-    $.post("../../backend/assignments/get_group_assignment.php",
-      { group_assignment_id: $(this).data("id") },
-      res => {
-        if (!res.success) return;
+    const id = $(this).data("id");
+    $.getJSON(backendUrl, { group_assignment_id: id }, res => {
+      if (!res.success) return;
 
-        const a = res.assignment;
+      const a = res.assignment;
+      $("#group_assignment_id").val(a.group_assignment_id);
+      $("#groupSelect").val(a.group_id);
+      $("#projectSelectGroup").val(a.project_id).trigger("change");
+      setTimeout(() => $("#phaseSelectGroup").val(a.phase_id), 200);
+      $("#taskDescriptionGroup").val(a.task_description);
+      $("#roleGroup").val(a.role);
+      $("#startDateGroup").val(a.start_date);
+      $("#endDateGroup").val(a.end_date);
+      $("#statusGroup").val(a.status);
+      $("#notesGroup").val(a.notes);
 
-        $("#group_assignment_id").val(a.group_assignment_id);
-        $("#groupSelect").val(a.group_id);
-        $("#projectSelectGroup").val(a.project_id).trigger("change");
-        setTimeout(() => $("#phaseSelectGroup").val(a.phase_id), 200);
-        $("#taskDescriptionGroup").val(a.task_description);
-        $("#roleGroup").val(a.role);
-        $("#startDateGroup").val(a.start_date);
-        $("#endDateGroup").val(a.end_date);
-        $("#statusGroup").val(a.status);
-        $("#notesGroup").val(a.notes);
-
-        $("#groupModalTitle").text("Edit Group Assignment");
-        groupModal.fadeIn();
-      },
-      "json"
-    );
+      $("#groupModalTitle").text("Edit Group Assignment");
+      groupModal.fadeIn();
+    });
   });
 
   /* =====================================================
@@ -360,15 +358,15 @@ $(document).ready(function () {
    * ===================================================== */
   $(document).on("click", ".delete-btn", function () {
     if (!confirm("Delete this group assignment?")) return;
+    const id = $(this).data("id");
 
-    $.post("../../backend/assignments/delete_group_assignment.php",
-      { group_assignment_id: $(this).data("id") },
+    $.post(backendUrl,
+      { group_assignment_id: id, action: 'delete' },
       res => {
         if (!res.success) {
           showToast(res.message, "error");
           return;
         }
-
         showToast(res.message, "success");
         loadGroupAssignments();
       },
@@ -378,5 +376,6 @@ $(document).ready(function () {
 
 });
 </script>
+
 </body>
 </html>

@@ -1,4 +1,6 @@
 
+
+
 /* General Layout for the Section */
 .control-card {
   display: flex;
@@ -70,7 +72,7 @@
 
 .filter-menu {
     display: none;
-    position: absolute; 
+    position: absolute; /* Keep absolute positioning */
     background: white;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     padding: 15px;
@@ -112,26 +114,25 @@
 
 .attendance-date-container {
   display: inline-block;
-  margin-left: 10px; 
+  margin-left: 10px; /* Spacing between other elements */
 }
 
 .attendance-date {
-  width: 150px; 
-  padding: 5px;
-  font-size: 0.9rem; 
+  width: 150px; /* Make the date picker more compact */
+  padding: 5px; /* Adjust padding to fit nicely */
+  font-size: 0.9rem; /* Adjust font size */
+}
+
+.btn-primary.disabled,
+.btn-primary[disabled] {
+  pointer-events: none;   /* Prevent click */
+  opacity: 0.5;           /* Greyed out */
+  cursor: not-allowed;    /* Show disabled cursor */
 }
 
 
 
-/* CSS for wrapping the description text */
-.description-cell {
-  max-width: 200px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal; 
-  padding: 8px; 
-  text-align: left; 
-  display: inline-block; 
-}
+
+
 
 

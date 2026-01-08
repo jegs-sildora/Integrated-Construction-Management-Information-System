@@ -8,10 +8,179 @@ $conn = getWorkforceConnection();
 
 $selected_project_id = getProjectContext($conn);
 
-// Fetch all projects for dropdown
+// make job titles available for server-side rendering in included components
+include __DIR__ . '/api/job_titles_include.php';
+
+// --- HELPER FUNCTION FOR STATS ---
+function getEmployeeStats($conn) {
+    $stats = [ 'total' => 0, 'active' => 0, 'inactive' => 0, 'new_this_month' => 0 ];
+    
+    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees");
+    if ($result) $stats['total'] = $result->fetch_assoc()['total'];
+
+    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Active'");
+    if ($result) $stats['active'] = $result->fetch_assoc()['total'];
+
+    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Inactive'");
+    if ($result) $stats['inactive'] = $result->fetch_assoc()['total'];
+
+    $thisMonth = date('Y-m-01');
+    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE hire_date >= '$thisMonth'");
+    if ($result) $stats['new_this_month'] = $result->fetch_assoc()['total'];
+    
+    return $stats;
+}
+
+// --- PAGINATION & DATA FETCH LOGIC ---
+$limit = 15; // Items per page
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $limit;
+
+// Fetch Employees Function
+function fetchEmployees($conn, $limit, $offset) {
+    $employees = [];
+    $sql = "SELECT e.*, jt.title_name as job_title, jt.department, jt.default_daily_rate
+            FROM workforce_employees e 
+            LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
+            ORDER BY e.employee_id DESC
+            LIMIT $limit OFFSET $offset";
+
+    $result = $conn->query($sql);
+    if ($result && $result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $employees[] = $row;
+        }
+    }
+    return $employees;
+}
+
+// --- AJAX REQUEST HANDLER ---
+// If the JS requests 'fetch_updates', we return JSON and exit.
+if (isset($_GET['fetch_updates'])) {
+    // 1. Get Stats
+    $stats = getEmployeeStats($conn);
+    
+    // 2. Get Pagination Info
+    $total_pages_sql = "SELECT COUNT(*) as total FROM workforce_employees"; 
+    $total_pages_result = $conn->query($total_pages_sql);
+    $total_rows = $total_pages_result->fetch_assoc()['total'];
+    $total_pages = ceil($total_rows / $limit);
+    
+    // 3. Get Employees
+    $employees = fetchEmployees($conn, $limit, $offset);
+    
+    // 4. Render Table HTML
+    ob_start();
+    if (count($employees) > 0):
+        foreach ($employees as $emp): 
+            $initials = strtoupper(substr($emp['first_name'], 0, 1) . substr($emp['last_name'], 0, 1));
+            $statusClass = match(strtolower($emp['status'])) {
+                'active' => 'bg-green-100 text-green-700',
+                'inactive' => 'bg-red-100 text-red-700',
+                'terminated' => 'bg-gray-100 text-gray-700',
+                default => 'bg-gray-100 text-gray-700'
+            };
+    ?>
+    <tr class="hover:bg-gray-50 transition-colors employee-row text-center" 
+        data-name="<?php echo strtolower($emp['first_name'] . ' ' . $emp['last_name']); ?>"
+        data-status="<?php echo $emp['status']; ?>">
+        <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+                <div class="employee-avatar"><?php echo $initials; ?></div>
+                <div>
+                    <p class="font-medium text-gray-900"><?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']); ?></p>
+                    <p class="text-xs text-gray-500">#<?php echo htmlspecialchars($emp['employee_code']); ?></p>
+                </div>
+            </div>
+        </td>
+        <td class="px-6 py-4 text-gray-600 font-bold"><?php echo htmlspecialchars($emp['job_title'] ?? 'N/A'); ?></td>
+        <td class="px-6 py-4 text-gray-600 font-bold"><?php echo htmlspecialchars($emp['department'] ?? 'General'); ?></td>
+        <td class="px-6 py-4">
+            <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+                ₱<?php echo number_format($emp['default_daily_rate'] ?? 0, 2); ?>
+            </span>
+        </td>
+        <td class="px-6 py-4">
+            <span class="px-2 py-1 rounded-full text-xs font-bold <?php echo $statusClass; ?>">
+                <?php echo htmlspecialchars($emp['status']); ?>
+            </span>
+        </td>
+        <td class="px-6 py-4">
+            <div class="flex items-center justify-center gap-2">
+                <button onclick="viewEmployee(<?php echo $emp['employee_id']; ?>)" class="text-gray-500 p-2 rounded-lg hover:text-blue-600 transition-colors duration-200" title="View Details">
+                    <i data-lucide="eye" class="w-5 h-5"></i>
+                </button>
+                <button onclick="openEditModal(<?php echo $emp['employee_id']; ?>)"  class="text-gray-500 p-2 rounded-lg hover:text-green-600 transition-colors duration-200" title="Edit">
+                    <i data-lucide="edit" class="w-5 h-5"></i>
+                </button>
+                <button onclick="openDeleteModal(<?php echo $emp['employee_id']; ?>)" class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </td>
+    </tr>
+    <?php endforeach; 
+    else: ?>
+        <tr>
+            <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                No employees found.
+            </td>
+        </tr>
+    <?php endif; 
+    $tableHtml = ob_get_clean();
+
+    // 5. Render Pagination HTML
+    ob_start();
+    if ($total_pages > 1): ?>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+            Showing <span class="font-medium"><?php echo $offset + 1; ?></span> to <span class="font-medium"><?php echo min($offset + $limit, $total_rows); ?></span> of <span class="font-medium"><?php echo $total_rows; ?></span> results
+        </div>
+        <div class="flex gap-2">
+            <?php if ($page > 1): ?>
+                <a href="?project_id=<?php echo $selected_project_id; ?>&page=<?php echo $page - 1; ?>" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Previous</a>
+            <?php else: ?>
+                <span class="px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed">Previous</span>
+            <?php endif; ?>
+
+            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                <?php if ($i == 1 || $i == $total_pages || ($i >= $page - 2 && $i <= $page + 2)): ?>
+                    <?php if ($i == $page): ?>
+                        <span class="px-3 py-1 bg-[#e9922c] border border-[#e9922c] rounded-md text-sm font-medium text-white"><?php echo $i; ?></span>
+                    <?php else: ?>
+                        <a href="?project_id=<?php echo $selected_project_id; ?>&page=<?php echo $i; ?>" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"><?php echo $i; ?></a>
+                    <?php endif; ?>
+                <?php elseif ($i == $page - 3 || $i == $page + 3): ?>
+                    <span class="px-2 py-1 text-gray-500">...</span>
+                <?php endif; ?>
+            <?php endfor; ?>
+
+            <?php if ($page < $total_pages): ?>
+                <a href="?project_id=<?php echo $selected_project_id; ?>&page=<?php echo $page + 1; ?>" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+            <?php else: ?>
+                <span class="px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed">Next</span>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; 
+    $paginationHtml = ob_get_clean();
+
+    // Return JSON
+    header('Content-Type: application/json');
+    echo json_encode([
+        'stats' => $stats,
+        'tableHtml' => $tableHtml,
+        'paginationHtml' => $paginationHtml
+    ]);
+    exit;
+}
+// --- END AJAX HANDLER ---
+
+// Standard Page Load Logic
+$projects = [];
 $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
 $result_projects = $conn->query($sql_projects);
-$projects = [];
 if ($result_projects && $result_projects->num_rows > 0) {
     while ($row = $result_projects->fetch_assoc()) {
         $projects[] = $row;
@@ -35,41 +204,15 @@ $pageSection = "Labor & Workforce";
 $pageTitle = "Employee Management";
 $pageSubTitle = $breadcrumbHTML;
 
-// Get employee stats
-$stats = [
-    'total' => 0,
-    'active' => 0,
-    'inactive' => 0,
-    'new_this_month' => 0
-];
+// Initial Stats Load
+$stats = getEmployeeStats($conn);
 
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees");
-if ($result) $stats['total'] = $result->fetch_assoc()['total'];
-
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Active'");
-if ($result) $stats['active'] = $result->fetch_assoc()['total'];
-
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Inactive'");
-if ($result) $stats['inactive'] = $result->fetch_assoc()['total'];
-
-$thisMonth = date('Y-m-01');
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE hire_date >= '$thisMonth'");
-if ($result) $stats['new_this_month'] = $result->fetch_assoc()['total'];
-
-// Fetch employees with job titles
-// DB Schema: workforce_employees (employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status, hire_date)
-// DB Schema: workforce_job_titles (job_title_id, title_name, department, description, default_daily_rate, is_active)
-$employees = [];
-$sql = "SELECT e.*, jt.title_name as job_title, jt.department, jt.default_daily_rate
-        FROM workforce_employees e 
-        LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-        ORDER BY e.employee_id DESC";
-$result = $conn->query($sql);
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $employees[] = $row;
-    }
-}
+// Initial Employee Load
+$total_pages_sql = "SELECT COUNT(*) as total FROM workforce_employees"; 
+$total_pages_result = $conn->query($total_pages_sql);
+$total_rows = $total_pages_result->fetch_assoc()['total'];
+$total_pages = ceil($total_rows / $limit);
+$employees = fetchEmployees($conn, $limit, $offset);
 
 $userName = $_SESSION['user_name'] ?? "Admin";
 ?>
@@ -109,29 +252,26 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     <main class="ml-56 mt-16 p-6">
         <div class="max-w-7xl mx-auto">
             
-            <!-- Tabs -->
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
-                <button onclick="switchTab('employees')" id="tab-employees" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-[#e9922c] text-[#e9922c] transition-colors">
-                    Employees
+                <button onclick="window.location.href='employees.php'" id="tab-employees" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-[#e9922c] text-[#e9922c] transition-colors">
+                    All Employees
                 </button>
-                <button onclick="switchTab('groups')" id="tab-groups" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
-                    Employee Groups
+                <button onclick="window.location.href='employee_groups.php'" id="tab-groups" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                    Deployment Groups
                 </button>
             </div>
 
-            <!-- Page Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h1 class="text-2xl text-gray-900 font-bold">Employee Management</h1>
                     <p class="text-sm text-gray-500 mt-1">Manage, View, and Edit Employee Profiles</p>
                 </div>
-                <button onclick="openModal()" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm font-bold">
+                <button onclick="openCreateModal()" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm font-bold">
                     <i data-lucide="user-plus" class="w-4 h-4"></i>
                     Add Employee
                 </button>
             </div>
 
-            <!-- Stats Cards -->
             <div class="grid grid-cols-4 gap-6 mb-6">
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                     <div class="flex items-center gap-3">
@@ -140,7 +280,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         </div>
                         <div>
                             <p class="text-xs text-gray-500">Total Employees</p>
-                            <h3 class="text-xl font-bold text-gray-900"><?php echo $stats['total']; ?></h3>
+                            <h3 id="stat-total" class="text-xl font-black text-gray-900"><?php echo $stats['total']; ?></h3>
                         </div>
                     </div>
                 </div>
@@ -151,7 +291,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         </div>
                         <div>
                             <p class="text-xs text-gray-500">Active</p>
-                            <h3 class="text-xl font-bold text-gray-900"><?php echo $stats['active']; ?></h3>
+                            <h3 id="stat-active" class="text-xl font-black text-gray-900"><?php echo $stats['active']; ?></h3>
                         </div>
                     </div>
                 </div>
@@ -162,7 +302,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         </div>
                         <div>
                             <p class="text-xs text-gray-500">Inactive</p>
-                            <h3 class="text-xl font-bold text-gray-900"><?php echo $stats['inactive']; ?></h3>
+                            <h3 id="stat-inactive" class="text-xl font-black text-gray-900"><?php echo $stats['inactive']; ?></h3>
                         </div>
                     </div>
                 </div>
@@ -173,307 +313,218 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         </div>
                         <div>
                             <p class="text-xs text-gray-500">New This Month</p>
-                            <h3 class="text-xl font-bold text-gray-900"><?php echo $stats['new_this_month']; ?></h3>
+                            <h3 id="stat-new" class="text-xl font-black text-gray-900"><?php echo $stats['new_this_month']; ?></h3>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab Content: Employees -->
             <div id="content-employees" class="tab-content">
-
-            <!-- Search and Filter -->
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <div class="relative">
-                            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                            <input type="text" id="searchInput" placeholder="Search by name, role, or ID" class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none w-72">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="relative">
+                                <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                <input type="text" id="searchInput" placeholder="Search on this page..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none w-263">
+                            </div>
+                            <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none">
+                                <option value="">All Status</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Terminated">Terminated</option>
+                            </select>
                         </div>
-                        <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] outline-none">
-                            <option value="">All Status</option>
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                            <option value="Terminated">Terminated</option>
-                        </select>
                     </div>
-                    <p class="text-sm text-gray-500">Showing <span id="showingCount"><?php echo count($employees); ?></span> employees</p>
                 </div>
-            </div>
 
-            <!-- Employees Table -->
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <table class="w-full">
-                    <thead class="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Position</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Department</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Daily Rate</th>
-                            <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                            <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="employeesTableBody" class="divide-y divide-gray-100">
-                        <?php foreach ($employees as $emp): 
-                            $initials = strtoupper(substr($emp['first_name'], 0, 1) . substr($emp['last_name'], 0, 1));
-                            $statusClass = match(strtolower($emp['status'])) {
-                                'active' => 'bg-green-100 text-green-700',
-                                'inactive' => 'bg-red-100 text-red-700',
-                                'terminated' => 'bg-gray-100 text-gray-700',
-                                default => 'bg-gray-100 text-gray-700'
-                            };
-                        ?>
-                        <tr class="hover:bg-gray-50 transition-colors employee-row" 
-                            data-name="<?php echo strtolower($emp['first_name'] . ' ' . $emp['last_name']); ?>"
-                            data-status="<?php echo $emp['status']; ?>">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="employee-avatar"><?php echo $initials; ?></div>
-                                    <div>
-                                        <p class="font-medium text-gray-900"><?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']); ?></p>
-                                        <p class="text-xs text-gray-500">#<?php echo htmlspecialchars($emp['employee_code']); ?></p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($emp['job_title'] ?? 'N/A'); ?></td>
-                            <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($emp['department'] ?? 'General'); ?></td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                    ₱<?php echo number_format($emp['default_daily_rate'] ?? 0, 2); ?>
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium <?php echo $statusClass; ?>">
-                                    <?php echo htmlspecialchars($emp['status']); ?>
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center justify-center gap-2">
-                                    <button onclick="viewEmployee(<?php echo $emp['employee_id']; ?>)" class="text-gray-500 p-2 rounded-lg hover:text-blue-600 transition-colors duration-200" title="View Details">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </button>
-                                    <button onclick="editEmployee(<?php echo $emp['employee_id']; ?>)"  class="text-gray-500 p-2 rounded-lg hover:text-green-600 transition-colors duration-200" title="Edit">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </button>
-                                    <button onclick="deleteEmployee(<?php echo $emp['employee_id']; ?>)" class="text-gray-500 p-2 rounded-lg hover:text-red-600 transition-colors duration-200" title="Delete">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                        <?php if (empty($employees)): ?>
-                        <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                                <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 text-gray-300"></i>
-                                <p>No employees found</p>
-                            </td>
-                        </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            </div> <!-- End Tab Content: Employees -->
-
-            <!-- Tab Content: Employee Groups -->
-            <div id="content-groups" class="tab-content hidden">
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
-                    <i data-lucide="users-2" class="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Employee Groups</h3>
-                    <p class="text-gray-500 mb-6">Organize employees into groups for easier management and bulk assignments.</p>
-                    <button onclick="openGroupModal()" class="inline-flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors">
-                        <i data-lucide="plus" class="w-4 h-4"></i>
-                        Create Group
-                    </button>
-                    
-                    <div class="mt-8 text-left">
-                        <table class="w-full">
-                            <thead class="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Group Name</th>
-                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Members</th>
-                                    <th class="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Description</th>
-                                    <th class="text-center px-6 py-3 text-xs font-semibold text-gray-600 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                <tr>
-                                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-                                        <p>No groups created yet</p>
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
+                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Position</th>
+                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Department</th>
+                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Daily Rate</th>
+                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody" class="divide-y divide-gray-100">
+                            <?php if (count($employees) > 0): ?>
+                                <?php foreach ($employees as $emp): 
+                                    $initials = strtoupper(substr($emp['first_name'], 0, 1) . substr($emp['last_name'], 0, 1));
+                                    $statusClass = match(strtolower($emp['status'])) {
+                                        'active' => 'bg-green-100 text-green-700',
+                                        'inactive' => 'bg-red-100 text-red-700',
+                                        'terminated' => 'bg-gray-100 text-gray-700',
+                                        default => 'bg-gray-100 text-gray-700'
+                                    };
+                                ?>
+                                <tr class="hover:bg-gray-50 transition-colors employee-row text-center" 
+                                    data-name="<?php echo strtolower($emp['first_name'] . ' ' . $emp['last_name']); ?>"
+                                    data-status="<?php echo $emp['status']; ?>">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="employee-avatar"><?php echo $initials; ?></div>
+                                            <div>
+                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']); ?></p>
+                                                <p class="text-xs text-gray-500">#<?php echo htmlspecialchars($emp['employee_code']); ?></p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-gray-600 font-bold"><?php echo htmlspecialchars($emp['job_title'] ?? 'N/A'); ?></td>
+                                    <td class="px-6 py-4 text-gray-600 font-bold"><?php echo htmlspecialchars($emp['department'] ?? 'General'); ?></td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+                                            ₱<?php echo number_format($emp['default_daily_rate'] ?? 0, 2); ?>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2 py-1 rounded-full text-xs font-bold <?php echo $statusClass; ?>">
+                                            <?php echo htmlspecialchars($emp['status']); ?>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <button onclick="viewEmployee(<?php echo $emp['employee_id']; ?>)" class="text-gray-500 p-2 rounded-lg hover:text-blue-600 transition-colors duration-200" title="View Details">
+                                                <i data-lucide="eye" class="w-5 h-5"></i>
+                                            </button>
+                                            <button onclick="openEditModal(<?php echo $emp['employee_id']; ?>)"  class="text-gray-500 p-2 rounded-lg hover:text-green-600 transition-colors duration-200" title="Edit">
+                                                <i data-lucide="edit" class="w-5 h-5"></i>
+                                            </button>
+                                            <button onclick="openDeleteModal(<?php echo $emp['employee_id']; ?>)" class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+                                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
-                            </tbody>
-                        </table>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                                        No employees found.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                    
+                    <div id="paginationContainer">
+                    <?php if ($total_pages > 1): ?>
+                    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                        <div class="text-sm text-gray-500">
+                            Showing <span class="font-medium"><?php echo $offset + 1; ?></span> to <span class="font-medium"><?php echo min($offset + $limit, $total_rows); ?></span> of <span class="font-medium"><?php echo $total_rows; ?></span> results
+                        </div>
+                        <div class="flex gap-2">
+                            <?php if ($page > 1): ?>
+                                <a href="?project_id=<?php echo $selected_project_id; ?>&page=<?php echo $page - 1; ?>" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Previous</a>
+                            <?php else: ?>
+                                <span class="px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed">Previous</span>
+                            <?php endif; ?>
+
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <?php if ($i == 1 || $i == $total_pages || ($i >= $page - 2 && $i <= $page + 2)): ?>
+                                    <?php if ($i == $page): ?>
+                                        <span class="px-3 py-1 bg-[#e9922c] border border-[#e9922c] rounded-md text-sm font-medium text-white"><?php echo $i; ?></span>
+                                    <?php else: ?>
+                                        <a href="?project_id=<?php echo $selected_project_id; ?>&page=<?php echo $i; ?>" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"><?php echo $i; ?></a>
+                                    <?php endif; ?>
+                                <?php elseif ($i == $page - 3 || $i == $page + 3): ?>
+                                    <span class="px-2 py-1 text-gray-500">...</span>
+                                <?php endif; ?>
+                            <?php endfor; ?>
+
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?project_id=<?php echo $selected_project_id; ?>&page=<?php echo $page + 1; ?>" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+                            <?php else: ?>
+                                <span class="px-3 py-1 bg-gray-100 border border-gray-300 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed">Next</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     </div>
                 </div>
-            </div> <!-- End Tab Content: Employee Groups -->
+            </div> 
+
+            <div id="deleteModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+                <div class="flex items-center justify-center min-h-screen px-4">
+                    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeDeleteModal()"></div>
+                    
+                    <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all modal-content">
+                        
+                        <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 rounded-t-2xl">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-white rounded-full p-3 shadow-lg">
+                                        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-2xl font-bold text-white">Delete Employee</h3>
+                                        <p class="text-red-100 text-sm mt-1">Permanent action</p>
+                                    </div>
+                                </div>
+                                <button onclick="closeDeleteModal()" class="text-white hover:bg-white/10 hover:bg-opacity-60 p-2 rounded-lg transition-all">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-8">
+                            <div class="mb-6">
+                                <p class="text-gray-700 text-lg font-medium mb-2">
+                                    Are you sure you want to delete this employee?
+                                </p>
+                                <p class="text-gray-500 text-sm">
+                                    This action is permanent and cannot be undone. All associated data will be removed.
+                                </p>
+                            </div>
+                            
+                            <div class="bg-red-50 border-2 border-red-200 rounded-xl p-5 shadow-sm">
+                                <div class="flex items-start gap-4">
+                                    <div class="bg-red-100 rounded-full p-2 shrink-0">
+                                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-bold text-red-900 mb-1.5 uppercase tracking-wide">Employee Name</p>
+                                        <p id="deleteEmployeeName" class="text-lg font-bold text-red-700 font-mono bg-white px-3 py-2 rounded-lg border border-red-200"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 p-6 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
+                            <button onclick="closeDeleteModal()" class="px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-semibold shadow-sm">
+                                Cancel
+                            </button>
+                            <button id="confirmDeleteBtn" onclick="confirmDelete()" class="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl transition-all font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete Employee
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="content-groups" class="tab-content hidden">
+                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Employee Groups</h3>
+                    <p class="text-gray-500">Coming Soon</p>
+                 </div>
+            </div>
 
         </div>
     </main>
 
-    <!-- Add/Edit Employee Modal -->
     <?php include __DIR__ . '/components/employee_modal.php'; ?>
 
-    <script>
-        lucide.createIcons();
-
-        // Tab switching functionality
-        function switchTab(tabName) {
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-            // Show selected tab content
-            document.getElementById('content-' + tabName).classList.remove('hidden');
-            
-            // Update tab button styles
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('border-[#e9922c]', 'text-[#e9922c]');
-                btn.classList.add('border-transparent', 'text-gray-500');
-            });
-            document.getElementById('tab-' + tabName).classList.remove('border-transparent', 'text-gray-500');
-            document.getElementById('tab-' + tabName).classList.add('border-[#e9922c]', 'text-[#e9922c]');
-            
-            lucide.createIcons();
-        }
-
-        function openGroupModal() {
-            showToast('Group management feature coming soon', 'info');
-        }
-
-        // Search functionality
-        document.getElementById('searchInput').addEventListener('input', filterTable);
-        document.getElementById('statusFilter').addEventListener('change', filterTable);
-
-        function filterTable() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const status = document.getElementById('statusFilter').value;
-            const rows = document.querySelectorAll('.employee-row');
-            let count = 0;
-
-            rows.forEach(row => {
-                const name = row.dataset.name;
-                const rowStatus = row.dataset.status;
-                const matchesSearch = name.includes(search);
-                const matchesStatus = !status || rowStatus === status;
-
-                if (matchesSearch && matchesStatus) {
-                    row.style.display = '';
-                    count++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            document.getElementById('showingCount').textContent = count;
-        }
-
-        function showEmployeeModal() {
-            const modal = document.getElementById('employeeModal');
-            const content = modal.querySelector('.modal-content');
-            // ensure visible
-            modal.classList.remove('hidden');
-            modal.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-            // play open animation
-            content.classList.remove('modal-close');
-            void content.offsetWidth; // force reflow
-            content.classList.add('modal-open');
-        }
-
-        function openModal() {
-            document.getElementById('modalTitle').textContent = 'Add New Employee';
-            document.getElementById('employeeForm').reset();
-            showEmployeeModal();
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('employeeModal');
-            const content = modal.querySelector('.modal-content');
-            // play close animation then hide
-            content.classList.remove('modal-open');
-            content.classList.add('modal-close');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modal.style.display = '';
-                document.body.style.overflow = '';
-            }, 240);
-        }
-
-        function viewEmployee(id) {
-            window.location.href = 'employee_profile.php?id=' + id;
-        }
-
-        function editEmployee(id) {
-            // Fetch employee data and open modal
-            fetch('api/employees.php?action=get&id=' + id)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('modalTitle').textContent = 'Edit Employee';
-                        // Populate form fields
-                        document.getElementById('employee_id').value = data.employee.employee_id;
-                        document.getElementById('first_name').value = data.employee.first_name;
-                        document.getElementById('last_name').value = data.employee.last_name;
-                        document.getElementById('email').value = data.employee.email || '';
-                        document.getElementById('phone').value = data.employee.phone || '';
-                        document.getElementById('status').value = data.employee.status;
-                        // Show modal with animation
-                        showEmployeeModal();
-                    }
-                });
-        }
-
-        function deleteEmployee(id) {
-            if (confirm('Are you sure you want to delete this employee?')) {
-                fetch('api/employees.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'delete', id: id })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast('Employee deleted successfully', 'success');
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showToast(data.message || 'Error deleting employee', 'error');
-                    }
-                });
-            }
-        }
-
-        function saveEmployee() {
-            const form = document.getElementById('employeeForm');
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData);
-            data.action = data.employee_id ? 'update' : 'create';
-
-            fetch('api/employees.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(result => {
-                if (result.success) {
-                    showToast('Employee saved successfully', 'success');
-                    closeModal();
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast(result.message || 'Error saving employee', 'error');
-                }
-            });
-        }
-    </script>
+    <script src="js/employees.js"></script>
 </body>
 </html>

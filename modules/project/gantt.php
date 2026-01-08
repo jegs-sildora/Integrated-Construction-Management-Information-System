@@ -137,10 +137,8 @@ $ganttDataJson = json_encode($ganttData);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gantt Chart | ICMIS</title>
     
-    <!-- Global Head Assets -->
     <?php include __DIR__ . '/../../includes/head_assets.php'; ?>
     
-    <!-- Frappe Gantt CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.css">
     
     <style>
@@ -264,7 +262,6 @@ $ganttDataJson = json_encode($ganttData);
     <main class="ml-56 mt-16 p-6">
         <div class="max-w-full mx-auto">
             
-            <!-- Tabs -->
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
                 <a href="projects.php" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
                     Projects
@@ -280,7 +277,6 @@ $ganttDataJson = json_encode($ganttData);
                 </a>
             </div>
 
-            <!-- Page Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <h1 class="text-2xl text-gray-900 font-bold">Project Timeline</h1>
@@ -288,7 +284,6 @@ $ganttDataJson = json_encode($ganttData);
                 </div>
                 
                 <div class="flex items-center gap-4">
-                    <!-- Project Filter -->
                     <select id="projectFilter" onchange="filterByProject(this.value)" 
                             class="border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] min-w-[200px]">
                         <option value="">All Projects</option>
@@ -299,7 +294,6 @@ $ganttDataJson = json_encode($ganttData);
                         <?php endforeach; ?>
                     </select>
                     
-                    <!-- View Mode Buttons -->
                     <div class="flex items-center bg-gray-100 rounded-lg p-1">
                         <button onclick="changeViewMode('Day')" class="view-mode-btn px-3 py-1.5 text-sm font-medium text-gray-600 rounded-md hover:bg-white transition-colors">
                             Day
@@ -313,7 +307,6 @@ $ganttDataJson = json_encode($ganttData);
                     </div>
                 </div>
             </div>
-            <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                     <div class="flex items-center gap-3">
@@ -324,7 +317,7 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Total Phases</p>
-                            <h2 class="text-2xl font-bold text-gray-900"><?php echo count($phases); ?></h2>
+                            <h2 id="statTotalPhases" class="text-2xl font-bold text-gray-900"><?php echo count($phases); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -338,7 +331,7 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Total Tasks</p>
-                            <h2 class="text-2xl font-bold text-gray-900"><?php echo count($tasks); ?></h2>
+                            <h2 id="statTotalTasks" class="text-2xl font-bold text-gray-900"><?php echo count($tasks); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -352,7 +345,7 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Projects</p>
-                            <h2 class="text-2xl font-bold text-gray-900"><?php echo count($allProjects); ?></h2>
+                            <h2 id="statTotalProjects" class="text-2xl font-bold text-gray-900"><?php echo count($allProjects); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -366,12 +359,11 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Timeline Items</p>
-                            <h2 class="text-2xl font-bold text-gray-900"><?php echo count($ganttData); ?></h2>
+                            <h2 id="statTimelineItems" class="text-2xl font-bold text-gray-900"><?php echo count($ganttData); ?></h2>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- Legend -->
             <div class="flex items-center gap-6 mb-4 mt-6">
                 <div class="flex items-center gap-2">
                     <div class="w-4 h-4 rounded bg-[#e9922c]"></div>
@@ -386,235 +378,41 @@ $ganttDataJson = json_encode($ganttData);
                 </div>
             </div>
 
-            <!-- Gantt Chart Container -->
-            <?php if (empty($ganttData)): ?>
-            <div class="gantt-container empty-gantt">
-                <div class="text-center">
-                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">No Timeline Data</h3>
-                    <p class="text-sm text-gray-500 max-w-md">
-                        Add start and end dates to your phases and tasks to see them on the Gantt chart.
-                    </p>
-                    <div class="flex items-center justify-center gap-3 mt-6">
-                        <a href="phases.php" class="px-4 py-2 bg-[#e9922c] text-white rounded-lg hover:bg-[#d17f1f] transition-colors text-sm font-medium">
-                            Manage Phases
-                        </a>
-                        <a href="tasks.php" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium">
-                            Manage Tasks
-                        </a>
+            <div id="ganttChartWrapper">
+                <?php if (empty($ganttData)): ?>
+                <div class="gantt-container empty-gantt">
+                    <div class="text-center">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">No Timeline Data</h3>
+                        <p class="text-sm text-gray-500 max-w-md">
+                            Add start and end dates to your phases and tasks to see them on the Gantt chart.
+                        </p>
+                        <div class="flex items-center justify-center gap-3 mt-6">
+                            <a href="phases.php" class="px-4 py-2 bg-[#e9922c] text-white rounded-lg hover:bg-[#d17f1f] transition-colors text-sm font-medium">
+                                Manage Phases
+                            </a>
+                            <a href="tasks.php" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium">
+                                Manage Tasks
+                            </a>
+                        </div>
                     </div>
                 </div>
+                <?php else: ?>
+                <div class="gantt-container p-4">
+                    <svg id="gantt"></svg>
+                </div>
+                <?php endif; ?>
             </div>
-            <?php else: ?>
-            <div class="gantt-container p-4">
-                <svg id="gantt"></svg>
-            </div>
-            <?php endif; ?>
 
         </div>
     </main>
 
-    <!-- Frappe Gantt JS -->
     <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
-    
-    <script>
-        let gantt = null;
-        const ganttData = <?php echo $ganttDataJson; ?>;
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            if (ganttData.length > 0) {
-                initGantt('Month');
-            }
-        });
-        
-        function initGantt(viewMode) {
-            // Transform data for Frappe Gantt
-            const tasks = ganttData.map(item => ({
-                id: item.id,
-                name: item.name,
-                start: item.start,
-                end: item.end,
-                progress: item.progress,
-                custom_class: item.custom_class
-            }));
-            
-            gantt = new Gantt("#gantt", tasks, {
-                view_mode: viewMode,
-                date_format: 'YYYY-MM-DD',
-                language: 'en',
-                custom_popup_html: function(task) {
-                    const item = ganttData.find(d => d.id === task.id);
-                    const typeLabel = item.type === 'phase' ? 'Phase' : 'Task';
-                    const typeColor = item.type === 'phase' ? '#e9922c' : '#3b82f6';
-                    
-                    let html = `
-                        <div class="p-3 min-w-[200px] bg-white">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="px-2 py-0.5 text-xs font-bold text-white rounded" style="background-color: ${typeColor}">
-                                    ${typeLabel}
-                                </span>
-                            </div>
-                            <h4 class="font-semibold text-gray-900 mb-1">${task.name}</h4>
-                            <p class="text-sm text-gray-500 mb-2">${item.project}</p>
-                            <div class="flex items-center gap-4 text-xs text-gray-500">
-                                <span><strong>Start:</strong> ${formatDate(task.start)}</span>
-                                <span><strong>End:</strong> ${formatDate(task.end)}</span>
-                            </div>
-                            <div class="mt-2 pt-2 border-t border-gray-100">
-                                <div class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-500">Progress</span>
-                                    <span class="font-semibold text-gray-700">${task.progress}%</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                                    <div class="h-1.5 rounded-full" style="width: ${task.progress}%; background-color: ${typeColor}"></div>
-                                </div>
-                            </div>
-                    `;
-                    
-                    if (item.type === 'task' && item.status) {
-                        const statusColors = {
-                            'Not Started': 'bg-slate-100 text-slate-700',
-                            'In Progress': 'bg-blue-100 text-blue-700',
-                            'On Hold': 'bg-amber-100 text-amber-700',
-                            'Completed': 'bg-green-100 text-green-700'
-                        };
-                        const statusClass = statusColors[item.status] || 'bg-gray-100 text-gray-700';
-                        html += `
-                            <div class="mt-2 pt-2 border-t border-gray-100">
-                                <span class="px-2 py-0.5 text-xs font-medium rounded ${statusClass}">${item.status}</span>
-                            </div>
-                        `;
-                    }
-                    
-                    html += '</div>';
-                    return html;
-                },
-                on_click: function(task) {
-                    const item = ganttData.find(d => d.id === task.id);
-                    if (item) {
-                        // Briefly highlight the clicked item using the system accent color
-                        const typeColor = item.type === 'phase' ? '#e9922c' : '#3b82f6';
-                        setHighlightForItem(item.id, typeColor);
-                        setTimeout(() => {
-                            if (item.type === 'phase') {
-                                window.location.href = 'phases.php';
-                            } else {
-                                window.location.href = 'tasks.php';
-                            }
-                        }, 150);
-                    }
-                }
-            });
-            
-            // Apply dynamic text colors once DOM is ready
-            setTimeout(applyDynamicTextColors, 60);
-        }
 
-        // Utility: compute contrast (black or white) for a given hex color
-        function getContrastingTextColor(hex) {
-            if (!hex) return '#111';
-            // normalize
-            hex = hex.replace('#', '');
-            if (hex.length === 3) {
-                hex = hex.split('').map(h => h + h).join('');
-            }
-            const r = parseInt(hex.substr(0,2),16);
-            const g = parseInt(hex.substr(2,2),16);
-            const b = parseInt(hex.substr(4,2),16);
-            // luminance formula
-            const lum = (0.2126*r + 0.7152*g + 0.0722*b)/255;
-            return lum > 0.55 ? '#111827' : '#ffffff';
-        }
+    <script id="gantt-data" type="application/json"><?php echo $ganttDataJson; ?></script>
 
-        // Apply dynamic label colors based on bar fill color (or system type color)
-        function applyDynamicTextColors() {
-            document.querySelectorAll('.gantt .bar-wrapper').forEach(wrapper => {
-                // try to find the label and the bar element
-                const label = wrapper.querySelector('.bar-label');
-                const bar = wrapper.querySelector('.bar');
-                if (!label || !bar) return;
-
-                // determine fill color
-                let fill = bar.getAttribute('fill') || window.getComputedStyle(bar).fill || '';
-                if (fill && fill.indexOf('rgb') === 0) {
-                    // convert rgb(...) to hex
-                    const nums = fill.match(/\d+/g).map(Number);
-                    fill = '#' + nums.map(n => n.toString(16).padStart(2,'0')).join('');
-                }
-
-                // fallback: if wrapper has class bar-phase or bar-task, use system colors
-                if (!fill || fill === 'none') {
-                    if (wrapper.classList.contains('bar-phase')) fill = '#e9922c';
-                    else if (wrapper.classList.contains('bar-task')) fill = '#3b82f6';
-                }
-
-                const contrast = getContrastingTextColor(fill);
-                label.style.fill = contrast;
-            });
-        }
-
-        // Highlight label and add a subtle outline on click before navigation
-        function setHighlightForItem(itemId, color) {
-            // selector by data-id if present
-            let wrapper = document.querySelector(`.gantt .bar-wrapper[data-id="${itemId}"]`);
-            if (!wrapper) {
-                // fallback: match by label text
-                const item = ganttData.find(d => d.id === itemId);
-                if (item) {
-                    wrapper = Array.from(document.querySelectorAll('.gantt .bar-wrapper')).find(w => {
-                        const l = w.querySelector('.bar-label');
-                        return l && l.textContent.trim() === item.name;
-                    });
-                }
-            }
-            if (!wrapper) return;
-
-            const label = wrapper.querySelector('.bar-label');
-            const bar = wrapper.querySelector('.bar');
-            const contrast = getContrastingTextColor(color);
-            if (label) label.style.fill = color;
-            if (bar) {
-                bar.style.stroke = color;
-                bar.style.strokeWidth = '1.5';
-            }
-            // remove highlight after short delay
-            setTimeout(() => {
-                if (label) label.style.fill = getContrastingTextColor(bar ? (bar.getAttribute('fill')||'') : '');
-                if (bar) { bar.style.stroke = ''; bar.style.strokeWidth = ''; }
-            }, 800);
-        }
-        
-        function changeViewMode(mode) {
-            if (gantt) {
-                gantt.change_view_mode(mode);
-                
-                // Update active button
-                document.querySelectorAll('.view-mode-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.textContent.trim() === mode) {
-                        btn.classList.add('active');
-                    }
-                });
-            }
-        }
-        
-        function filterByProject(projectId) {
-            const url = new URL(window.location.href);
-            if (projectId) {
-                url.searchParams.set('project_id', projectId);
-            } else {
-                url.searchParams.delete('project_id');
-            }
-            window.location.href = url.toString();
-        }
-        
-        function formatDate(date) {
-            const d = new Date(date);
-            const options = { month: 'short', day: 'numeric', year: 'numeric' };
-            return d.toLocaleDateString('en-US', options);
-        }
-    </script>
+    <script src="js/gantt.js"></script>
 </body>
 </html>

@@ -13,9 +13,16 @@ try {
             echo json_encode(['success'=>true,'periods'=>$periods]);
             exit;
 
-        case 'fetch_payroll':
+     case 'fetch_payroll':
     $period_id = $_GET['period_id'] ?? null;
     if (!$period_id) throw new Exception("Period ID missing");
+
+    // Get pay date from payroll_periods table
+    $stmt = $conn->prepare("SELECT period_start, period_end, pay_date FROM payroll_periods WHERE period_id = ?");
+    $stmt->execute([$period_id]);
+    $period = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$period) throw new Exception("Payroll period not found");
+    $pay_date = $period['pay_date'] ?? null;
 
     // Fetch all active employees
     $stmt = $conn->prepare("SELECT * FROM employees WHERE status='Active'");
@@ -34,20 +41,37 @@ try {
                 'employee_id' => $emp['employee_id'],
                 'first_name' => $emp['first_name'],
                 'last_name' => $emp['last_name'],
+                'position' => $emp['position'],
+                'employment_type' => $emp['employment_type'],
+                'period_id' => $period_id,
+                'pay_date' => $pay_date, // use from payroll_periods
                 'hours_worked' => floatval($p['hours_worked']),
                 'overtime_hours' => floatval($p['overtime_hours']),
                 'gross_pay' => floatval($p['gross_pay']),
+                'sss_contribution' => floatval($p['sss_contribution']),
+                'philhealth_contribution' => floatval($p['philhealth_contribution']),
+                'pagibig_contribution' => floatval($p['pagibig_contribution']),
+                'other_deductions' => floatval($p['other_deductions']),
                 'net_pay' => floatval($p['net_pay']),
                 'status' => $p['status']
             ];
         } else {
+            // If payroll not yet calculated
             $payrollData[] = [
                 'employee_id' => $emp['employee_id'],
                 'first_name' => $emp['first_name'],
                 'last_name' => $emp['last_name'],
+                'position' => $emp['position'],
+                'employment_type' => $emp['employment_type'],
+                'period_id' => $period_id,
+                'pay_date' => $pay_date, // still use payroll_periods
                 'hours_worked' => 0,
                 'overtime_hours' => 0,
                 'gross_pay' => 0,
+                'sss_contribution' => 0,
+                'philhealth_contribution' => 0,
+                'pagibig_contribution' => 0,
+                'other_deductions' => 0,
                 'net_pay' => 0,
                 'status' => 'Not Calculated'
             ];
@@ -58,10 +82,29 @@ try {
     exit;
 
 
+
+
+
         // ---------------- CALCULATE PAYROLL ----------------
       case 'calculate':
             $period_id = $_POST['period_id'] ?? $_GET['period_id'] ?? null;
             if (!$period_id) throw new Exception("Period ID missing");
+
+            // Prevent recalculation if already calculated / approved / processed
+            $stmt = $conn->prepare("
+                SELECT status 
+                FROM payroll_periods 
+                WHERE period_id = ?
+            ");
+            $stmt->execute([$period_id]);
+            $currentStatus = $stmt->fetchColumn();
+
+
+            if (in_array($currentStatus, ['Approved', 'Processed'])) {
+                throw new Exception("Payroll is locked and cannot be recalculated");
+            }
+
+
 
             // Get payroll period
             $stmt = $conn->prepare("
@@ -186,6 +229,13 @@ try {
                 ];
             }
 
+            $stmt = $conn->prepare("
+                UPDATE payroll_periods
+                SET status = 'Calculated'
+                WHERE period_id = ?
+            ");
+            $stmt->execute([$period_id]);
+
             echo json_encode([
                 'success' => true,
                 'payroll' => $result
@@ -194,42 +244,56 @@ try {
 
         // ---------------- APPROVE PAYROLL ----------------
         case 'approve':
-                $period_id = $_POST['period_id'] ?? null;
-                if (!$period_id) throw new Exception("Period ID missing");
+                $periodId = $_REQUEST['period_id'] ?? null;
 
-                $approved_by = $_POST['approved_by'] ?? 'admin';
-
-                // Ensure payroll exists
-                $check = $conn->prepare("
-                    SELECT COUNT(*) 
-                    FROM payroll 
-                    WHERE period_id = ?
-                ");
-                $check->execute([$period_id]);
-
-                if ($check->fetchColumn() == 0) {
-                    throw new Exception("Payroll not yet calculated");
+                if (!$periodId) {
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "Period ID missing"
+                    ]);
+                    exit;
                 }
 
-                // Update payroll rows
+                // Optional: who approved
+                $approvedBy = null; // or $_SESSION['user_id']
+
+                // Ensure payroll period is in Calculated status
+                $stmt = $conn->prepare("
+                    SELECT status 
+                    FROM payroll_periods 
+                    WHERE period_id = ?
+                ");
+                $stmt->execute([$periodId]);
+                $status = $stmt->fetchColumn();
+
+                if ($status !== 'Calculated') {
+                    echo json_encode([
+                        "success" => false,
+                        "message" => "Only calculated payroll can be approved"
+                    ]);
+                    exit;
+                }
+
+
+                // Approve payroll
                 $stmt = $conn->prepare("
                     UPDATE payroll
-                    SET 
+                    SET
                         status = 'Approved',
                         approved_by = ?,
                         approved_date = NOW()
                     WHERE period_id = ?
-                        AND status = 'Calculated'
+                    AND status = 'Calculated'
                 ");
-                $stmt->execute([$approved_by, $period_id]);
+                $stmt->execute([$approvedBy, $periodId]);
 
-                // Update period status
+                // Close payroll period
                 $stmt = $conn->prepare("
-                    UPDATE payroll_periods 
+                    UPDATE payroll_periods
                     SET status = 'Approved'
                     WHERE period_id = ?
                 ");
-                $stmt->execute([$period_id]);
+                $stmt->execute([$periodId]);
 
                 echo json_encode([
                     'success' => true,
@@ -238,12 +302,13 @@ try {
                 exit;
 
 
+
         // ---------------- PROCESS PAYROLL ----------------
                 case 'process':
                 $period_id = $_POST['period_id'] ?? null;
                 if (!$period_id) throw new Exception("Period ID missing");
 
-                $processed_by = $_POST['processed_by'] ?? 'admin';
+                //$processed_by = $_POST['processed_by'] ?? 'admin';
 
                 // Ensure approved first
                 $check = $conn->prepare("
@@ -263,12 +328,11 @@ try {
                 UPDATE payroll
                 SET 
                 status = 'Processed',
-                processed_by = ?,
                 processed_date = NOW()
                 WHERE period_id = ?
                 AND status = 'Approved'
                 ");
-                $stmt->execute([$processed_by, $period_id]);
+                $stmt->execute([ $period_id]);
 
                 // Update period status
                 $stmt = $conn->prepare("

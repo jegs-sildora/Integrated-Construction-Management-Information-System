@@ -17,11 +17,45 @@
           <label for="first_name">First Name</label>
           <input type="text" id="first_name" name="first_name" placeholder="Enter first name" required>
         </div>
+
+
+        <div class="form-group">
+          <label for="middle_name">Middle Name</label>
+          <input type="text" id="middle_name" name="middle_name" placeholder="Enter middle name">
+        </div>
+
+        
         <div class="form-group">
           <label for="last_name">Last Name</label>
           <input type="text" id="last_name" name="last_name" placeholder="Enter last name" required>
         </div>
+
       </div>
+
+      <div class="form-row">
+
+         <div class="form-group">
+          <label for="suffix">Suffix</label>
+          <input type="text" id="suffix" name="suffix" placeholder="e.g., Jr., Sr., III">
+        </div>
+
+      <div class="form-group">
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender" required>
+          <option value="">Select gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="age">Age</label>
+        <input type="number" id="age" name="age" placeholder="Enter age" min="18" max="65">
+      </div>
+    </div>
+
+     
 
       <div class="form-row">
         <div class="form-group">
@@ -72,6 +106,14 @@
           </select>
         </div>
         <div class="form-group">
+          <label for="payment_type">Payment Type</label>
+          <select id="payment_type" name="payment_type" disabled>
+            <option value="">Select payment type</option>
+            <option value="Daily">Daily</option>
+            <option value="Monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label for="status">Status</label>
           <select id="status" name="status">
             <option value="">Select status</option>
@@ -93,11 +135,16 @@
         </div>
       </div>
 
+      <div class="form-row">
       <div class="form-group">
         <label for="start_date">Start Date</label>
         <input type="date" id="start_date" name="start_date">
       </div>
-
+      <div class="form-group">
+        <label for="end_date">End Date</label>
+        <input type="date" id="end_date" name="end_date" disabled>
+      </div>
+      </div>
       <div class="modal-footer">
         <button type="button" class="btn-cancel" id="cancelEmployeeModal">Cancel</button>
         <button type="submit" class="btn-save" id="employeeModalBtnText">Add Employee</button>

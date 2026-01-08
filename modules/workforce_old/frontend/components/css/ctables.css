@@ -1,50 +1,63 @@
 /* Table styles */
 table {
-    table-layout: fixed; 
+    table-layout: fixed; /* Makes the columns evenly spaced */
 }
 
 th, td {
-    padding: 4px 10px;
-    font-size: 0.85rem; 
-    word-wrap: break-word;
+    padding: 4px 10px; /* Reduced padding for both headers and data cells */
+    font-size: 0.85rem; /* Smaller font size for table data */
+    word-wrap: break-word; /* Prevent text from overflowing */
 }
 
 
 td {
     color: var(--text-dark);
-    border-bottom: 1px solid var(--border-color); 
+    border-bottom: 1px solid var(--border-color); /* Optional: Add row separation */
 }
 
 
 table td:last-child, table th:last-child {
-    border-right: none; 
+    border-right: none; /* Remove the last column border */
 }
 
 
 .employee-cell {
   display: flex;
-  align-items: center; 
-  gap: 10px;           
+  align-items: center; /* vertically center the avatar and text */
+  gap: 10px;           /* space between avatar and text */
 }
 
 .employee-cell .avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: var(--primary-orange); 
+  background-color: var(--primary-orange); /* or your theme color */
   color: #fff;
   display: flex;
   justify-content: center;
   align-items: center;
   font-weight: bold;
   font-size: 1rem;
-  flex-shrink: 0;     
+  flex-shrink: 0;      /* prevent avatar from shrinking */
 }
 
 .employee-cell .employee-info {
   display: flex;
-  flex-direction: column; 
+  flex-direction: column; /* text stacked vertically */
 }
+
+
+/* CSS for wrapping the description text */
+.description-cell {
+  max-width: 200px; /* Optional: set a max-width */
+  word-wrap: break-word; /* Allow long words to break */
+  overflow-wrap: break-word; /* Same as word-wrap for modern browsers */
+  white-space: normal; /* Allow text to wrap */
+  padding: 8px; /* Optional: padding for spacing */
+  text-align: left; /* Optional: align the text to the left */
+  display: inline-block; /* Ensure the content doesn't overflow the cell */
+}
+
 
 
 .status {
@@ -89,6 +102,10 @@ table td:last-child, table th:last-child {
     background-color: #0d6efd; /* Blue */
 }
 
+.status-Active {
+    background-color: #0d6efd; /* Blue */
+}
+
 .status-Completed {
     background-color: #198754; /* Green */
 }
@@ -102,5 +119,27 @@ table td:last-child, table th:last-child {
 }
 
 
+/* Not Calculated */
+.status-not_calculated {
+  background-color: #e9ecef;
+  color: #495057;
+}
 
+/* Calculated */
+.status-calculated {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+/* Approved */
+.status-approved {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+/* Processed */
+.status-processed {
+  background-color: #d4edda;
+  color: #155724;
+}
 

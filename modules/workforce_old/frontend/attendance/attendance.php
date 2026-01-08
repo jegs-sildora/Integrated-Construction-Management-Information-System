@@ -17,7 +17,7 @@
       <?php
         $title = "Attendance Management";
         $breadcrumbs = [
-          ['label' => 'Labor & Workforce', 'link' => null],
+          ['label' => 'Labor & Workforce > Attendance', 'link' => null],
           ['label' => $title, 'link' => null]
         ];
         include '../components/top-bar.php';
@@ -70,7 +70,9 @@
             </div>
 
             <input type="date" id="attendanceDate" value="<?= date('Y-m-d') ?>" class="attendance-date">
-            <button class="btn-primary" id="lockAttendanceBtn"><i class="fa-solid fa-lock"></i> Lock</button>
+            <button id="lockAttendanceBtn" class="btn-primary"> 
+              <i class="fa-solid fa-lock"></i> Lock
+            </button>
           </div>
         </section>
 
@@ -104,7 +106,6 @@
 
   <script>
   $(document).ready(function () {
-    // TableManager
     const tableManager = new TableManager({
       tableSelector: "#generalTable",
       searchSelector: ".table-search input",
@@ -113,112 +114,85 @@
       pageNumbersSelector: "#pageNumbers",
     });
 
-
+    // ------------------ Load Group Filter ------------------
     function loadGroupFilter() {
-      $.ajax({
-        url: "../../backend/employee/backend_employee.php?fetch_employees",
-        method: "GET",
-        dataType: "json",
-        success: function(res) {
-          if (res.success) {
-            let groups = {};
-            res.employees.forEach(emp => {
-              if (emp.group_id && emp.group_name) groups[emp.group_id] = emp.group_name;
-            });
+      $.getJSON("../../backend/employee/backend_employee.php?fetch_employees", res => {
+        if (!res.success) return showToast("Error fetching groups", "error");
+        const groups = {};
+        res.employees.forEach(emp => {
+          if (emp.group_id && emp.group_name) groups[emp.group_id] = emp.group_name;
+        });
 
-            let options = `<option value="">All Groups</option>`;
-            Object.entries(groups).forEach(([id, name]) => {
-              options += `<option value="${id}">${name}</option>`;
-            });
-
-            $("#attendanceGroupFilter").html(options);
-          }
-        },
-        error: function() {
-          showToast("Error fetching groups", "error");
-        }
+        let options = `<option value="">All Groups</option>`;
+        Object.entries(groups).forEach(([id, name]) => {
+          options += `<option value="${id}">${name}</option>`;
+        });
+        $("#attendanceGroupFilter").html(options);
       });
     }
 
-    loadGroupFilter();
-
-    function loadProjectFilter(date = $("#attendanceDate").val()) {
-        const projectsSet = new Set();
-
-        // Go through each row in the table and collect unique project names
-        $("#generalTable tbody tr").each(function() {
-          const projectCell = $(this).find(".project-name");
-          const projectName = projectCell.text().trim();
-          const projectId = projectCell.data("assignment-id");
-
-          if (projectName && projectName !== "Unassigned" && projectId) {
-            projectsSet.add(JSON.stringify({ id: projectId, name: projectName }));
-          }
-        });
-
-        // Populate the filter dropdown
-        let options = `<option value="">All Projects</option>`;
-        Array.from(projectsSet).forEach(p => {
-          const proj = JSON.parse(p);
-          options += `<option value="${proj.id}">${proj.name}</option>`;
-        });
-        $("#attendanceProjectFilter").html(options);
-      }
-
-
- function loadAttendance(date = $("#attendanceDate").val()) {
-  $.ajax({
-    url: "../../backend/employee/backend_employee.php?fetch_employees",
-    method: "GET",
-    data: { date },
-    dataType: "json",
-    success: async function(res) {
-      if (!res.success) return showToast("Failed to load employees");
-
-      tableManager.clear();
-
-      // ------------------ Fetch assignments for all employees ------------------
-      const assignmentPromises = res.employees.map(emp =>
-        $.ajax({
-          url: "../../backend/attendance/fetch_employee_assignment.php",
-          method: "GET",
-          data: { employee_id: emp.employee_id, date },
-          dataType: "json"
-        }).then(assignRes => {
-          if (assignRes.success && assignRes.assignment) {
-            emp.project_id = assignRes.assignment.project_id;
-            emp.project_name = assignRes.assignment.project_name;
-          } else {
-            emp.project_id = null;
-            emp.project_name = "Unassigned";
-          }
-        }).catch(() => {
-          emp.project_id = null;
-          emp.project_name = "Error";
-        })
-      );
-
-      await Promise.all(assignmentPromises);
-
-      // ------------------ Sort employees ------------------
-      res.employees.sort((a, b) => {
-        const aAssigned = a.project_id ? 1 : 0;
-        const bAssigned = b.project_id ? 1 : 0;
-
-        if (aAssigned !== bAssigned) return bAssigned - aAssigned; // assigned first
-
-        if (a.last_name.toLowerCase() < b.last_name.toLowerCase()) return -1;
-        if (a.last_name.toLowerCase() > b.last_name.toLowerCase()) return 1;
-
-        if (a.first_name.toLowerCase() < b.first_name.toLowerCase()) return -1;
-        if (a.first_name.toLowerCase() > b.first_name.toLowerCase()) return 1;
-
-        return 0;
+    // ------------------ Load Project Filter ------------------
+    function loadProjectFilter() {
+      const projectsSet = new Set();
+      $("#generalTable tbody tr").each(function() {
+        const projectCell = $(this).find(".project-name");
+        const projectName = projectCell.text().trim();
+        const projectId = projectCell.data("assignment-id");
+        if (projectName && projectName !== "Unassigned" && projectId) {
+          projectsSet.add(JSON.stringify({ id: projectId, name: projectName }));
+        }
       });
 
-      // ------------------ Render table ------------------
-      res.employees.forEach(emp => {
+      let options = `<option value="">All Projects</option>`;
+      Array.from(projectsSet).forEach(p => {
+        const proj = JSON.parse(p);
+        options += `<option value="${proj.id}">${proj.name}</option>`;
+      });
+      $("#attendanceProjectFilter").html(options);
+    }
+
+    // ------------------ Load Attendance ------------------
+   // ------------------ Load Attendance ------------------
+ async function loadAttendance(date = $("#attendanceDate").val()) {
+    tableManager.clear();
+
+    // --- Check if attendance is locked ---
+    let attendanceLocked = false;
+    try {
+      const lockRes = await $.getJSON("../../backend/attendance/backend_attendance.php", { action: "check_lock", date });
+      attendanceLocked = lockRes.locked;
+    } catch (e) {
+      showToast("Failed to check lock status", "error");
+    }
+
+    // --- Fetch employees ---
+    $.getJSON("../../backend/employee/backend_employee.php", { date, action: "fetch_employees" }, async res => {
+      if (!res.success) return showToast("Failed to load employees", "error");
+
+      let hasAssigned = false;
+
+      for (const emp of res.employees) {
+        // --- Fetch assignment ---
+        let projectId = null;
+        let projectName = "Unassigned";
+        try {
+          const assignmentRes = await $.getJSON("../../backend/attendance/backend_attendance.php", {
+            action: "assignment",
+            employee_id: emp.employee_id,
+            date
+          });
+          if (assignmentRes.success && assignmentRes.assignment) {
+            projectId = assignmentRes.assignment.project_id;
+            projectName = assignmentRes.assignment.project_name;
+          }
+        } catch (e) {
+          showToast("Failed to fetch assignment for " + emp.employee_id, "error");
+        }
+
         const initials = (emp.first_name[0] + emp.last_name[0]).toUpperCase();
+        const isUnassigned = !projectId;
+        if (!isUnassigned) hasAssigned = true;
+
         const row = document.createElement("tr");
         row.dataset.groupId = emp.group_id || '';
 
@@ -234,39 +208,48 @@
           </td>
           <td>
             <div class="group-cell">
-              <strong>${emp.group_name || "Unassigned"}</strong><br>
+              <strong>${emp.group_name || "No Group"}</strong><br>
               <small>${emp.group_id ? "#" + emp.group_id : ""}</small>
             </div>
           </td>
-          <td><input type="time" class="time-input start-time"></td>
-          <td><input type="time" class="time-input end-time"></td>
-          <td><span class="project-name ${emp.project_id ? '' : 'muted'}">${emp.project_name}</span></td>
+          <td><input type="time" class="time-input start-time" value="${emp.time_in || ''}" ${isUnassigned ? 'disabled' : ''}></td>
+          <td><input type="time" class="time-input end-time" value="${emp.time_out || ''}" ${isUnassigned ? 'disabled' : ''}></td>
+          <td><span class="project-name ${isUnassigned ? 'muted' : ''}" data-assignment-id="${projectId || ''}">${projectName}</span></td>
           <td>
-            <select class="status-select" ${emp.project_id ? '' : 'disabled'}>
-              <option value="Present">Present</option>
-              <option value="Absent" selected>Absent</option>
-              <option value="Late">Late</option>
-              <option value="On Leave">On Leave</option>
-              <option value="Unassigned" ${!emp.project_id ? 'selected' : ''}>Unassigned</option>
-            </select>
-          <td><input type="text" class="remarks-input" placeholder="Remarks" ${emp.project_id ? '' : 'disabled'}></td>
+           <select class="status-select" ${isUnassigned ? 'disabled' : ''}>
+            <option value="Present">Present</option>
+            <option value="Absent" selected>Absent</option>
+            <option value="Late">Late</option>
+            <option value="On Leave">On Leave</option>
+            <option value="Unassigned" ${isUnassigned ? "selected" : ""}>Unassigned</option>
+          </select>
+          </td>
+          <td><input type="text" class="remarks-input" placeholder="Remarks" value="${emp.remarks || ''}" ${isUnassigned ? 'disabled' : ''}></td>
         `;
 
         tableManager.addRow(row);
-      });
+
+        if (attendanceLocked) {
+          $(row).find("input, select").prop("disabled", true);
+        }
+      }
 
       tableManager.render();
-    },
-    error: function() { showToast("Failed to fetch employees"); }
-  });
-}
+      loadProjectFilter();
 
-// Initial load
-loadAttendance();
 
-loadProjectFilter($("#attendanceDate").val());
+      if (attendanceLocked || !hasAssigned) {
+        $("#lockAttendanceBtn").prop("disabled", true).addClass("disabled");
+      } else {
+        $("#lockAttendanceBtn").prop("disabled", false).removeClass("disabled");
+      }
 
-    // ------------------ Filters ------------------
+    });
+  }
+
+
+
+    // ------------------ Filter ------------------
     $("#applyAttendanceFilter").click(() => {
       const status = $("#attendanceStatusFilter").val();
       const project = $("#attendanceProjectFilter").val();
@@ -275,17 +258,16 @@ loadProjectFilter($("#attendanceDate").val());
       tableManager.setFilterCallback(row => {
         const rowStatus = $(row).find(".status-select").val().toLowerCase();
         const rowProject = $(row).find(".project-name").text().toLowerCase();
-        const rowGroup = $(row).data("group-id"); // We'll add this below
-
+        const rowGroup = $(row).data("group-id");
         return (!status || rowStatus === status.toLowerCase()) &&
-              (!project || rowProject === project.toLowerCase()) &&
-              (!group || rowGroup === group);
+               (!project || rowProject === project.toLowerCase()) &&
+               (!group || rowGroup === group);
       });
 
       $("#FilterMenu").hide();
     });
 
-    $("#attendanceDate").change(function() { loadAttendance($(this).val()); });
+    $("#attendanceDate").change(() => loadAttendance($("#attendanceDate").val()));
 
     // ------------------ Auto-update status ------------------
     function updateRowStatus(row) {
@@ -293,56 +275,76 @@ loadProjectFilter($("#attendanceDate").val());
       const timeOut = row.find(".end-time").val();
       const statusSelect = row.find(".status-select");
       const projectCell = row.find(".project-name");
+
       if (projectCell.hasClass("muted") || projectCell.text() === "Unassigned") {
         statusSelect.val("Unassigned").prop("disabled", true);
         row.find(".time-input").prop("disabled", true);
         return;
       }
+
       if (timeIn && timeOut) statusSelect.val("Present");
       else if (!timeIn && !timeOut && !["Late","On Leave"].includes(statusSelect.val()))
         statusSelect.val("Absent");
     }
-    $(document).on("change", "#generalTable .time-input", function(){ updateRowStatus($(this).closest("tr")); });
+
+    $(document).on("change", "#generalTable .time-input", function() {
+      updateRowStatus($(this).closest("tr"));
+    });
 
     // ------------------ Lock Attendance ------------------
-    $("#lockAttendanceBtn").click(() => {
-      if (!confirm("Lock attendance for this date?")) return;
-      const attendanceDate = $("#attendanceDate").val();
-      const records = [];
-      $("#generalTable tbody tr").each(function() {
-        const row = $(this);
-        const employeeId = row.find(".employee-cell small").text().replace("#", "").trim();
-        records.push({
-          employee_id: employeeId,
-          attendance_date: attendanceDate,
-          time_in: row.find(".start-time").val() || null,
-          time_out: row.find(".end-time").val() || null,
-          status: row.find(".status-select").val(),
-          project_id: row.find(".project-name").data("assignment-id") || null,
-          remarks: row.find(".remarks-input").val()
-        });
-      });
+   // ------------------ Lock Attendance ------------------
+$("#lockAttendanceBtn").click(function() {  // regular function
+  const $btn = $(this);
+  if ($btn.prop("disabled")) return; // stop if already disabled
 
-      $.ajax({
-        url: "../../backend/attendance/add_attendance.php",
-        method: "POST",
-        contentType: "application/json",
-        data: JSON.stringify({ records }),
-        success: function(res) {
-          if (res.success) {
-            showToast("Attendance locked successfully!", "success");
-            $("#generalTable input, #generalTable select").prop("disabled", true);
-          } else showToast(res.message || "Error locking attendance", "error");
-        },
-        error: function() { showToast("Failed to lock attendance", "error"); }
-      });
+  if (!confirm("Lock attendance for this date?")) return;
+
+  const attendanceDate = $("#attendanceDate").val();
+  const records = [];
+
+  $("#generalTable tbody tr").each(function() {
+    const row = $(this);
+    const employeeId = row.find(".employee-cell small").text().replace("#", "").trim();
+    records.push({
+      employee_id: employeeId,
+      attendance_date: attendanceDate,
+      time_in: row.find(".start-time").val() || null,
+      time_out: row.find(".end-time").val() || null,
+      status: row.find(".status-select").val(),
+      project_id: row.find(".project-name").data("assignment-id") || null,
+      remarks: row.find(".remarks-input").val()
     });
+  });
+
+  $.ajax({
+    url: "../../backend/attendance/backend_attendance.php",
+    method: "POST",
+    contentType: "application/json",
+    data: JSON.stringify({ action: "add", records, lock: true }),
+    success: function(res) {
+      if (res.success) {
+        showToast("Attendance locked successfully!", "success");
+        $("#generalTable input, #generalTable select").prop("disabled", true);
+        $btn.prop("disabled", true).addClass("disabled"); // disable button properly
+      } else {
+        showToast(res.message || "Error locking attendance", "error");
+      }
+    },
+    error: function() { showToast("Failed to lock attendance", "error"); }
+  });
+});
+
 
     // ------------------ Pagination ------------------
     $("#nextPage").click(() => tableManager.nextPage());
     $("#prevPage").click(() => tableManager.prevPage());
 
+    // ------------------ Initial load ------------------
+    loadAttendance();
+    loadGroupFilter();
+
   });
   </script>
+
 </body>
 </html>

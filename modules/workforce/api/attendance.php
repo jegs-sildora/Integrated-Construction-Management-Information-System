@@ -1,14 +1,24 @@
 <?php
 /**
  * Attendance API - Workforce Module
- * 
- * Handles attendance tracking operations
  */
 header('Content-Type: application/json');
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
 
 include __DIR__ . '/../project_context.php';
 
 $conn = getWorkforceConnection();
+
+// 1. Handle JSON Input
+$input = json_decode(file_get_contents('php://input'), true);
+if (is_array($input)) {
+    $_POST = array_merge($_POST, $input);
+    $_REQUEST = array_merge($_REQUEST, $input);
+}
+
+// 2. Action Detection
 $action = $_REQUEST['action'] ?? '';
 
 try {
@@ -37,40 +47,53 @@ try {
 
 $conn->close();
 
-// List attendance records with filters
+// --- FUNCTIONS ---
+
 function listAttendance($conn) {
-    $project_id = $_REQUEST['project_id'] ?? null;
+    $project_id = isset($_REQUEST['project_id']) ? intval($_REQUEST['project_id']) : null;
     $date = $_REQUEST['date'] ?? date('Y-m-d');
-    $employee_id = $_REQUEST['employee_id'] ?? null;
-    
-    $sql = "SELECT att.*, 
-                   e.employee_code, e.first_name, e.last_name
-            FROM workforce_attendance att
-            JOIN workforce_employees e ON att.employee_id = e.employee_id
-            WHERE 1=1";
+    $employee_id = isset($_REQUEST['employee_id']) ? intval($_REQUEST['employee_id']) : null;
     
     $params = [];
     $types = '';
+
+    // FIX: Always fetch ALL active employees. Do not restrict by Assignments.
+    $sql = "SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, 
+                   jt.title_name as job_title,
+                   att.attendance_id, att.time_in, att.time_out, att.status, att.remarks,
+                   p.project_name
+            FROM workforce_employees e
+            LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
+            -- Join Attendance for the specific Date and (optional) Project
+            LEFT JOIN workforce_attendance att ON e.employee_id = att.employee_id AND att.attendance_date = ?";
     
-    if ($project_id) {
-        $sql .= " AND att.project_id = ?";
+    $params[] = $date;
+    $types .= 's';
+
+    // If project is selected, we only match attendance records for that project,
+    // BUT we still keep the employee in the list (with null status) if they have no record.
+    if ($project_id && $project_id > 0) {
+        $sql .= " AND (att.project_id = ? OR att.project_id IS NULL)";
         $params[] = $project_id;
         $types .= 'i';
     }
     
-    if ($date) {
-        $sql .= " AND att.attendance_date = ?";
-        $params[] = $date;
-        $types .= 's';
-    }
+    $sql .= " LEFT JOIN icmis_projects p ON att.project_id = p.project_id";
     
+    // Always filter for Active employees only
+    $whereClauses = ["e.status = 'Active'"];
+
     if ($employee_id) {
-        $sql .= " AND att.employee_id = ?";
+        $whereClauses[] = "e.employee_id = ?";
         $params[] = $employee_id;
         $types .= 'i';
     }
+
+    if (!empty($whereClauses)) {
+        $sql .= " WHERE " . implode(" AND ", $whereClauses);
+    }
     
-    $sql .= " ORDER BY e.last_name, e.first_name";
+    $sql .= " ORDER BY e.last_name ASC, e.first_name ASC";
     
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
@@ -88,15 +111,14 @@ function listAttendance($conn) {
     echo json_encode(['success' => true, 'data' => $attendance]);
 }
 
-// Get attendance for specific employee and date
 function getAttendance($conn) {
     $employee_id = $_REQUEST['employee_id'] ?? 0;
-    $project_id = $_REQUEST['project_id'] ?? 0;
     $date = $_REQUEST['date'] ?? date('Y-m-d');
     
-    $stmt = $conn->prepare("SELECT * FROM workforce_attendance 
-                           WHERE employee_id = ? AND project_id = ? AND attendance_date = ?");
-    $stmt->bind_param("iis", $employee_id, $project_id, $date);
+    if (!$employee_id) throw new Exception("Employee ID required");
+    
+    $stmt = $conn->prepare("SELECT * FROM workforce_attendance WHERE employee_id = ? AND attendance_date = ?");
+    $stmt->bind_param("is", $employee_id, $date);
     $stmt->execute();
     $result = $stmt->get_result();
     
@@ -108,100 +130,57 @@ function getAttendance($conn) {
     $stmt->close();
 }
 
-// Save single attendance record
 function saveAttendance($conn) {
     $data = $_POST;
+    if (empty($data['employee_id']) || empty($data['attendance_date'])) throw new Exception('Employee and date required');
     
-    if (empty($data['employee_id']) || empty($data['project_id']) || empty($data['attendance_date'])) {
-        echo json_encode(['success' => false, 'message' => 'Employee, project, and date are required']);
-        return;
-    }
+    $project_id = !empty($data['project_id']) ? intval($data['project_id']) : null;
+    if ($project_id === 0) $project_id = null;
+
+    $time_in = !empty($data['time_in']) ? $data['time_in'] : null;
+    $time_out = !empty($data['time_out']) ? $data['time_out'] : null;
+    $status = $data['status'] ?? 'Present';
+    $remarks = $data['remarks'] ?? '';
     
-    // Check if record exists
-    $stmt = $conn->prepare("SELECT attendance_id FROM workforce_attendance 
-                           WHERE employee_id = ? AND project_id = ? AND attendance_date = ?");
-    $stmt->bind_param("iis", $data['employee_id'], $data['project_id'], $data['attendance_date']);
+    // Check existing
+    $stmt = $conn->prepare("SELECT attendance_id FROM workforce_attendance WHERE employee_id = ? AND attendance_date = ?");
+    $stmt->bind_param("is", $data['employee_id'], $data['attendance_date']);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $existing = $result->fetch_assoc();
+    $existing = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     
     if ($existing) {
-        // Update existing record
-        $sql = "UPDATE workforce_attendance SET 
-                    time_in = ?, time_out = ?, status = ?, remarks = ?
-                WHERE attendance_id = ?";
+        $sql = "UPDATE workforce_attendance SET project_id = ?, time_in = ?, time_out = ?, status = ?, remarks = ? WHERE attendance_id = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssi",
-            $data['time_in'],
-            $data['time_out'],
-            $data['status'],
-            $data['remarks'],
-            $existing['attendance_id']
-        );
+        $stmt->bind_param("issssi", $project_id, $time_in, $time_out, $status, $remarks, $existing['attendance_id']);
     } else {
-        // Insert new record
-        $sql = "INSERT INTO workforce_attendance 
-                    (employee_id, project_id, attendance_date, time_in, time_out, status, remarks)
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO workforce_attendance (employee_id, project_id, attendance_date, time_in, time_out, status, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iisssss",
-            $data['employee_id'],
-            $data['project_id'],
-            $data['attendance_date'],
-            $data['time_in'],
-            $data['time_out'],
-            $data['status'],
-            $data['remarks']
-        );
+        $stmt->bind_param("iisssss", $data['employee_id'], $project_id, $data['attendance_date'], $time_in, $time_out, $status, $remarks);
     }
     
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Attendance saved successfully']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to save attendance: ' . $stmt->error]);
-    }
+    if ($stmt->execute()) echo json_encode(['success' => true, 'message' => 'Saved']);
+    else throw new Exception('DB Error: ' . $stmt->error);
     $stmt->close();
 }
 
-// Save bulk attendance records
-// DB Schema: workforce_attendance (attendance_id, employee_id, project_id, attendance_date, time_in, time_out, status, remarks)
-// status ENUM: 'Present','Absent','Late','On Leave'
 function saveBulkAttendance($conn) {
-    $rawData = file_get_contents('php://input');
-    $data = json_decode($rawData, true);
+    $data = $_POST;
+    $records = $data['records'] ?? [];
+    $global_project_id = isset($data['project_id']) ? intval($data['project_id']) : null;
+    if ($global_project_id === 0) $global_project_id = null;
+    $date = $data['date'] ?? date('Y-m-d');
     
-    // Support both new format (records, project_id, date) and old format (attendance)
-    $records = $data['records'] ?? $data['attendance'] ?? [];
-    $project_id = $data['project_id'] ?? null;
-    $date = $data['date'] ?? null;
-    
-    // If using old format, extract project_id and date from first record
-    if (empty($project_id) && !empty($records) && isset($records[0]['project_id'])) {
-        $project_id = $records[0]['project_id'];
-    }
-    if (empty($date) && !empty($records) && isset($records[0]['date'])) {
-        $date = $records[0]['date'];
-    }
-    
-    if (empty($records)) {
-        echo json_encode(['success' => false, 'message' => 'No attendance records provided']);
-        return;
-    }
-    
-    if (empty($date)) {
-        $date = date('Y-m-d');
-    }
+    if (empty($records)) throw new Exception('No records');
     
     $conn->begin_transaction();
-    
     try {
         $saved = 0;
-        
         foreach ($records as $record) {
             $employee_id = intval($record['employee_id']);
-            $record_project_id = isset($record['project_id']) ? intval($record['project_id']) : $project_id;
-            $record_date = $record['date'] ?? $date;
+            $record_project_id = isset($record['project_id']) ? intval($record['project_id']) : $global_project_id;
+            if ($record_project_id === 0) $record_project_id = null;
+            $record_date = !empty($record['date']) ? $record['date'] : $date;
             $time_in = !empty($record['time_in']) ? $record['time_in'] : null;
             $time_out = !empty($record['time_out']) ? $record['time_out'] : null;
             $status = $record['status'] ?? 'Present';
@@ -209,61 +188,38 @@ function saveBulkAttendance($conn) {
             
             if (!$employee_id || !$status) continue;
             
-            // Check if record exists
-            $stmt = $conn->prepare("SELECT attendance_id FROM workforce_attendance 
-                                   WHERE employee_id = ? AND attendance_date = ?");
+            $stmt = $conn->prepare("SELECT attendance_id FROM workforce_attendance WHERE employee_id = ? AND attendance_date = ?");
             $stmt->bind_param("is", $employee_id, $record_date);
             $stmt->execute();
-            $result = $stmt->get_result();
-            $existing = $result->fetch_assoc();
+            $existing = $stmt->get_result()->fetch_assoc();
             $stmt->close();
             
             if ($existing) {
-                $sql = "UPDATE workforce_attendance SET 
-                            project_id = ?, time_in = ?, time_out = ?, status = ?, remarks = ?
-                        WHERE attendance_id = ?";
+                $sql = "UPDATE workforce_attendance SET project_id = ?, time_in = ?, time_out = ?, status = ?, remarks = ? WHERE attendance_id = ?";
                 $stmt = $conn->prepare($sql);
                 $stmt->bind_param("issssi", $record_project_id, $time_in, $time_out, $status, $remarks, $existing['attendance_id']);
             } else {
-                $sql = "INSERT INTO workforce_attendance 
-                            (employee_id, project_id, attendance_date, time_in, time_out, status, remarks)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO workforce_attendance (employee_id, project_id, attendance_date, time_in, time_out, status, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $conn->prepare($sql);
                 $stmt->bind_param("iisssss", $employee_id, $record_project_id, $record_date, $time_in, $time_out, $status, $remarks);
             }
-            
-            if ($stmt->execute()) {
-                $saved++;
-            }
+            if ($stmt->execute()) $saved++;
             $stmt->close();
         }
-        
         $conn->commit();
-        echo json_encode([
-            'success' => true, 
-            'message' => "$saved attendance records saved successfully"
-        ]);
+        echo json_encode(['success' => true, 'message' => "$saved records saved"]);
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(['success' => false, 'message' => 'Failed to save attendance: ' . $e->getMessage()]);
+        throw new Exception($e->getMessage());
     }
 }
 
-// Delete attendance record
 function deleteAttendance($conn, $id) {
-    if (!$id) {
-        echo json_encode(['success' => false, 'message' => 'Attendance ID required']);
-        return;
-    }
-    
+    if (!$id) throw new Exception('ID required');
     $stmt = $conn->prepare("DELETE FROM workforce_attendance WHERE attendance_id = ?");
     $stmt->bind_param("i", $id);
-    
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Attendance record deleted']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to delete attendance']);
-    }
+    if ($stmt->execute()) echo json_encode(['success' => true, 'message' => 'Deleted']);
+    else throw new Exception($stmt->error);
     $stmt->close();
 }
 ?>

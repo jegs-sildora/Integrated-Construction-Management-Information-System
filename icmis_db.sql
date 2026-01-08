@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 07, 2026 at 03:19 AM
+-- Generation Time: Jan 08, 2026 at 08:29 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -45,7 +45,7 @@ CREATE TABLE `budget_expenses` (
 --
 
 INSERT INTO `budget_expenses` (`expense_id`, `project_id`, `phase_id`, `supplier_id`, `category`, `description`, `amount`, `expense_date`, `status`, `created_by`) VALUES
-(2, 1, 1, 1, 'MATERIALS', 'PO-2026-0001 - Phase 1 Materials', 59085.00, '2026-01-07', 'APPROVED', NULL);
+(1, 1, 1, 7, 'MATERIALS', 'PO-2026-0001 - Phase 1 Materials', 1344.00, '2026-01-08', 'APPROVED', NULL);
 
 -- --------------------------------------------------------
 
@@ -86,7 +86,9 @@ INSERT INTO `budget_generated_reports` (`report_id`, `project_id`, `report_type`
 (17, 1, 'phase-analysis', 'Phase Analysis (Phase 1)', 'John Doe', '2026-01-07 01:27:17'),
 (18, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 01:27:38'),
 (19, 1, 'labor-analysis', 'Labor Cost Analysis', 'John Doe', '2026-01-07 01:27:42'),
-(20, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 01:28:01');
+(20, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 01:28:01'),
+(21, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 04:33:06'),
+(22, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 04:34:48');
 
 -- --------------------------------------------------------
 
@@ -110,8 +112,7 @@ CREATE TABLE `budget_line_items` (
 --
 
 INSERT INTO `budget_line_items` (`line_item_id`, `proposal_id`, `category`, `item_name`, `quantity`, `unit_cost`, `duration`, `subtotal`) VALUES
-(3, 1, 'MATERIAL', 'Gravel (cu.m)', 12.00, 1212.00, 1.00, 14544.00),
-(4, 1, 'MATERIAL', 'Deformed Steel Bar - 10mm (DSB)', 21.00, 2121.00, 1.00, 44541.00);
+(2, 1, 'MATERIAL', 'Tie Wire #16 (kg)', 112.00, 12.00, 1.00, 1344.00);
 
 -- --------------------------------------------------------
 
@@ -137,7 +138,7 @@ CREATE TABLE `budget_proposals` (
 --
 
 INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`, `title`, `description`, `total_amount`, `status`, `created_by`, `created_at`) VALUES
-(1, 1, 1, 'BP-2026-0001', 'Phase 1: Mobilization — Budget Proposal', 'Initial mobilization', 59085.00, 'APPROVED', 1, '2026-01-06 23:10:08');
+(1, 1, 1, 'BP-2026-0001', 'Phase 1: Mobilization — Budget Proposal', 'asd', 1344.00, 'APPROVED', 30, '2026-01-08 05:36:48');
 
 -- --------------------------------------------------------
 
@@ -164,7 +165,7 @@ CREATE TABLE `icmis_projects` (
 --
 
 INSERT INTO `icmis_projects` (`project_id`, `project_code`, `project_name`, `description`, `location`, `status`, `start_date`, `end_date`, `completion_rate`, `project_manager_id`, `total_budget`) VALUES
-(1, 'PRJ-2026-001', 'Davao', 'Sample Construction Project', 'Davao City', 'Planning', '2026-01-07', '2027-01-07', 0.00, 1, 50000000.00);
+(1, 'PRJ-2026-001', 'Davao', 'Sample Construction Project', 'Davao City', 'Planning', '2026-01-07', '2027-01-07', 0.00, NULL, 50000000.00);
 
 -- --------------------------------------------------------
 
@@ -214,7 +215,7 @@ CREATE TABLE `icmis_tasks` (
 --
 
 INSERT INTO `icmis_tasks` (`task_id`, `project_id`, `phase_id`, `task_name`, `description`, `assigned_to_employee_id`, `start_date`, `due_date`, `status`, `priority`) VALUES
-(1, 1, 1, 'Make a Budget Proposal', 'Make a Budget Proposal', 1, '2026-01-07', '2026-01-14', 'Not Started', 'High');
+(1, 1, 1, 'Make a Budget Proposal', 'Make a Budget Proposal', NULL, '2026-01-07', '2026-01-14', 'Not Started', 'High');
 
 -- --------------------------------------------------------
 
@@ -237,14 +238,36 @@ CREATE TABLE `icmis_users` (
 --
 
 INSERT INTO `icmis_users` (`user_id`, `full_name`, `email`, `password`, `role`, `avatar`, `created_at`) VALUES
-(1, 'John Doe', 'john.doe@icmis.com', '$2y$12$a0zQ5QEV760o3Qc5CE1POO4g1vT8XPLmwja6OHEkNAkgJmqo0X/j6', 'Admin', NULL, '2026-01-06 23:10:07'),
-(10, 'Engr. Antonio Reyes', 'antonio.reyes@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'avatar_antonio.jpg', '2026-01-06 23:10:07'),
-(11, 'Arch. Michael Tan', 'mike.tan@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'avatar_mike.jpg', '2026-01-06 23:10:07'),
-(12, 'Engr. Sarah Mendoza', 'sarah.m@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'avatar_sarah.jpg', '2026-01-06 23:10:07'),
-(13, 'Engr. Rafael Ibarra', 'rafael.ibarra@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 02:51:48'),
-(14, 'Arch. Clara del Valle', 'clara.delvalle@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 02:51:48'),
-(15, 'Mr. Cardo Dalisay', 'cardo.dalisay@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 02:51:48'),
-(16, 'Engr. Maria Clara', 'maria.clara@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 02:51:48');
+(1, 'System Admin', 'admin@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(2, 'Marco Villar', 'marco.v@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(3, 'Diana Lim', 'diana.l@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(4, 'Rico Morales', 'rico.m@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(5, 'Carla Sandoval', 'carla.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(6, 'Gina Reyes', 'gina.r@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Budget_Officer', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(7, 'Paulo Santos', 'paulo.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Procurement_Officer', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(8, 'Luis Ortega', 'luis.o@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(9, 'Tess Garcia', 'tess.g@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(10, 'Jun Abad', 'jun.a@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(11, 'Bert Torres', 'bert.t@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(12, 'Ricardo Dalisay', 'ricardo.d@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(13, 'Efren Bata', 'efren.b@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(14, 'Joel Cruz', 'joel.c@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(15, 'Mark Go', 'mark.g@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(16, 'Romy Diaz', 'romy.d@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(17, 'Dante Alip', 'dante.a@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(18, 'Steve Paz', 'steve.p@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(19, 'Ryan Yap', 'ryan.y@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(20, 'Mario Pineda', 'mario.p@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(21, 'Luigi Pineda', 'luigi.p@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(22, 'Ken Sy', 'ken.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(23, 'Manny Wood', 'manny.w@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(24, 'Jack Solis', 'jack.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(25, 'Peter Vega', 'peter.v@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(26, 'Tyler Tan', 'tyler.t@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(27, 'Jose Glas', 'jose.g@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(28, 'Boyet Labos', 'boyet.l@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(29, 'Juan Dela Cruz', 'juan.d@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
+(30, 'John Doe', 'john.doe@icmis.com', '$2y$12$pl4NIXnb43GJgd88tKaBweOT56kgORWvZ7qnU3bhAO0ZzUH0/rY/q', 'Admin', NULL, '2026-01-07 23:52:33');
 
 -- --------------------------------------------------------
 
@@ -269,8 +292,7 @@ CREATE TABLE `procurement_inventory` (
 --
 
 INSERT INTO `procurement_inventory` (`item_id`, `item_name`, `category`, `quantity`, `unit`, `project_id`, `phase_id`, `unit_cost`, `last_updated`) VALUES
-(1, 'Deformed Steel Bar - 10mm (DSB)', 'General', 21.00, 'pcs', 1, 1, 2121.00, '2026-01-07 00:07:34'),
-(2, 'Gravel (cu.m)', 'General', 12.00, 'pcs', 1, 1, 1212.00, '2026-01-07 00:07:34');
+(3, 'Tie Wire #16 (kg)', 'General', 112.00, 'pcs', 1, 1, 12.00, '2026-01-08 05:38:26');
 
 -- --------------------------------------------------------
 
@@ -296,7 +318,7 @@ CREATE TABLE `procurement_purchase_orders` (
 --
 
 INSERT INTO `procurement_purchase_orders` (`po_id`, `po_reference`, `project_id`, `phase_id`, `supplier_id`, `order_title`, `order_date`, `total_amount`, `status`, `created_by_user_id`) VALUES
-(1, 'PO-2026-0001', 1, 1, 1, 'Phase 1 Materials', '2026-01-07', 59085.00, 'COMPLETED', 1);
+(1, 'PO-2026-0001', 1, 1, 7, 'Phase 1 Materials', '2026-01-08', 1344.00, 'COMPLETED', 30);
 
 -- --------------------------------------------------------
 
@@ -319,8 +341,7 @@ CREATE TABLE `procurement_purchase_order_items` (
 --
 
 INSERT INTO `procurement_purchase_order_items` (`po_item_id`, `po_id`, `inventory_item_id`, `item_name`, `quantity`, `unit_cost`, `total_cost`) VALUES
-(5, 1, NULL, 'Deformed Steel Bar - 10mm (DSB)', 21.00, 2121.00, 44541.00),
-(6, 1, NULL, 'Gravel (cu.m)', 12.00, 1212.00, 14544.00);
+(2, 1, NULL, 'Tie Wire #16 (kg)', 112.00, 12.00, 1344.00);
 
 -- --------------------------------------------------------
 
@@ -343,8 +364,7 @@ CREATE TABLE `procurement_stock_in` (
 --
 
 INSERT INTO `procurement_stock_in` (`stock_in_id`, `po_id`, `item_id`, `quantity_received`, `unit_cost`, `total_cost`, `date_received`) VALUES
-(1, 1, 1, 21, 2121.00, 44541.00, '2026-01-07'),
-(2, 1, 2, 12, 1212.00, 14544.00, '2026-01-07');
+(1, 1, 3, 112, 12.00, 1344.00, '2026-01-08');
 
 -- --------------------------------------------------------
 
@@ -412,6 +432,15 @@ CREATE TABLE `workforce_assignments` (
   `status` enum('Active','Completed','Cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'Active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `workforce_assignments`
+--
+
+INSERT INTO `workforce_assignments` (`assignment_id`, `employee_id`, `project_id`, `phase_id`, `role`, `task_description`, `start_date`, `end_date`, `status`) VALUES
+(26, 26, 1, NULL, 'Glazier', NULL, '2026-01-08', NULL, 'Active'),
+(27, 27, 1, NULL, 'Skilled Laborer', NULL, '2026-01-08', NULL, 'Active'),
+(28, 28, 1, NULL, 'Site Helper', NULL, '2026-01-08', NULL, 'Active');
+
 -- --------------------------------------------------------
 
 --
@@ -440,10 +469,24 @@ CREATE TABLE `workforce_employees` (
   `employee_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` int DEFAULT NULL,
   `job_title_id` int DEFAULT NULL,
+  `employment_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'Full-time',
+  `payment_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'Monthly',
+  `daily_rate` decimal(10,2) DEFAULT '0.00',
+  `monthly_salary` decimal(15,2) DEFAULT '0.00',
+  `bank_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bank_account` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `emergency_contact_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `emergency_contact_phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `supervisor_id` int DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
   `first_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `suffix` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `gender` enum('Male','Female','Other','Prefer not to say') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `birthday` date DEFAULT NULL,
   `email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_unicode_ci,
   `status` enum('Active','Inactive','Terminated') COLLATE utf8mb4_unicode_ci DEFAULT 'Active',
   `hire_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -452,14 +495,35 @@ CREATE TABLE `workforce_employees` (
 -- Dumping data for table `workforce_employees`
 --
 
-INSERT INTO `workforce_employees` (`employee_id`, `employee_code`, `user_id`, `job_title_id`, `first_name`, `last_name`, `email`, `phone`, `status`, `hire_date`) VALUES
-(1, 'EMP-2025-001', 10, 1, 'Antonio', 'Reyes', 'antonio.reyes@icmis.com', '0917-111-1111', 'Active', '2025-01-10'),
-(2, 'EMP-2025-002', 11, 1, 'Michael', 'Tan', 'mike.tan@icmis.com', '0917-222-2222', 'Active', '2025-02-15'),
-(3, 'EMP-2025-003', 12, 1, 'Sarah', 'Mendoza', 'sarah.m@icmis.com', '0917-333-3333', 'Active', '2025-03-01'),
-(4, 'EMP-2026-004', 13, 4, 'Rafael', 'Ibarra', 'rafael.ibarra@icmis.com', '0917-555-0101', 'Active', '2026-01-07'),
-(5, 'EMP-2026-005', 14, 5, 'Clara', 'del Valle', 'clara.delvalle@icmis.com', '0917-555-0202', 'Active', '2026-01-07'),
-(6, 'EMP-2026-006', 15, 6, 'Cardo', 'Dalisay', 'cardo.dalisay@icmis.com', '0917-555-0303', 'Active', '2026-01-07'),
-(7, 'EMP-2026-007', 16, 1, 'Maria', 'Clara', 'maria.clara@icmis.com', '0917-555-0404', 'Active', '2026-01-07');
+INSERT INTO `workforce_employees` (`employee_id`, `employee_code`, `user_id`, `job_title_id`, `employment_type`, `payment_type`, `daily_rate`, `monthly_salary`, `bank_name`, `bank_account`, `emergency_contact_name`, `emergency_contact_phone`, `supervisor_id`, `notes`, `first_name`, `last_name`, `suffix`, `gender`, `birthday`, `email`, `phone`, `address`, `status`, `hire_date`) VALUES
+(1, 'EMP-2026-001', 2, 1, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Marco', 'Villar', NULL, NULL, NULL, 'marco.v@icmis.com', '0917-100-0001', NULL, 'Active', '2026-01-05'),
+(2, 'EMP-2026-002', 3, 2, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Diana', 'Lim', NULL, NULL, NULL, 'diana.l@icmis.com', '0917-100-0002', NULL, 'Active', '2026-01-05'),
+(3, 'EMP-2026-003', 4, 3, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Rico', 'Morales', NULL, NULL, NULL, 'rico.m@icmis.com', '0917-100-0003', NULL, 'Active', '2026-01-06'),
+(4, 'EMP-2026-004', 5, 4, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Carla', 'Sandoval', NULL, NULL, NULL, 'carla.s@icmis.com', '0917-100-0004', NULL, 'Active', '2026-01-02'),
+(5, 'EMP-2026-005', 8, 5, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Luis', 'Ortega', NULL, NULL, NULL, 'luis.o@icmis.com', '0917-100-0005', NULL, 'Active', '2026-01-05'),
+(6, 'EMP-2026-006', 6, 6, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Gina', 'Reyes', NULL, NULL, NULL, 'gina.r@icmis.com', '0917-100-0006', NULL, 'Active', '2026-01-03'),
+(7, 'EMP-2026-007', 7, 7, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Paulo', 'Santos', NULL, NULL, NULL, 'paulo.s@icmis.com', '0917-100-0007', NULL, 'Active', '2026-01-03'),
+(8, 'EMP-2026-008', 9, 8, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Tess', 'Garcia', NULL, NULL, NULL, 'tess.g@icmis.com', '0917-100-0008', NULL, 'Active', '2026-01-04'),
+(9, 'EMP-2026-009', 10, 9, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Jun', 'Abad', NULL, NULL, NULL, 'jun.a@icmis.com', '0917-100-0009', NULL, 'Active', '2026-01-05'),
+(10, 'EMP-2026-010', 11, 10, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Bert', 'Torres', NULL, NULL, NULL, 'bert.t@icmis.com', '0917-100-0010', NULL, 'Active', '2026-01-05'),
+(11, 'EMP-2026-011', 12, 11, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Ricardo', 'Dalisay', NULL, NULL, NULL, 'ricardo.d@icmis.com', '0917-200-0011', NULL, 'Active', '2026-01-10'),
+(12, 'EMP-2026-012', 13, 12, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Efren', 'Bata', NULL, NULL, NULL, 'efren.b@icmis.com', '0917-200-0012', NULL, 'Active', '2026-01-10'),
+(13, 'EMP-2026-013', 14, 13, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Joel', 'Cruz', NULL, NULL, NULL, 'joel.c@icmis.com', '0917-200-0013', NULL, 'Active', '2026-01-12'),
+(14, 'EMP-2026-014', 15, 14, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Mark', 'Go', NULL, NULL, NULL, 'mark.g@icmis.com', '0917-200-0014', NULL, 'Active', '2026-01-12'),
+(15, 'EMP-2026-015', 16, 15, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Romy', 'Diaz', NULL, NULL, NULL, 'romy.d@icmis.com', '0917-200-0015', NULL, 'Active', '2026-01-12'),
+(16, 'EMP-2026-016', 17, 16, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Dante', 'Alip', NULL, NULL, NULL, 'dante.a@icmis.com', '0917-200-0016', NULL, 'Active', '2026-01-11'),
+(17, 'EMP-2026-017', 18, 17, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Steve', 'Paz', NULL, NULL, NULL, 'steve.p@icmis.com', '0917-300-0017', NULL, 'Active', '2026-01-15'),
+(18, 'EMP-2026-018', 19, 18, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Ryan', 'Yap', NULL, NULL, NULL, 'ryan.y@icmis.com', '0917-300-0018', NULL, 'Active', '2026-01-15'),
+(19, 'EMP-2026-019', 20, 19, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Mario', 'Pineda', NULL, NULL, NULL, 'mario.p@icmis.com', '0917-300-0019', NULL, 'Active', '2026-01-15'),
+(20, 'EMP-2026-020', 21, 20, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Luigi', 'Pineda', NULL, NULL, NULL, 'luigi.p@icmis.com', '0917-300-0020', NULL, 'Active', '2026-01-15'),
+(21, 'EMP-2026-021', 22, 21, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Ken', 'Sy', NULL, NULL, NULL, 'ken.s@icmis.com', '0917-300-0021', NULL, 'Active', '2026-01-15'),
+(22, 'EMP-2026-022', 23, 22, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Manny', 'Wood', NULL, NULL, NULL, 'manny.w@icmis.com', '0917-400-0022', NULL, 'Active', '2026-02-01'),
+(23, 'EMP-2026-023', 24, 23, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Jack', 'Solis', NULL, NULL, NULL, 'jack.s@icmis.com', '0917-400-0023', NULL, 'Active', '2026-01-10'),
+(24, 'EMP-2026-024', 25, 24, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Peter', 'Vega', NULL, NULL, NULL, 'peter.v@icmis.com', '0917-400-0024', NULL, 'Active', '2026-02-05'),
+(25, 'EMP-2026-025', 26, 25, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Tyler', 'Tan', NULL, NULL, NULL, 'tyler.t@icmis.com', '0917-400-0025', NULL, 'Active', '2026-02-05'),
+(26, 'EMP-2026-026', 27, 26, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Jose', 'Glas', NULL, NULL, NULL, 'jose.g@icmis.com', '0917-400-0026', NULL, 'Active', '2026-02-10'),
+(27, 'EMP-2026-027', 28, 27, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Boyet', 'Labos', NULL, NULL, NULL, 'boyet.l@icmis.com', '0917-500-0027', NULL, 'Active', '2026-01-05'),
+(28, 'EMP-2026-028', 29, 28, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Juan', 'Dela Cruz', NULL, NULL, NULL, 'juan.d@icmis.com', '0917-500-0028', NULL, 'Active', '2026-01-05');
 
 -- --------------------------------------------------------
 
@@ -469,10 +533,18 @@ INSERT INTO `workforce_employees` (`employee_id`, `employee_code`, `user_id`, `j
 
 CREATE TABLE `workforce_employee_groups` (
   `group_id` int NOT NULL,
+  `group_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `group_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `group_leader_id` int DEFAULT NULL,
   `description` text COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `workforce_employee_groups`
+--
+
+INSERT INTO `workforce_employee_groups` (`group_id`, `group_code`, `group_name`, `group_leader_id`, `description`) VALUES
+(7, 'GRP-2026-7', 'Test Team', 11, '');
 
 -- --------------------------------------------------------
 
@@ -501,6 +573,15 @@ CREATE TABLE `workforce_group_memberships` (
   `joined_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `workforce_group_memberships`
+--
+
+INSERT INTO `workforce_group_memberships` (`membership_id`, `employee_id`, `group_id`, `role_in_group`, `joined_date`) VALUES
+(36, 9, 7, 'Timekeeper', '2026-01-08'),
+(37, 16, 7, 'Heavy Equipment Operator', '2026-01-08'),
+(38, 12, 7, 'Master Mason', '2026-01-08');
+
 -- --------------------------------------------------------
 
 --
@@ -513,21 +594,45 @@ CREATE TABLE `workforce_job_titles` (
   `department` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `default_daily_rate` decimal(10,2) DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1'
+  `default_monthly_salary` decimal(15,2) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `workforce_job_titles`
 --
 
-INSERT INTO `workforce_job_titles` (`job_title_id`, `title_name`, `department`, `description`, `default_daily_rate`, `is_active`) VALUES
-(1, 'Project Manager', 'Operations', NULL, 2500.00, 1),
-(2, 'Site Engineer', 'Engineering', NULL, 1800.00, 1),
-(3, 'Foreman', 'Construction', NULL, 1200.00, 1),
-(4, 'Project Engineer', 'Engineering', 'Oversees technical aspects and site execution', 2200.00, 1),
-(5, 'Senior Architect', 'Design', 'Responsible for design integrity and plans', 2500.00, 1),
-(6, 'Safety Officer', 'Site Safety', 'Ensures compliance with OSH standards', 1500.00, 1),
-(7, 'Quantity Surveyor', 'Cost Control', 'Manages estimates and material costs', 1800.00, 1);
+INSERT INTO `workforce_job_titles` (`job_title_id`, `title_name`, `department`, `description`, `default_daily_rate`, `default_monthly_salary`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'Project Manager', 'Operations', 'Responsible for overall project planning, execution, and delivery.', 2500.00, 65000.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(2, 'Site Engineer', 'Engineering', 'Supervises daily site operations and technical compliance.', 1800.00, 46800.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(3, 'Project Engineer', 'Engineering', 'Handles technical documentation and structural integrity checks.', 2200.00, 57200.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(4, 'Senior Architect', 'Design', 'Ensures design specifications are followed during construction.', 2500.00, 65000.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(5, 'Safety Officer', 'Safety', 'Enforces Occupational Safety and Health (OSH) standards on site.', 1500.00, 39000.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(6, 'Budget Officer', 'Finance', 'Manages project budget proposals and expense tracking.', 1800.00, 46800.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(7, 'Procurement Officer', 'Logistics', 'Handles supplier sourcing, purchasing, and delivery logistics.', 1800.00, 46800.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(8, 'Quantity Surveyor', 'Cost Control', 'Estimates material costs and manages project bills of quantities.', 1800.00, 46800.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(9, 'Timekeeper', 'Administrative', 'Records daily attendance and work hours of site personnel.', 800.00, 20800.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(10, 'Warehouseman', 'Inventory', 'Manages inventory stock-in, stock-out, and material storage.', 700.00, 18200.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(11, 'General Foreman', 'Construction', 'Direct supervisor of all skilled and unskilled labor on site.', 1200.00, 31200.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(12, 'Master Mason', 'Masonry', 'Specialist in complex concrete works and bricklaying.', 900.00, 23400.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(13, 'Mason', 'Masonry', 'Performs standard concrete mixing, pouring, and block laying.', 750.00, 19500.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(14, 'Steel Fixer', 'Reinforcement', 'Cuts, bends, and ties steel reinforcement bars (rebars).', 700.00, 18200.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(15, 'Welder', 'Metalwork', 'Joins metal parts for structural frameworks and supports.', 850.00, 22100.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(16, 'Heavy Equipment Operator', 'Machinery', 'Operates excavators, cranes, and backhoes for site works.', 1000.00, 26000.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(17, 'Master Electrician', 'Electrical', 'Reads electrical plans and supervises wiring installations.', 1100.00, 28600.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(18, 'Electrician', 'Electrical', 'Installs electrical wiring, fixtures, and control equipment.', 800.00, 20800.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(19, 'Master Plumber', 'Plumbing', 'Supervises installation of water supply and sanitary systems.', 1100.00, 28600.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(20, 'Pipe Fitter', 'Plumbing', 'Cuts and installs pipes for water, gas, or steam systems.', 750.00, 19500.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(21, 'HVAC Technician', 'Mechanical', 'Installs and maintains heating, ventilation, and air conditioning.', 900.00, 23400.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(22, 'Finishing Carpenter', 'Carpentry', 'Installs cabinetry, moldings, doors, and detailed woodworks.', 900.00, 23400.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(23, 'Rough Carpenter', 'Carpentry', 'Builds temporary structures like formworks and scaffolding.', 700.00, 18200.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(24, 'Painter', 'Finishing', 'Prepares surfaces and applies paint, varnish, or sealants.', 700.00, 18200.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(25, 'Tile Setter', 'Tiling', 'Lays tiles on floors and walls with precision alignment.', 850.00, 22100.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(26, 'Glazier', 'Installation', 'Cuts and installs glass for windows, doors, and mirrors.', 800.00, 20800.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(27, 'Skilled Laborer', 'General Labor', 'Assists tradesmen with tasks requiring some technical knowledge.', 600.00, 15600.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34'),
+(28, 'Site Helper', 'General Labor', 'Performs manual labor such as digging, cleaning, and hauling.', 500.00, 13000.00, 1, '2026-01-07 20:37:34', '2026-01-07 20:37:34');
 
 -- --------------------------------------------------------
 
@@ -879,19 +984,19 @@ ALTER TABLE `workforce_skills`
 -- AUTO_INCREMENT for table `budget_expenses`
 --
 ALTER TABLE `budget_expenses`
-  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `budget_generated_reports`
 --
 ALTER TABLE `budget_generated_reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `budget_line_items`
 --
 ALTER TABLE `budget_line_items`
-  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `budget_proposals`
@@ -921,13 +1026,13 @@ ALTER TABLE `icmis_tasks`
 -- AUTO_INCREMENT for table `icmis_users`
 --
 ALTER TABLE `icmis_users`
-  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `procurement_inventory`
 --
 ALTER TABLE `procurement_inventory`
-  MODIFY `item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_orders`
@@ -939,13 +1044,13 @@ ALTER TABLE `procurement_purchase_orders`
 -- AUTO_INCREMENT for table `procurement_purchase_order_items`
 --
 ALTER TABLE `procurement_purchase_order_items`
-  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_in`
 --
 ALTER TABLE `procurement_stock_in`
-  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_out`
@@ -957,31 +1062,31 @@ ALTER TABLE `procurement_stock_out`
 -- AUTO_INCREMENT for table `procurement_suppliers`
 --
 ALTER TABLE `procurement_suppliers`
-  MODIFY `supplier_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `supplier_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `workforce_assignments`
 --
 ALTER TABLE `workforce_assignments`
-  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT for table `workforce_attendance`
 --
 ALTER TABLE `workforce_attendance`
-  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `workforce_employees`
 --
 ALTER TABLE `workforce_employees`
-  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `workforce_employee_groups`
 --
 ALTER TABLE `workforce_employee_groups`
-  MODIFY `group_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `group_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `workforce_employee_skills`
@@ -993,13 +1098,13 @@ ALTER TABLE `workforce_employee_skills`
 -- AUTO_INCREMENT for table `workforce_group_memberships`
 --
 ALTER TABLE `workforce_group_memberships`
-  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `workforce_job_titles`
 --
 ALTER TABLE `workforce_job_titles`
-  MODIFY `job_title_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `job_title_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `workforce_leave_balances`

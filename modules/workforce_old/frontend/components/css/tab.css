@@ -10,9 +10,9 @@
 }
 
 .tab {
-  padding: 6px 18px; 
+  padding: 6px 18px; /* Reduced padding */
   cursor: pointer;
-  font-size: 0.85rem; 
+  font-size: 0.85rem; /* Smaller font size */
   color: var(--text-light);
   font-weight: 500;
   position: relative;
@@ -55,7 +55,7 @@
   display: block;
 }
 
-
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .tabs {
     overflow-x: auto;
@@ -64,8 +64,8 @@
   }
 
   .tab {
-    padding: 6px 14px;
-    font-size: 0.8rem; 
+    padding: 6px 14px; /* Reduced padding for smaller screens */
+    font-size: 0.8rem; /* Smaller font size for mobile */
     margin-right: 6px;
   }
 }
