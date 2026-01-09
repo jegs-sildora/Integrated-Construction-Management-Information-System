@@ -55,4 +55,7 @@
     /* Fix for v4 Gradient Syntax fallback if needed */
     .bg-navy-dark { background-color: var(--color-navy-dark); }
     .bg-navy-light { background-color: var(--color-navy-light); }
+    * {
+        font-family: 'Inter', sans-serif;
+    }
 </style>

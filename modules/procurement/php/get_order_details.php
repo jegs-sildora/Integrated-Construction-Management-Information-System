@@ -19,11 +19,13 @@ if ($po_id <= 0) {
 }
 
 // 1. Fetch PO Header Info
-$po_sql = "SELECT po.po_reference, po.project_id, po.phase_id, po.order_title, po.status, po.total_amount,
-                  s.supplier_name, p.project_name
+$po_sql = "SELECT po.po_reference, po.order_date, po.project_id, po.phase_id, po.order_title, po.status, po.total_amount, po.created_by_user_id,
+                  s.supplier_name, p.project_name, ph.phase_name as phase, u.full_name as created_by_name
            FROM procurement_purchase_orders po
            LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
            LEFT JOIN icmis_projects p ON po.project_id = p.project_id
+           LEFT JOIN icmis_project_phases ph ON po.phase_id = ph.phase_id
+           LEFT JOIN icmis_users u ON po.created_by_user_id = u.user_id
            WHERE po.po_id = ?";
 
 $stmt = $conn->prepare($po_sql);
@@ -56,7 +58,7 @@ $stmt->close();
 
 echo json_encode([
     'success' => true, 
-    'po' => $po_data, 
+    'order' => $po_data, 
     'items' => $items
 ]);
 

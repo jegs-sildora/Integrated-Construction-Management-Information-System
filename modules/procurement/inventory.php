@@ -60,6 +60,7 @@ if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
     <div class="no-print">
         <?php include '../../includes/sidebar.php'; ?>
         <?php include '../../includes/header.php'; ?>
+        <?php include '../../includes/toast.php'; ?>
     </div>
     
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">

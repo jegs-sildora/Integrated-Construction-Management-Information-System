@@ -341,12 +341,12 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                     <table class="w-full">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
-                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Position</th>
-                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Department</th>
-                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Daily Rate</th>
-                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Employee</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Position</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Department</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Daily Rate</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="employeesTableBody" class="divide-y divide-gray-100">
@@ -367,8 +367,8 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                         <div class="flex items-center gap-3">
                                             <div class="employee-avatar"><?php echo $initials; ?></div>
                                             <div>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']); ?></p>
-                                                <p class="text-xs text-gray-500">#<?php echo htmlspecialchars($emp['employee_code']); ?></p>
+                                                <p class="font-bold text-gray-900"><?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']); ?></p>
+                                                <p class="font-bold text-xs text-gray-500"><?php echo htmlspecialchars($emp['employee_code']); ?></p>
                                             </div>
                                         </div>
                                     </td>

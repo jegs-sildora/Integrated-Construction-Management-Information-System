@@ -264,15 +264,15 @@ $userName = $_SESSION['user_name'] ?? "Admin";
 
             <!-- Recent Activity -->
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Assignments</h3>
+                <h3 class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">Recent Assignments</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead>
-                            <tr class="text-left text-sm text-gray-500 border-b border-gray-200">
-                                <th class="pb-3 font-medium">Employee</th>
-                                <th class="pb-3 font-medium">Project</th>
-                                <th class="pb-3 font-medium">Role</th>
-                                <th class="pb-3 font-medium">Status</th>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Employee</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Project</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Role</th>
+                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
                             </tr>
                         </thead>
                         <tbody id="recentAssignments">

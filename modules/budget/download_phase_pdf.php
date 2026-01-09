@@ -1,4 +1,5 @@
 <?php
+// download_phase_pdf.php
 // Include config for database connection
 require_once __DIR__ . '/../../config/config.php';
 
@@ -45,12 +46,18 @@ $stmt_phase->execute();
 $result_phase = $stmt_phase->get_result();
 
 $phase_data = null;
+$allocated = 0;
+$spent = 0;
+$remaining = 0;
+$utilization = 0;
+$status = 'Active';
+$date_range = 'No dates set';
+
 if ($result_phase->num_rows > 0) {
     $phase_data = $result_phase->fetch_assoc();
     $allocated = floatval($phase_data['allocated']);
 
     // Format date range
-    $date_range = 'No dates set';
     if (!empty($phase_data['phase_start_date']) && !empty($phase_data['phase_end_date'])) {
         $start_date = new DateTime($phase_data['phase_start_date']);
         $end_date = new DateTime($phase_data['phase_end_date']);
@@ -66,7 +73,7 @@ if ($result_phase->num_rows > 0) {
     $stmt_expenses->bind_param("is", $project_id, $phase_name);
     $stmt_expenses->execute();
     $result_expenses = $stmt_expenses->get_result();
-    $spent = 0;
+    
     if ($result_expenses->num_rows > 0) {
         $expense_data = $result_expenses->fetch_assoc();
         $spent = floatval($expense_data['spent']);
@@ -76,7 +83,6 @@ if ($result_phase->num_rows > 0) {
     $utilization = $allocated > 0 ? ($spent / $allocated) * 100 : 0;
 
     // Determine status
-    $status = 'Active';
     if ($utilization > 100) {
         $status = 'Over Budget';
     } elseif ($utilization >= 99) {
@@ -122,386 +128,286 @@ if (!$phase_data) {
     die('Phase data not found');
 }
 
+// Helper for status badge color
+$statusColor = match($status) {
+    'Completed' => 'text-green-700 bg-green-50 border-green-200',
+    'Active' => 'text-blue-700 bg-blue-50 border-blue-200',
+    'Over Budget' => 'text-red-700 bg-red-50 border-red-200',
+    default => 'text-gray-700 bg-gray-50 border-gray-200',
+};
+
+// Helper for utilization color
+$progressColor = 'bg-green-500';
+if ($utilization > 100) {
+    $progressColor = 'bg-red-500';
+} elseif ($utilization >= 90) {
+    $progressColor = 'bg-amber-500';
+}
+
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <!-- Global project styles -->
-    <link rel="stylesheet" href="/icmis_budget/css/output.css">
-    <link rel="stylesheet" href="/icmis_budget/css/input.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phase Budget Details - <?php echo htmlspecialchars($phase_name); ?></title>
+    <title>Phase Budget - <?php echo htmlspecialchars($phase_name); ?></title>
+    
+    <?php include __DIR__ . '/../../includes/head_assetsv2.php'; ?>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Base Styles */
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
             padding: 40px;
+        }
+
+        .report-container {
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            color: #333;
-            line-height: 1.6;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #e9922c;
-        }
-        .logo-container {
-            display: inline-block;
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #e9922c, #d17f1f);
-            border-radius: 12px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            font-weight: bold;
-            color: white;
-        }
-        .header h1 {
-            font-size: 32px;
-            color: #1f2937;
-            margin-bottom: 5px;
-        }
-        .header .subtitle {
-            color: #6b7280;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .phase-title {
-            display: inline-block;
-            background: linear-gradient(135deg, #e9922c, #d17f1f);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        .info-section {
-            background: #f9fafb;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .info-table tr {
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .info-table tr:last-child {
-            border-bottom: none;
-        }
-        .info-table td {
-            padding: 12px 15px;
-        }
-        .info-table td:first-child {
-            font-weight: bold;
-            color: #4b5563;
-            width: 30%;
-        }
-        .info-table td:last-child {
-            color: #1f2937;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .status-active { background: #3b82f6; color: white; }
-        .status-completed { background: #10b981; color: white; }
-        .status-over-budget { background: #ef4444; color: white; }
-        .summary-cards {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .summary-card {
-            background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
-        .summary-card.allocated { border-color: #10b981; }
-        .summary-card.spent { border-color: #3b82f6; }
-        .summary-card.remaining { border-color: #8b5cf6; }
-        .summary-card .label {
-            font-size: 12px;
-            color: #6b7280;
-            margin-bottom: 8px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .summary-card .amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1f2937;
-        }
-        .progress-section {
-            margin-bottom: 30px;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #e5e7eb;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #10b981, #059669);
-            border-radius: 10px;
-        }
-        .progress-fill.warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .progress-fill.danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .section-title {
-            font-size: 20px;
-            font-weight: bold;
-            color: #1f2937;
-            margin: 30px 0 15px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e9922c;
-        }
-        .proposals-table, .expenses-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        .proposals-table th, .expenses-table th {
-            background: linear-gradient(135deg, #e9922c, #d17f1f);
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        .proposals-table td, .expenses-table td {
-            padding: 12px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .proposals-table tr:hover, .expenses-table tr:hover {
-            background: #f9fafb;
-        }
-        .category-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-            color: white;
-        }
-        .category-material { background: #8b5cf6; }
-        .category-labor { background: #f59e0b; }
-        .category-equipment { background: #10b981; }
-        .status-approved { background: #10b981; color: white; }
-        .status-pending { background: #f59e0b; color: white; }
-        .total-section {
-            background: linear-gradient(135deg, #e9922c, #d17f1f);
-            color: white;
-            padding: 25px;
-            border-radius: 12px;
-            margin-top: 30px;
-            text-align: right;
-        }
-        .total-label {
-            font-size: 14px;
-            margin-bottom: 5px;
-            opacity: 0.9;
-        }
-        .total-amount {
-            font-size: 36px;
-            font-weight: bold;
-        }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
-            color: #6b7280;
-            font-size: 12px;
-        }
-        .no-data {
-            text-align: center;
             padding: 40px;
-            color: #6b7280;
-            font-style: italic;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
         }
+
+        /* PRINT SPECIFIC STYLES */
         @media print {
-            body { padding: 20px; }
-            .no-print { display: none; }
+            @page { margin: 0.5in; size: auto; }
+            body { 
+                background-color: white !important; 
+                color: black !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact; 
+            }
+            
+            .report-container {
+                box-shadow: none !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+            }
+
+            /* Hide UI elements */
+            .no-print { display: none !important; }
+            
+            /* Table Styling for Print */
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
+            
+            thead tr { background-color: #f3f4f6 !important; }
+            thead th { 
+                border: 1px solid #9ca3af !important; 
+                padding: 8px !important; 
+                color: black !important;
+                font-weight: bold !important;
+                text-transform: uppercase !important;
+            }
+            tbody td { 
+                border: 1px solid #e5e7eb !important; 
+                padding: 8px !important; 
+                color: black !important;
+            }
+
+            /* Footer Spacing */
+            .print-footer {
+                margin-top: 50px !important;
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Logo Sizing */
+        .print-logo {
+            height: 80px;
+            width: auto;
+            margin: 0 auto 10px auto;
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div style="text-align: center;">
-            <div class="logo-container">I</div>
+
+    <div class="report-container">
+        
+        <div class="text-center border-b-2 border-slate-800 pb-6 mb-8">
+            <img src="../../assets/images/nobg_logo.png" alt="ICMIS Logo" class="print-logo">
+            
+            <h1 class="text-2xl font-black uppercase tracking-wide text-slate-900 mt-2">Phase Budget Report</h1>
+            <p class="text-sm font-medium text-slate-500 uppercase tracking-widest">Integrated Construction Management Information System</p>
+            <p class="text-xs text-slate-400 mt-1">Generated on: <?php echo date('F j, Y h:i A'); ?></p>
         </div>
-        <h1>ICMIS</h1>
-        <p class="subtitle">Integrated Construction Management Information System</p>
-        <span class="phase-title"><?php echo htmlspecialchars($phase_name); ?> - Budget Details</span>
-    </div>
 
-    <div class="info-section">
-        <table class="info-table">
-            <tr>
-                <td>Project:</td>
-                <td><?php echo htmlspecialchars($project['name']); ?> (<?php echo htmlspecialchars($project['project_code']); ?>)</td>
-            </tr>
-            <tr>
-                <td>Phase:</td>
-                <td><?php echo htmlspecialchars($phase_name); ?></td>
-            </tr>
-            <tr>
-                <td>Date Range:</td>
-                <td><?php echo htmlspecialchars($date_range); ?></td>
-            </tr>
-            <tr>
-                <td>Status:</td>
-                <td>
-                    <?php
-                    $statusClass = '';
-                    switch($status) {
-                        case 'Completed': $statusClass = 'status-completed'; break;
-                        case 'Over Budget': $statusClass = 'status-over-budget'; break;
-                        default: $statusClass = 'status-active';
-                    }
-                    ?>
-                    <span class="status-badge <?php echo $statusClass; ?>"><?php echo htmlspecialchars($status); ?></span>
-                </td>
-            </tr>
-            <tr>
-                <td>Report Generated:</td>
-                <td><?php echo date('F j, Y g:i A'); ?></td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="summary-cards">
-        <div class="summary-card allocated">
-            <div class="label">Allocated Budget</div>
-            <div class="amount">₱<?php echo number_format($allocated, 2); ?></div>
+        <div class="grid grid-cols-2 gap-8 mb-8 text-sm">
+            <div>
+                <table class="w-full">
+                    <tr>
+                        <td class="font-bold text-slate-500 py-1 w-32">Project:</td>
+                        <td class="font-bold text-slate-900 py-1"><?php echo htmlspecialchars($project['project_name']); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold text-slate-500 py-1">Project Code:</td>
+                        <td class="font-mono font-bold text-slate-700 py-1"><?php echo htmlspecialchars($project['project_code']); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold text-slate-500 py-1">Phase:</td>
+                        <td class="font-bold text-slate-900 py-1 text-lg"><?php echo htmlspecialchars($phase_name); ?></td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <table class="w-full">
+                    <tr>
+                        <td class="font-bold text-slate-500 py-1 w-32">Date Range:</td>
+                        <td class="text-slate-900 py-1"><?php echo htmlspecialchars($date_range); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold text-slate-500 py-1">Status:</td>
+                        <td class="py-1">
+                            <span class="px-2 py-0.5 rounded border text-xs font-bold uppercase <?php echo $statusColor; ?>">
+                                <?php echo htmlspecialchars($status); ?>
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="font-bold text-slate-500 py-1">Utilization:</td>
+                        <td class="text-slate-700 py-1 font-mono"><?php echo number_format($utilization, 1); ?>%</td>
+                    </tr>
+                </table>
+            </div>
         </div>
-        <div class="summary-card spent">
-            <div class="label">Total Spent</div>
-            <div class="amount">₱<?php echo number_format($spent, 2); ?></div>
-            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><?php echo number_format($utilization, 1); ?>% utilized</div>
+
+        <div class="mb-8 bg-slate-50 rounded-lg border border-slate-200 p-6">
+            <h3 class="text-xs font-bold text-slate-500 uppercase mb-4">Financial Overview</h3>
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div class="p-2 border-r border-slate-200">
+                    <p class="text-xs text-slate-500 uppercase font-bold">Allocated Budget</p>
+                    <p class="text-xl font-black text-slate-800 mt-1 font-mono">₱<?php echo number_format($allocated, 2); ?></p>
+                </div>
+                <div class="p-2 border-r border-slate-200">
+                    <p class="text-xs text-slate-500 uppercase font-bold">Total Spent</p>
+                    <p class="text-xl font-black text-blue-700 mt-1 font-mono">₱<?php echo number_format($spent, 2); ?></p>
+                </div>
+                <div class="p-2">
+                    <p class="text-xs text-slate-500 uppercase font-bold">Remaining</p>
+                    <p class="text-xl font-black text-slate-800 mt-1 font-mono">₱<?php echo number_format($remaining, 2); ?></p>
+                </div>
+            </div>
+            
+            <div class="mt-4 w-full bg-slate-200 rounded-full h-2.5">
+                <div class="<?php echo $progressColor; ?> h-2.5 rounded-full" style="width: <?php echo min($utilization, 100); ?>%"></div>
+            </div>
         </div>
-        <div class="summary-card remaining">
-            <div class="label">Remaining Budget</div>
-            <div class="amount">₱<?php echo number_format($remaining, 2); ?></div>
+
+        <div class="mb-8">
+            <h3 class="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Approved Budget Proposals</h3>
+            <?php if (count($proposals) > 0): ?>
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300">Code</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300">Title</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300">Created By</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300 text-center">Date</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300 text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($proposals as $proposal): ?>
+                    <tr>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-800 font-mono"><?php echo htmlspecialchars($proposal['code']); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-700 font-medium"><?php echo htmlspecialchars($proposal['title']); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-600"><?php echo htmlspecialchars($proposal['user_name']); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-center text-slate-600"><?php echo date('M j, Y', strtotime($proposal['created_at'])); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono font-bold text-slate-900">₱<?php echo number_format($proposal['total_amount'], 2); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php else: ?>
+            <div class="px-4 py-8 text-center text-slate-500 italic border border-slate-200 bg-slate-50">No approved budget proposals found for this phase.</div>
+            <?php endif; ?>
         </div>
-    </div>
 
-    <div class="progress-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-weight: bold; color: #1f2937;">Budget Utilization Progress</span>
-            <span style="font-weight: bold; color: #1f2937;"><?php echo number_format($utilization, 1); ?>%</span>
+        <div class="mb-8">
+            <h3 class="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Expense Line Items</h3>
+            <?php if (count($expenses) > 0): ?>
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300 text-center">Date</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300">Category</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300">Description</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300">Supplier</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase border border-slate-300 text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($expenses as $expense): ?>
+                    <tr>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-center text-slate-600"><?php echo date('M j, Y', strtotime($expense['expense_date'])); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-700">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                <?php echo htmlspecialchars($expense['category']); ?>
+                            </span>
+                        </td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-700"><?php echo htmlspecialchars($expense['description']); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-600 italic"><?php echo htmlspecialchars($expense['supplier_name'] ?: 'N/A'); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono font-bold text-slate-900">₱<?php echo number_format($expense['amount'], 2); ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    
+                    <tr class="bg-slate-50">
+                        <td colspan="4" class="px-4 py-3 text-right text-sm font-black uppercase text-slate-600 border border-slate-300">Total Phase Expenses:</td>
+                        <td class="px-4 py-3 text-right text-lg font-black text-slate-900 border border-slate-300 font-mono">₱<?php echo number_format($spent, 2); ?></td>
+                    </tr>
+                </tbody>
+            </table>
+            <?php else: ?>
+            <div class="px-4 py-8 text-center text-slate-500 italic border border-slate-200 bg-slate-50">No expenses recorded for this phase yet.</div>
+            <?php endif; ?>
         </div>
-        <div class="progress-bar">
-            <?php
-            $progressClass = 'progress-fill';
-            if ($utilization > 100) {
-                $progressClass .= ' danger';
-            } elseif ($utilization >= 90) {
-                $progressClass .= ' warning';
-            }
-            ?>
-            <div class="<?php echo $progressClass; ?>" style="width: <?php echo min($utilization, 100); ?>%"></div>
+
+        <div class="print-footer mt-12 pt-8">
+            <div class="grid grid-cols-3 gap-8">
+                <div class="text-center">
+                    <p class="text-xs font-bold text-slate-500 uppercase mb-12">Prepared By:</p>
+                    <div class="border-b border-slate-800 w-3/4 mx-auto"></div>
+                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase">System Generated</p>
+                    <p class="text-xs text-slate-500">ICMIS Reporting</p>
+                </div>
+
+                <div class="text-center">
+                    <p class="text-xs font-bold text-slate-500 uppercase mb-12">Verified By:</p>
+                    <div class="border-b border-slate-800 w-3/4 mx-auto"></div>
+                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase">Project Engineer</p> 
+                    <p class="text-xs text-slate-500">Sign & Date</p>
+                </div>
+
+                <div class="text-center">
+                    <p class="text-xs font-bold text-slate-500 uppercase mb-12">Approved By:</p>
+                    <div class="border-b border-slate-800 w-3/4 mx-auto"></div>
+                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase">Project Manager</p> 
+                    <p class="text-xs text-slate-500">Sign & Date</p>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <h2 class="section-title">Approved Budget Proposals</h2>
-    <?php if (count($proposals) > 0): ?>
-    <table class="proposals-table">
-        <thead>
-            <tr>
-                <th style="width: 15%;">Proposal Code</th>
-                <th style="width: 30%;">Title</th>
-                <th style="width: 20%;">Created By</th>
-                <th style="width: 15%;">Date</th>
-                <th style="width: 20%;">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($proposals as $proposal): ?>
-            <tr>
-                <td><?php echo htmlspecialchars($proposal['code']); ?></td>
-                <td><?php echo htmlspecialchars($proposal['title']); ?></td>
-                <td><?php echo htmlspecialchars($proposal['user_name']); ?></td>
-                <td><?php echo date('M j, Y', strtotime($proposal['created_at'])); ?></td>
-                <td style="text-align: right; font-weight: bold;">₱<?php echo number_format($proposal['total_amount'], 2); ?></td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-    <?php else: ?>
-    <div class="no-data">No approved budget proposals found for this phase.</div>
-    <?php endif; ?>
+        <div class="no-print mt-8 text-center">
+            <p class="text-sm text-gray-500 mb-4">Press the button below if printing does not start automatically.</p>
+            <button onclick="window.print()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md transition-colors">
+                Print Report
+            </button>
+        </div>
 
-    <h2 class="section-title">Expense Line Items</h2>
-    <?php if (count($expenses) > 0): ?>
-    <table class="expenses-table">
-        <thead>
-            <tr>
-                <th style="width: 15%;">Date</th>
-                <th style="width: 20%;">Category</th>
-                <th style="width: 35%;">Description</th>
-                <th style="width: 15%;">Supplier</th>
-                <th style="width: 15%;">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($expenses as $expense): ?>
-            <tr>
-                <td><?php echo date('M j, Y', strtotime($expense['expense_date'])); ?></td>
-                <td>
-                    <?php
-                    $catClass = '';
-                    switch($expense['category']) {
-                        case 'MATERIALS': $catClass = 'category-material'; break;
-                        case 'LABOR': $catClass = 'category-labor'; break;
-                        case 'EQUIPMENT': $catClass = 'category-equipment'; break;
-                    }
-                    ?>
-                    <span class="category-badge <?php echo $catClass; ?>"><?php echo htmlspecialchars($expense['category']); ?></span>
-                </td>
-                <td><?php echo htmlspecialchars($expense['description']); ?></td>
-                <td><?php echo htmlspecialchars($expense['supplier_name'] ?: 'N/A'); ?></td>
-                <td style="text-align: right; font-weight: bold;">₱<?php echo number_format($expense['amount'], 2); ?></td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-    <?php else: ?>
-    <div class="no-data">No expenses recorded for this phase yet.</div>
-    <?php endif; ?>
-
-    <div class="total-section">
-        <div class="total-label">Phase Budget Total (Approved Expenses)</div>
-        <div class="total-amount">₱<?php echo number_format($spent, 2); ?></div>
-    </div>
-
-    <div class="footer">
-        <p>This is a computer-generated document. No signature required.</p>
-        <p>Generated on <?php echo date('F j, Y g:i A'); ?> | ICMIS Budget Management System</p>
     </div>
 
     <script>
-        // Auto-print when page loads (for PDF generation)
+        // Auto-print when page loads
         window.onload = function() {
-            window.print();
+            // Small delay to ensure styles and images are loaded
+            setTimeout(() => {
+                window.print();
+            }, 500);
         };
     </script>
 </body>

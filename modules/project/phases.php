@@ -147,7 +147,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Total Phases</p>
-                        <h2 id="statTotalPhases" class="text-2xl font-bold text-gray-900"><?php echo $totalPhases; ?></h2>
+                        <h2 id="statTotalPhases" class="text-2xl font-black text-gray-900"><?php echo $totalPhases; ?></h2>
                         <p class="text-xs text-gray-400">Across all projects</p>
                     </div>
                 </div>
@@ -162,7 +162,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Active Phases</p>
-                        <h2 id="statActivePhases" class="text-2xl font-bold text-gray-900"><?php echo $activeCount; ?></h2>
+                        <h2 id="statActivePhases" class="text-2xl font-black text-gray-900"><?php echo $activeCount; ?></h2>
                         <p class="text-xs text-gray-400">Currently in progress</p>
                     </div>
                 </div>
@@ -177,7 +177,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Completed Phases</p>
-                        <h2 id="statCompletedPhases" class="text-2xl font-bold text-gray-900"><?php echo $completedCount; ?></h2>
+                        <h2 id="statCompletedPhases" class="text-2xl font-black text-gray-900"><?php echo $completedCount; ?></h2>
                         <p class="text-xs text-gray-400">Successfully finished</p>
                     </div>
                 </div>
@@ -192,7 +192,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Upcoming Phases</p>
-                        <h2 id="statUpcomingPhases" class="text-2xl font-bold text-gray-900"><?php echo $upcomingCount; ?></h2>
+                        <h2 id="statUpcomingPhases" class="text-2xl font-black text-gray-900"><?php echo $upcomingCount; ?></h2>
                         <p class="text-xs text-gray-400">Scheduled to start</p>
                     </div>
                 </div>

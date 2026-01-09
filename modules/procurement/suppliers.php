@@ -62,13 +62,13 @@ if (!isset($_SESSION['user_id'])) {
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Supplier Name</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Person</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Supplier Name</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Person</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                <th class="text-center px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="suppliers-table-body" class="divide-y divide-slate-100">

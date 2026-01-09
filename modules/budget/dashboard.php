@@ -276,7 +276,7 @@
             <i data-lucide="wallet" class="w-6 h-6 text-white"></i>
           </div>
           <p class="text-gray-600 text-sm mb-1">Total Budget Allocated</p>
-          <p class="text-gray-900 text-3xl font-bold mb-1">₱<?php echo number_format($total_budget, 2); ?></p>
+          <p class="text-gray-900 text-3xl font-black mb-1">₱<?php echo number_format($total_budget, 2); ?></p>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm p-6 border-2 <?php echo $budget_utilization > 90 ? 'border-red-500' : 'border-green-500'; ?> hover:shadow-lg transition-shadow duration-300">
@@ -284,7 +284,7 @@
             <i data-lucide="trending-down" class="w-6 h-6 text-white"></i>
           </div>
           <p class="text-gray-600 text-sm mb-1">Total Spent</p>
-          <p class="text-gray-900 text-3xl font-bold mb-1">₱<?php echo number_format($actual_spending, 2); ?></p>
+          <p class="text-gray-900 text-3xl font-black mb-1">₱<?php echo number_format($actual_spending, 2); ?></p>
           <p class="text-gray-500 text-xs"><?php echo number_format($budget_utilization, 1); ?>% utilized</p>
         </div>
 
@@ -293,7 +293,7 @@
             <i data-lucide="piggy-bank" class="w-6 h-6 text-white"></i>
           </div>
           <p class="text-gray-600 text-sm mb-1">Remaining Budget</p>
-          <p class="text-gray-900 text-3xl font-bold mb-1">₱<?php echo number_format($remaining_budget, 2); ?></p>
+          <p class="text-gray-900 text-3xl font-black mb-1">₱<?php echo number_format($remaining_budget, 2); ?></p>
           <p class="text-gray-500 text-xs"><?php echo number_format(100 - $budget_utilization, 1); ?>% available</p>
         </div>
 
@@ -302,7 +302,7 @@
             <i data-lucide="layers" class="w-6 h-6 text-white"></i>
           </div>
           <p class="text-gray-600 text-sm mb-1">Active Phases</p>
-          <p class="text-gray-900 text-3xl font-bold mb-1"><?php echo $active_phases_count; ?>/4</p>
+          <p class="text-gray-900 text-3xl font-black mb-1"><?php echo $active_phases_count; ?>/4</p>
           <p class="text-gray-500 text-xs">Currently ongoing</p>
         </div>
       </div>
@@ -351,18 +351,18 @@
             <div class="grid grid-cols-3 gap-3 mb-4">
               <div class="bg-gray-50 rounded-lg p-3 text-center">
                 <p class="text-xs text-gray-500 mb-1">Budget</p>
-                <p class="text-lg font-bold text-gray-900">₱<?php echo number_format($phase['allocated'], 2); ?></p>
+                <p class="text-lg font-black text-gray-900">₱<?php echo number_format($phase['allocated'], 2); ?></p>
               </div>
 
               <div class="bg-gray-50 rounded-lg p-3 text-center">
                 <p class="text-xs text-gray-500 mb-1">Spent</p>
-                <p class="text-lg font-bold text-<?php echo $color; ?>-600">₱<?php echo number_format($phase['spent'], 2); ?></p>
+                <p class="text-lg font-black text-<?php echo $color; ?>-600">₱<?php echo number_format($phase['spent'], 2); ?></p>
                 <p class="text-xs text-gray-500"><?php echo number_format($phase['utilization'], 1); ?>%</p>
               </div>
 
               <div class="bg-gray-50 rounded-lg p-3 text-center">
                 <p class="text-xs text-gray-500 mb-1">Remaining</p>
-                <p class="text-lg font-bold text-gray-900">₱<?php echo number_format($phase['remaining'], 2); ?></p>
+                <p class="text-lg font-black text-gray-900">₱<?php echo number_format($phase['remaining'], 2); ?></p>
                 <p class="text-xs text-gray-500"><?php echo number_format(100 - $phase['utilization'], 1); ?>%</p>
               </div>
             </div>
@@ -450,7 +450,7 @@
   </main>
 
   <div id="phase-detail-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[96vh] overflow-hidden">
       <div class="bg-linear-to-r from-slate-800 to-slate-700 px-6 py-5 relative">
         <div class="absolute top-0 left-0 right-0 h-1 phase-modal-border"></div>
         <div class="flex items-center justify-between">
@@ -506,23 +506,23 @@
           <div class="grid grid-cols-3 gap-4 p-6 border-b border-gray-200">
             <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
               <p class="text-xs text-green-600 font-medium mb-1">ALLOCATED</p>
-              <p class="text-2xl font-bold text-green-700" id="receipt-allocated">₱0.00</p>
+              <p class="text-2xl font-black text-green-700" id="receipt-allocated">₱0.00</p>
             </div>
             <div class="border rounded-lg p-4 text-center receipt-spent-card">
               <p class="text-xs font-medium mb-1">SPENT</p>
-              <p class="text-2xl font-bold" id="receipt-spent">₱0.00</p>
+              <p class="text-2xl font-black" id="receipt-spent">₱0.00</p>
               <p class="text-xs text-gray-600 mt-1" id="receipt-utilization">0%</p>
             </div>
             <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
               <p class="text-xs text-purple-600 font-medium mb-1">REMAINING</p>
-              <p class="text-2xl font-bold text-purple-700" id="receipt-remaining">₱0.00</p>
+              <p class="text-2xl font-black text-purple-700" id="receipt-remaining">₱0.00</p>
             </div>
           </div>
 
           <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-semibold text-gray-700">Budget Utilization</span>
-              <span class="text-sm font-bold text-gray-900" id="receipt-util-percent">0%</span>
+              <span class="text-sm font-black text-gray-900" id="receipt-util-percent">0%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
               <div id="receipt-progress-bar" class="h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
@@ -565,15 +565,11 @@
         </div>
       </div>
 
-      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-        <button type="button" onclick="printPhaseDetails()" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
-          <i data-lucide="printer" class="w-4 h-4"></i>
-          Print
-        </button>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end">
         <div class="flex gap-2">
           <button type="button" onclick="downloadPhasePDF()" class="flex items-center gap-2 px-4 py-2 bg-[#e9922c] hover:bg-[#d17f1f] text-white rounded-lg text-sm font-medium transition-colors">
-            <i data-lucide="download" class="w-4 h-4"></i>
-            Download PDF
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            Print
           </button>
           <button type="button" id="close-phase-modal-btn-2" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors">
             Close
@@ -584,284 +580,11 @@
   </div>
 
   <script>
-    // Initialize Lucide icons
-    lucide.createIcons();
-
-    // ============================================
-    // PHASE DETAIL MODAL FUNCTIONALITY
-    // ============================================
-
-    const phaseModal = document.getElementById('phase-detail-modal');
-    const closePhaseModalBtn = document.getElementById('close-phase-modal-btn');
-    const closePhaseModalBtn2 = document.getElementById('close-phase-modal-btn-2');
-    
-    // Phase data storage
-    let currentPhaseData = null;
-
-    // Phase colors mapping
-    const phaseColors = {
-      'Phase 1: Mobilization': { color: 'blue', bg: 'bg-blue-500', border: 'border-blue-500' },
-      'Phase 2: Structural': { color: 'purple', bg: 'bg-purple-500', border: 'border-purple-500' },
-      'Phase 3: MEPFS': { color: 'orange', bg: 'bg-orange-500', border: 'border-orange-500' },
-      'Phase 4: Finishing': { color: 'green', bg: 'bg-green-500', border: 'border-green-500' }
-    };
-
-    // Open phase detail modal
-    function openPhaseModal(phaseName) {
-      <?php if ($selected_project_id > 0): ?>
-      const phaseData = <?php echo json_encode($phases_data); ?>;
-      
-      if (!phaseData[phaseName]) {
-        showToast('Phase data not found', 'error');
-        return;
-      }
-
-      currentPhaseData = phaseData[phaseName];
-      const colors = phaseColors[phaseName];
-
-      // Update modal styling
-      document.querySelectorAll('.phase-modal-border').forEach(el => {
-        el.className = 'absolute top-0 left-0 right-0 h-1 phase-modal-border ' + colors.bg;
-      });
-      document.querySelectorAll('.phase-border').forEach(el => {
-        el.className = 'border-t-4 phase-border ' + colors.border;
-      });
-      document.querySelectorAll('.phase-total-bg').forEach(el => {
-        el.className = 'border-t-2 border-dashed border-gray-300 phase-total-bg p-6 ' + colors.bg;
-      });
-
-      // Update receipt content
-      document.getElementById('receipt-phase-name').textContent = phaseName;
-      document.getElementById('receipt-date-range').textContent = currentPhaseData.date_range;
-      document.getElementById('receipt-project-name').textContent = '<?php echo addslashes($project_name); ?>';
-
-      // Status badge
-      const statusBadge = document.getElementById('receipt-phase-status');
-      const statusColors = {
-        'Completed': 'bg-green-100 text-green-700 border-green-300',
-        'Active': 'bg-blue-100 text-blue-700 border-blue-300',
-        'Upcoming': 'bg-gray-100 text-gray-600 border-gray-300',
-        'Over Budget': 'bg-red-100 text-red-700 border-red-300'
-      };
-      statusBadge.className = 'inline-block px-3 py-1 text-xs font-semibold rounded-full border ' + statusColors[currentPhaseData.status];
-      statusBadge.textContent = currentPhaseData.status;
-
-      // Financial summary - Display full amounts without M suffix
-      document.getElementById('receipt-allocated').textContent = '₱' + currentPhaseData.allocated.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      document.getElementById('receipt-spent').textContent = '₱' + currentPhaseData.spent.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      document.getElementById('receipt-remaining').textContent = '₱' + currentPhaseData.remaining.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      document.getElementById('receipt-utilization').textContent = currentPhaseData.utilization.toFixed(1) + '% utilized';
-      document.getElementById('receipt-util-percent').textContent = currentPhaseData.utilization.toFixed(1) + '%';
-      document.getElementById('receipt-grand-total').textContent = '₱' + currentPhaseData.spent.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-      // Update spent card color
-      const spentCard = document.querySelector('.receipt-spent-card');
-      if (currentPhaseData.utilization > 100) {
-        spentCard.className = 'bg-red-50 border border-red-200 rounded-lg p-4 text-center receipt-spent-card';
-        spentCard.querySelector('p:first-child').className = 'text-xs text-red-600 font-medium mb-1';
-        spentCard.querySelector('p:nth-child(2)').className = 'text-2xl font-bold text-red-700';
-      } else {
-        spentCard.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 text-center receipt-spent-card';
-        spentCard.querySelector('p:first-child').className = 'text-xs text-blue-600 font-medium mb-1';
-        spentCard.querySelector('p:nth-child(2)').className = 'text-2xl font-bold text-blue-700';
-      }
-
-      // Progress bar
-      const progressBar = document.getElementById('receipt-progress-bar');
-      let progressColor = 'bg-green-500';
-      if (currentPhaseData.utilization > 100) {
-        progressColor = 'bg-red-500';
-      } else if (currentPhaseData.utilization >= 90) {
-        progressColor = 'bg-orange-500';
-      } else if (currentPhaseData.utilization >= 70) {
-        progressColor = 'bg-yellow-500';
-      }
-      progressBar.className = 'h-4 rounded-full transition-all duration-300 ' + progressColor;
-      progressBar.style.width = Math.min(currentPhaseData.utilization, 100) + '%';
-
-      // Fetch budget proposals and line items
-      fetchPhaseBudgetProposals(phaseName);
-      fetchPhaseLineItems(phaseName);
-
-      // Show modal
-      phaseModal.classList.remove('hidden');
-      document.body.classList.add('modal-open');
-      lucide.createIcons();
-      <?php else: ?>
-      showToast('Please select a project first', 'error');
-      <?php endif; ?>
-    }
-
-    async function fetchPhaseBudgetProposals(phaseName) {
-      const proposalsContainer = document.getElementById('receipt-budget-proposals');
-      proposalsContainer.innerHTML = '<div class="text-center py-4"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-gray-400"></i></div>';
-      lucide.createIcons();
-
-      try {
-        const response = await fetch(`budget_expenses/get_phase_budget_proposals.php?project_id=<?php echo $selected_project_id; ?>&phase=${encodeURIComponent(phaseName)}`);
-        const result = await response.json();
-
-        if (result.success && result.proposals.length > 0) {
-          const proposals = result.proposals;
-          let html = '';
-
-          proposals.forEach(proposal => {
-            const statusColors = {
-              'APPROVED': 'bg-green-100 text-green-700 border-green-300'
-            };
-            const badgeClass = statusColors[proposal.status] || 'bg-gray-100 text-gray-700 border-gray-300';
-            const formattedDate = new Date(proposal.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-
-            html += `
-              <div class="border border-gray-200 rounded-lg p-4 hover:border-${phaseColors[phaseName].color}-400 hover:shadow-md transition-all duration-200">
-                <div class="flex items-start justify-between mb-3">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                      <span class="${badgeClass} px-2 py-1 rounded border text-xs font-semibold">${proposal.status}</span>
-                      <span class="text-xs text-gray-500">${formattedDate}</span>
-                    </div>
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">${proposal.code}</span>
-                      <h4 class="text-sm font-bold text-gray-900">${proposal.title}</h4>
-                    </div>
-                    <p class="text-xs text-gray-600 mt-1">${proposal.description}</p>
-                    <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                      <span><i data-lucide="calendar" class="w-3 h-3 inline"></i> ${proposal.phase_start_date} to ${proposal.phase_end_date}</span>
-                      <span><i data-lucide="layers" class="w-3 h-3 inline"></i> ${proposal.line_item_count} line items</span>
-                      <span><i data-lucide="user" class="w-3 h-3 inline"></i> ${proposal.user_name}</span>
-                    </div>
-                  </div>
-                  <div class="text-right ml-4">
-                    <p class="text-lg font-bold text-gray-900">₱${parseFloat(proposal.total_amount).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                    <span class="text-xs text-gray-500">Total Budget</span>
-                  </div>
-                </div>
-              </div>
-            `;
-          });
-
-          proposalsContainer.innerHTML = html;
-        } else {
-          proposalsContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><p>No approved budget proposals for this phase yet.</p></div>';
-        }
-
-        lucide.createIcons();
-      } catch (error) {
-        console.error('Error fetching phase budget proposals:', error);
-        proposalsContainer.innerHTML = '<div class="text-center py-8 text-red-500"><p>Failed to load budget proposals. Please try again.</p></div>';
-      }
-    }
-
-    async function fetchPhaseLineItems(phaseName) {
-      const lineItemsContainer = document.getElementById('receipt-line-items');
-      lineItemsContainer.innerHTML = '<div class="text-center py-4"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-gray-400"></i></div>';
-      lucide.createIcons();
-
-      try {
-        const response = await fetch(`budget_expenses/get_phase_expenses.php?project_id=<?php echo $selected_project_id; ?>&phase=${encodeURIComponent(phaseName)}`);
-        const result = await response.json();
-
-        if (result.success && result.expenses.length > 0) {
-          const expenses = result.expenses;
-          let html = '';
-
-          expenses.forEach(expense => {
-            const categoryColors = {
-              'MATERIALS': 'bg-purple-100 text-purple-700 border-purple-300',
-              'LABOR': 'bg-amber-100 text-amber-700 border-amber-300',
-              'EQUIPMENT': 'bg-green-100 text-green-700 border-green-300'
-            };
-            const badgeClass = categoryColors[expense.category] || 'bg-gray-100 text-gray-700 border-gray-300';
-
-            html += `
-              <div class="border border-gray-200 rounded-lg p-4 hover:border-${phaseColors[phaseName].color}-400 hover:shadow-md transition-all duration-200">
-                <div class="flex items-start justify-between mb-2">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="${badgeClass} px-2 py-1 rounded border text-xs font-semibold">${expense.category}</span>
-                      <span class="text-xs text-gray-500">${new Date(expense.expense_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                    </div>
-                    <p class="text-sm font-medium text-gray-900">${expense.description}</p>
-                    <p class="text-xs text-gray-600 mt-1">Supplier: ${expense.supplier_name || 'N/A'}</p>
-                  </div>
-                  <div class="text-right ml-4">
-                    <p class="text-lg font-bold text-gray-900">₱${parseFloat(expense.amount).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                    <span class="text-xs ${expense.status === 'APPROVED' ? 'text-green-600' : 'text-amber-600'}">${expense.status}</span>
-                  </div>
-                </div>
-              </div>
-            `;
-          });
-
-          lineItemsContainer.innerHTML = html;
-        } else {
-          lineItemsContainer.innerHTML = '<div class="text-center py-8 text-gray-500"><p>No expenses recorded for this phase yet.</p></div>';
-        }
-
-        lucide.createIcons();
-      } catch (error) {
-        console.error('Error fetching phase expenses:', error);
-        lineItemsContainer.innerHTML = '<div class="text-center py-8 text-red-500"><p>Failed to load expenses. Please try again.</p></div>';
-      }
-    }
-
-    function closePhaseModal() {
-      phaseModal.classList.add('hidden');
-      document.body.classList.remove('modal-open');
-      currentPhaseData = null;
-    }
-
-    // Event listeners
-    closePhaseModalBtn.addEventListener('click', closePhaseModal);
-    closePhaseModalBtn2.addEventListener('click', closePhaseModal);
-    phaseModal.addEventListener('click', (e) => {
-      if (e.target === phaseModal) {
-        closePhaseModal();
-      }
-    });
-
-    // Phase card click handlers
-    document.querySelectorAll('.phase-card').forEach(card => {
-      card.addEventListener('click', function() {
-        const phaseName = this.dataset.phase;
-        openPhaseModal(phaseName);
-      });
-    });
-
-    // Print function
-    function printPhaseDetails() {
-      window.print();
-    }
-
-    // Download PDF function
-    function downloadPhasePDF() {
-      if (!currentPhaseData) return;
-      
-      // Open PDF generator in new window/tab
-      const pdfUrl = `download_phase_pdf.php?project_id=<?php echo $selected_project_id; ?>&phase=${encodeURIComponent(currentPhaseData.phase)}`;
-      window.open(pdfUrl, '_blank');
-    }
-
-    // Add print styles
-    const printStyles = document.createElement('style');
-    printStyles.textContent = `
-      @media print {
-        body * { visibility: hidden; }
-        #receipt-content, #receipt-content * { visibility: visible; }
-        #receipt-content { position: absolute; left: 0; top: 0; width: 100%; }
-        .no-print { display: none !important; }
-      }
-    `;
-    document.head.appendChild(printStyles);
-
-    // Prevent background scroll when modal is open
-    const style = document.createElement('style');
-    style.textContent = `
-      body.modal-open {
-        overflow: hidden;
-      }
-    `;
-    document.head.appendChild(style);
+    // expose server-side data to external JS
+    window.PHASES_DATA = <?php echo json_encode($phases_data); ?>;
+    window.SELECTED_PROJECT_ID = <?php echo (int)$selected_project_id; ?>;
+    window.PROJECT_NAME = <?php echo json_encode($project_name); ?>;
   </script>
+  <script src="js/dashboard.js"></script>
 </body>
 </html>

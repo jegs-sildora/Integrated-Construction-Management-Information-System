@@ -1,47 +1,45 @@
+<?php
+// If requested via AJAX POST, return JSON before emitting any HTML
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    $input = json_decode(file_get_contents('php://input'), true);
+    $message = htmlspecialchars($input['message'] ?? '');
+    $type = $input['type'] ?? 'success';
+    $config = [
+        'success' => ['icon' => '<i class="fa-solid fa-check"></i>', 'color' => 'text-green-500', 'bg' => 'bg-green-100', 'border' => 'border-green-200'],
+        'error' => ['icon' => '<i class="fa-solid fa-xmark"></i>', 'color' => 'text-red-500', 'bg' => 'bg-red-100', 'border' => 'border-red-200'],
+        'warning' => ['icon' => '<i class="fa-solid fa-exclamation"></i>', 'color' => 'text-amber-500', 'bg' => 'bg-amber-100', 'border' => 'border-amber-200'],
+        'info' => ['icon' => '<i class="fa-solid fa-info"></i>', 'color' => 'text-blue-500', 'bg' => 'bg-blue-100', 'border' => 'border-blue-200']
+    ];
+    $theme = $config[$type] ?? $config['success'];
+    $toastId = 'toast-' . time() . rand(1000, 9999);
+    $toast = "<div id=\"$toastId\" class=\"pointer-events-auto flex items-center w-full max-w-xs p-4 bg-white rounded-xl shadow-xl border {$theme['border']} animate-slide-in mb-3 backdrop-blur-sm bg-opacity-95\">\n        <div class=\"inline-flex items-center justify-center shrink-0 w-8 h-8 {$theme['color']} {$theme['bg']} rounded-lg shadow-sm\">\n            {$theme['icon']}\n        </div>\n        <div class=\"ml-3 text-sm font-bold text-gray-800 leading-snug\">$message</div>\n        <button type=\"button\" class=\"ml-auto -mx-1.5 -my-1.5 bg-transparent text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-50 inline-flex items-center justify-center h-8 w-8 transition-colors duration-200\" onclick=\"dismissToast('$toastId')\">\n            <i class=\"fa-solid fa-xmark\"></i>\n        </button>\n    </div>";
+    echo json_encode(['html' => $toast, 'id' => $toastId]);
+    exit;
+}
+?>
+
 <style>
     /* Professional Slide-In Animation (Smooth Deceleration) */
     @keyframes slideInRight {
-        0% {
-            transform: translateX(120%);
-            opacity: 0;
-        }
-        100% {
-            transform: translateX(0);
-            opacity: 1;
-        }
+        0% { transform: translateX(120%); opacity: 0; }
+        100% { transform: translateX(0); opacity: 1; }
     }
 
     /* Professional Slide-Out Animation (Smooth Acceleration) */
     @keyframes slideOutRight {
-        0% {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        100% {
-            transform: translateX(120%);
-            opacity: 0;
-        }
+        0% { transform: translateX(0); opacity: 1; }
+        100% { transform: translateX(120%); opacity: 0; }
     }
 
-    .animate-slide-in {
-        animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .animate-slide-out {
-        animation: slideOutRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
+    .animate-slide-in { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-slide-out { animation: slideOutRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 </style>
 
 <div id="toast-container" class="fixed top-5 right-5 space-y-4 z-[9999] pointer-events-none font-sans"></div>
 
 <script>
-    function showToast(message, type = 'success', persist = false) {
-        // Handle persistent messages (e.g. across reloads)
-        if (persist) {
-            sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
-            return;
-        }
-
+    function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
         if (!container) return;
 

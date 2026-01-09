@@ -1,5 +1,21 @@
 // js/inventory.js
 
+// AJAX Toast Function
+function showToastAjax(message, type = 'success', persist = false) {
+    if (persist) {
+        sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
+        return;
+    }
+    fetch('/icmis/includes/toast.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, type })
+    }).then(r => r.json()).then(data => {
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', data.html);
+        setTimeout(() => dismissToast(data.id), 4000);
+    }).catch(err => console.error('Toast error:', err));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     fetchInventory();
 });
@@ -109,9 +125,6 @@ function fetchInventory() {
     })
     .catch(error => {
         console.error("Error loading inventory:", error);
-        // Assuming global showToast exists from your previous files
-        if (typeof showToast === "function") {
-            showToast("Error loading inventory data", "error");
-        }
+        showToastAjax("Error loading inventory data", "error");
     });
 }

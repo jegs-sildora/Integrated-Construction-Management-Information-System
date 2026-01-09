@@ -67,6 +67,7 @@ if ($project_id > 0) {
 
     <?php include '../../includes/sidebar.php'; ?>
     <?php include '../../includes/header.php'; ?>
+    <?php include '../../includes/toast.php'; ?>
 
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
@@ -159,11 +160,12 @@ if ($project_id > 0) {
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Item Name</th>
-                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Qty Issued</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Stock ID</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Item Name</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Qty Issued</th>
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Unit</th>
-                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Issued To</th>
-                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Date</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Issued To</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Date</th>
                                 </tr>
                             </thead>
                             <tbody id="stock-out-table-body" class="divide-y divide-slate-100">
@@ -206,9 +208,53 @@ if ($project_id > 0) {
                             </div>
                         </div>
                         <p id="stock_quantity_error" class="text-sm text-red-600 font-bold text-center" aria-live="polite"></p>
+                        <?php
+                            // Fetch employees whose job title is 'Warehouseman'
+                            $warehousemen = [];
+                            $wm_sql = "SELECT we.employee_id, we.employee_code, we.first_name, we.last_name FROM workforce_employees we JOIN workforce_job_titles wjt ON we.job_title_id = wjt.job_title_id WHERE wjt.title_name = 'Warehouseman' AND COALESCE(we.status, 'Active') = 'Active' ORDER BY we.first_name, we.last_name";
+                            if ($wm_stmt = $conn->prepare($wm_sql)) {
+                                $wm_stmt->execute();
+                                $wm_res = $wm_stmt->get_result();
+                                while ($wm_row = $wm_res->fetch_assoc()) {
+                                    $warehousemen[] = $wm_row;
+                                }
+                                $wm_stmt->close();
+                            }
+                        ?>
+
                         <div class="flex flex-col gap-1.5">
                             <label class="text-xs font-bold text-slate-500 uppercase">Issued To (Person/Area)</label>
-                            <input type="text" id="stock_issuedTo" name="stock_issuedTo" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all">
+                            <input type="text" id="stock_issuedTo" name="stock_issuedTo" list="warehouseman_list" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all" placeholder="Enter employee name...">
+
+                            <datalist id="warehouseman_list">
+                                <?php if (!empty($warehousemen)): ?>
+                                    <?php foreach ($warehousemen as $wm): ?>
+                                                <?php $display = '(' . htmlspecialchars($wm['employee_code']) . ') - ' . htmlspecialchars(trim($wm['first_name'] . ' ' . $wm['last_name'])); ?>
+                                                <option value="<?= $display ?>"><?= $display ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </datalist>
+
+                            <input type="hidden" id="stock_issuedTo_id" name="stock_issuedTo_id" value="">
+
+                            <?php
+                                // Build a name -> id map for client-side lookup
+                                $warehousemen_map = [];
+                                foreach ($warehousemen as $wm) {
+                                    $code = isset($wm['employee_code']) ? $wm['employee_code'] : '';
+                                    $full = trim($wm['first_name'] . ' ' . $wm['last_name']);
+                                    if ($code !== '') {
+                                        $display = '(' . $code . ') - ' . $full;
+                                        $warehousemen_map[$display] = [
+                                            'id' => (int)$wm['employee_id'],
+                                            'code' => $code
+                                        ];
+                                    }
+                                }
+                            ?>
+                            <script>
+                                window.warehousemenMap = <?= json_encode($warehousemen_map, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?> || {};
+                            </script>
                         </div>
                         <div class="flex flex-col gap-1.5">
                             <label class="text-xs font-bold text-slate-500 uppercase">Notes (Optional)</label>

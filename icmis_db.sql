@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 08, 2026 at 08:29 AM
+-- Generation Time: Jan 09, 2026 at 02:16 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -88,7 +88,15 @@ INSERT INTO `budget_generated_reports` (`report_id`, `project_id`, `report_type`
 (19, 1, 'labor-analysis', 'Labor Cost Analysis', 'John Doe', '2026-01-07 01:27:42'),
 (20, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 01:28:01'),
 (21, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 04:33:06'),
-(22, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 04:34:48');
+(22, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 04:34:48'),
+(23, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-08 18:51:25'),
+(24, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-08 21:07:23'),
+(25, 1, 'phase-analysis', 'Phase Analysis (Phase 1)', 'John Doe', '2026-01-08 21:07:30'),
+(26, 1, 'labor-analysis', 'Labor Cost Analysis', 'John Doe', '2026-01-08 21:07:34'),
+(27, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-08 21:07:38'),
+(28, 1, 'cash-flow', 'Cash Flow (Monthly)', 'John Doe', '2026-01-08 21:07:40'),
+(29, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-09 13:41:30'),
+(30, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-09 13:41:31');
 
 -- --------------------------------------------------------
 
@@ -165,7 +173,8 @@ CREATE TABLE `icmis_projects` (
 --
 
 INSERT INTO `icmis_projects` (`project_id`, `project_code`, `project_name`, `description`, `location`, `status`, `start_date`, `end_date`, `completion_rate`, `project_manager_id`, `total_budget`) VALUES
-(1, 'PRJ-2026-001', 'Davao', 'Sample Construction Project', 'Davao City', 'Planning', '2026-01-07', '2027-01-07', 0.00, NULL, 50000000.00);
+(1, 'PRJ-2026-001', 'Davao', 'Sample Construction Project', 'Davao City', 'Planning', '2026-01-07', '2027-01-07', 0.00, NULL, 50000000.00),
+(4, 'PRJ-2026-002', 'Villa Angela Clubhouse', 'asdf', 'asdf', 'Planning', '2026-01-09', '2028-02-09', 0.00, 12, 12000000.00);
 
 -- --------------------------------------------------------
 
@@ -292,7 +301,7 @@ CREATE TABLE `procurement_inventory` (
 --
 
 INSERT INTO `procurement_inventory` (`item_id`, `item_name`, `category`, `quantity`, `unit`, `project_id`, `phase_id`, `unit_cost`, `last_updated`) VALUES
-(3, 'Tie Wire #16 (kg)', 'General', 112.00, 'pcs', 1, 1, 12.00, '2026-01-08 05:38:26');
+(3, 'Tie Wire #16 (kg)', 'General', 0.00, 'pcs', 1, 1, 12.00, '2026-01-08 20:59:00');
 
 -- --------------------------------------------------------
 
@@ -380,6 +389,13 @@ CREATE TABLE `procurement_stock_out` (
   `project_id` int DEFAULT NULL,
   `date_issued` date DEFAULT (curdate())
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `procurement_stock_out`
+--
+
+INSERT INTO `procurement_stock_out` (`stock_out_id`, `item_id`, `quantity`, `issued_to_employee_id`, `project_id`, `date_issued`) VALUES
+(1, 3, 112, 10, NULL, '2026-01-09');
 
 -- --------------------------------------------------------
 
@@ -523,7 +539,8 @@ INSERT INTO `workforce_employees` (`employee_id`, `employee_code`, `user_id`, `j
 (25, 'EMP-2026-025', 26, 25, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Tyler', 'Tan', NULL, NULL, NULL, 'tyler.t@icmis.com', '0917-400-0025', NULL, 'Active', '2026-02-05'),
 (26, 'EMP-2026-026', 27, 26, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Jose', 'Glas', NULL, NULL, NULL, 'jose.g@icmis.com', '0917-400-0026', NULL, 'Active', '2026-02-10'),
 (27, 'EMP-2026-027', 28, 27, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Boyet', 'Labos', NULL, NULL, NULL, 'boyet.l@icmis.com', '0917-500-0027', NULL, 'Active', '2026-01-05'),
-(28, 'EMP-2026-028', 29, 28, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Juan', 'Dela Cruz', NULL, NULL, NULL, 'juan.d@icmis.com', '0917-500-0028', NULL, 'Active', '2026-01-05');
+(28, 'EMP-2026-028', 29, 28, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Juan', 'Dela Cruz', NULL, NULL, NULL, 'juan.d@icmis.com', '0917-500-0028', NULL, 'Active', '2026-01-05'),
+(39, 'EMP-2026-029', NULL, 1, 'Full-time', 'Monthly', 2500.00, 65000.00, 'Land Bank of the Philippines (LANDBANK)', '090129091092091090', 'Math Badajos', '+63 909090909', NULL, '0', 'Math', 'Badajos', 'Jr.', 'Male', '2005-09-22', 'math.badajos@icmis.com', '+63 9099010900', 'asdfasdfasdffdf', 'Active', '2026-01-09');
 
 -- --------------------------------------------------------
 
@@ -984,37 +1001,37 @@ ALTER TABLE `workforce_skills`
 -- AUTO_INCREMENT for table `budget_expenses`
 --
 ALTER TABLE `budget_expenses`
-  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `budget_generated_reports`
 --
 ALTER TABLE `budget_generated_reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `budget_line_items`
 --
 ALTER TABLE `budget_line_items`
-  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `budget_proposals`
 --
 ALTER TABLE `budget_proposals`
-  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `icmis_projects`
 --
 ALTER TABLE `icmis_projects`
-  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `icmis_project_phases`
 --
 ALTER TABLE `icmis_project_phases`
-  MODIFY `phase_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `phase_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `icmis_tasks`
@@ -1038,37 +1055,37 @@ ALTER TABLE `procurement_inventory`
 -- AUTO_INCREMENT for table `procurement_purchase_orders`
 --
 ALTER TABLE `procurement_purchase_orders`
-  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_order_items`
 --
 ALTER TABLE `procurement_purchase_order_items`
-  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_in`
 --
 ALTER TABLE `procurement_stock_in`
-  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_out`
 --
 ALTER TABLE `procurement_stock_out`
-  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `procurement_suppliers`
 --
 ALTER TABLE `procurement_suppliers`
-  MODIFY `supplier_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `supplier_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `workforce_assignments`
 --
 ALTER TABLE `workforce_assignments`
-  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT for table `workforce_attendance`
@@ -1080,7 +1097,7 @@ ALTER TABLE `workforce_attendance`
 -- AUTO_INCREMENT for table `workforce_employees`
 --
 ALTER TABLE `workforce_employees`
-  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `workforce_employee_groups`

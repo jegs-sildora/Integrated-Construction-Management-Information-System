@@ -201,7 +201,7 @@ function createEmployee($conn) {
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new Exception("Database Error: " . $conn->error);
 
-    $stmt->bind_param("sssssssssissddssssisss", 
+    $stmt->bind_param("sssssssssissddsssssisss", 
         $data['employee_code'], $data['first_name'], $data['last_name'], $data['suffix'], $data['gender'],
         $birthday, $data['email'], $data['phone'], $data['address'], $job_title_id, 
         $data['employment_type'], $data['payment_type'], $daily_rate, $monthly_salary,
@@ -241,7 +241,7 @@ function updateEmployee($conn) {
     $stmt = $conn->prepare($sql);
     if (!$stmt) throw new Exception("Database Error: " . $conn->error);
     
-    $stmt->bind_param("ssssssssissddssssissi",
+    $stmt->bind_param("ssssssssissddsssssissi",
         $data['first_name'], $data['last_name'], $data['suffix'], $data['gender'], $birthday, $data['email'],
         $data['phone'], $data['address'], $job_title_id, $data['employment_type'], $data['payment_type'],
         $daily_rate, $monthly_salary, $data['bank_name'], $data['bank_account'],

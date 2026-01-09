@@ -940,5 +940,14 @@ $pageSection = "Budget & Cost Control";
     window.editItem = editItem;
     window.removeItem = removeItem;
 </script>
+<script>
+    window.EDIT_PROPOSAL_DATA = {
+        proposalId: <?php echo json_encode($proposal_id); ?>,
+        savedProjectId: <?php echo json_encode($proposal['project_id']); ?>,
+        savedPhaseId: <?php echo json_encode($proposal['phase_id'] ?? ''); ?>,
+        existingItems: <?php echo json_encode($line_items); ?>
+    };
+</script>
+<script src="js/edit_proposal.js"></script>
 </body>
 </html>

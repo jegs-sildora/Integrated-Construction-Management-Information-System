@@ -1,7 +1,39 @@
+// AJAX Toast Function
+function showToastAjax(message, type = 'success', persist = false) {
+    if (persist) {
+        sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
+        return;
+    }
+    fetch('/icmis/includes/toast.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, type })
+    }).then(r => r.json()).then(data => {
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', data.html);
+        setTimeout(() => dismissToast(data.id), 4000);
+    }).catch(err => console.error('Toast error:', err));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     fetchStockOuts();       
     loadInventoryDropdown(); 
 });
+
+// Keep mapping between displayed "(CODE) - Name" and employee data (populated server-side)
+// `warehousemenMap` is injected on the page where the datalist lives.
+const issuedToInput = document.getElementById("stock_issuedTo");
+const issuedToIdInput = document.getElementById("stock_issuedTo_id");
+if (issuedToInput) {
+    issuedToInput.addEventListener('input', function() {
+        const key = this.value.trim();
+        if (typeof window.warehousemenMap !== 'undefined' && warehousemenMap[key]) {
+            const entry = warehousemenMap[key];
+            if (issuedToIdInput) issuedToIdInput.value = entry.id || '';
+        } else {
+            if (issuedToIdInput) issuedToIdInput.value = '';
+        }
+    });
+}
 
 let currentMaxStock = 0.0; 
 
@@ -24,14 +56,13 @@ function fetchStockOuts() {
 
         data.forEach(row => {
             let tr = `
-                <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors">
-                    <td class="px-6 py-4 font-bold text-slate-600 text-sm whitespace-nowrap">${row.stock_out_id}</td>
-                    <td class="px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${row.item_name}</td>
-                    <td class="px-6 py-4 font-bold text-red-500 text-sm whitespace-nowrap">-${row.quantity}</td>
-                    <td class="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">${row.unit}</td>
-                    <td class="px-6 py-4 text-slate-700 text-sm whitespace-nowrap">${row.issued_to}</td>
-                    <td class="px-6 py-4 text-slate-500 text-sm whitespace-nowrap">${row.date_issued}</td>
-                    <td class="px-6 py-4 text-slate-400 text-sm whitespace-nowrap italic">${row.project_name || '-'}</td>
+                <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors text-center">
+                    <td class="text-center px-6 py-4 font-bold text-slate-600 text-sm whitespace-nowrap">${row.stock_out_id}</td>
+                    <td class="text-center px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${row.item_name}</td>
+                    <td class="text-center px-6 py-4 font-bold text-red-500 text-sm whitespace-nowrap">-${row.quantity}</td>
+                    <td class="text-center px-6 py-4 text-slate-500 text-sm whitespace-nowrap">${row.unit}</td>
+                    <td class="text-center px-6 py-4 text-slate-700 text-sm whitespace-nowrap">${row.issued_to}</td>
+                    <td class="text-center px-6 py-4 text-slate-500 text-sm whitespace-nowrap">${row.date_issued}</td>
                 </tr>
             `;
             tbody.innerHTML += tr;
@@ -152,19 +183,28 @@ if(form) {
         const qtyEl = document.getElementById("stock_quantity");
 
         if (qty <= 0) {
-            if(typeof showToast === 'function') showToast('Quantity must be greater than 0.', "error");
-            else alert('Quantity must be greater than 0.');
+            showToastAjax('Quantity must be greater than 0.', "error");
             const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = 'Quantity must be greater than 0.';
             if(qtyEl) qtyEl.focus();
             return;
         }
 
         if (currentMaxStock > 0 && qty > currentMaxStock) {
-            if(typeof showToast === 'function') showToast(`Cannot issue ${qty}. Only ${currentMaxStock} in stock!`, "error");
-            else alert(`Cannot issue ${qty}. Only ${currentMaxStock} in stock!`);
+            showToastAjax(`Cannot issue ${qty}. Only ${currentMaxStock} in stock!`, "error");
             const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = `Cannot issue ${qty}. Only ${currentMaxStock} in stock.`;
             if(qtyEl) qtyEl.focus();
             return; 
+        }
+
+        // Ensure we set the selected warehouseman id (if matched) before submitting
+        try {
+            if (issuedToInput && issuedToIdInput && typeof window.warehousemenMap !== 'undefined') {
+                const selectedKey = issuedToInput.value.trim();
+                const ent = warehousemenMap[selectedKey];
+                issuedToIdInput.value = ent && ent.id ? ent.id : '';
+            }
+        } catch (e) {
+            console.warn('warehousemen mapping not available', e);
         }
 
         let formData = new FormData(this);
@@ -173,8 +213,7 @@ if(form) {
         .then(response => response.json())
         .then(data => {
             if (data.status === "success") {
-                if(typeof showToast === 'function') showToast(data.message, "success");
-                else alert(data.message);
+                showToastAjax(data.message, "success");
                 
                 closeIssueModal();
                 const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = '';
@@ -182,13 +221,12 @@ if(form) {
                 fetchStockOuts();       
                 loadInventoryDropdown(); 
             } else {
-                if(typeof showToast === 'function') showToast("Error: " + data.message, "error");
-                else alert("Error: " + data.message);
+                showToastAjax("Error: " + data.message, "error");
             }
         })
         .catch(error => {
             console.error(error);
-            if(typeof showToast === 'function') showToast("Server Error", "error");
+            showToastAjax("Server Error", "error");
         });
     });
 }

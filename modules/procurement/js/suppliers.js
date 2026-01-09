@@ -1,3 +1,19 @@
+// AJAX Toast Function
+function showToastAjax(message, type = 'success', persist = false) {
+    if (persist) {
+        sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
+        return;
+    }
+    fetch('/icmis/includes/toast.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, type })
+    }).then(r => r.json()).then(data => {
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', data.html);
+        setTimeout(() => dismissToast(data.id), 4000);
+    }).catch(err => console.error('Toast error:', err));
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     fetchSuppliers();
 });
@@ -20,7 +36,7 @@ async function fetchSuppliers() {
             data = JSON.parse(responseText); // Try to parse JSON
         } catch (e) {
             console.error("Server Error (Not JSON):", responseText); // Log the HTML error
-            if(typeof showToast === 'function') showToast("Server Error: Check console for details", "error");
+            showToastAjax("Server Error: Check console for details", "error");
             return;
         }
 
@@ -46,12 +62,12 @@ async function fetchSuppliers() {
 
             let row = `
                 <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors">
-                    <td class="px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${sup.supplier_id}</td>
-                    <td class="px-6 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">${sup.supplier_name}</td>
-                    <td class="px-6 py-4 text-slate-600 text-sm whitespace-nowrap">${sup.contact_person}</td>
-                    <td class="px-6 py-4 text-slate-600 text-sm font-mono whitespace-nowrap">${sup.contact_number}</td>
-                    <td class="px-6 py-4 text-primary text-sm whitespace-nowrap">${sup.email}</td>
-                    <td class="px-6 py-4">
+                    <td class="text-center px-6 py-4 font-bold text-navy-dark text-sm whitespace-nowrap">${sup.supplier_id}</td>
+                    <td class="text-center px-6 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">${sup.supplier_name}</td>
+                    <td class="text-center px-6 py-4 text-slate-600 text-sm whitespace-nowrap">${sup.contact_person}</td>
+                    <td class="text-center px-6 py-4 text-slate-600 text-sm font-mono whitespace-nowrap">${sup.contact_number}</td>
+                    <td class="text-center px-6 py-4 text-primary text-sm whitespace-nowrap">${sup.email}</td>
+                    <td class="text-center px-6 py-4">
                         <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass}">${sup.status}</span>
                     </td>
                     <td class="px-6 py-4 flex gap-3 text-slate-400">
@@ -65,7 +81,7 @@ async function fetchSuppliers() {
 
     } catch (error) {
         console.error('Fetch Network Error:', error);
-        if(typeof showToast === 'function') showToast("Connection failed", "error");
+        showToastAjax("Connection failed", "error");
     }
 }
 
@@ -142,17 +158,17 @@ document.getElementById("supplierForm").addEventListener("submit", async functio
             data = JSON.parse(responseText);
         } catch(e) {
             console.error("Save Error (Not JSON):", responseText);
-            if(typeof showToast === 'function') showToast("Server Error: Check console", "error");
+            showToastAjax("Server Error: Check console", "error");
             return;
         }
 
         if (data.status === "success") {
             let msg = isEditMode ? "Supplier updated successfully!" : "Supplier added successfully!";
-            if(typeof showToast === 'function') showToast(msg, "success", true);
+            showToastAjax(msg, "success", true);
             
             window.location.reload(); // Reload to refresh data
         } else {
-            if(typeof showToast === 'function') showToast("Error: " + data.message, "error");
+            showToastAjax("Error: " + data.message, "error");
         }
     } catch (error) {
         console.error("Save Network Error:", error);
@@ -197,15 +213,15 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async func
             data = JSON.parse(responseText);
         } catch(e) {
             console.error("Delete Error (Not JSON):", responseText);
-            if(typeof showToast === 'function') showToast("Server Error: Check console", "error");
+            showToastAjax("Server Error: Check console", "error");
             return;
         }
 
         if (data.status === "success") {
-            if(typeof showToast === 'function') showToast("Supplier deleted successfully!", "success", true);
+            showToastAjax("Supplier deleted successfully!", "success", true);
             window.location.reload();
         } else {
-            if(typeof showToast === 'function') showToast("Error deleting supplier.", "error");
+            showToastAjax("Error deleting supplier.", "error");
         }
     } catch (error) {
         console.error("Delete Network Error:", error);

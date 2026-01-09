@@ -177,9 +177,49 @@ function applyPresentToRows(rows) {
 }
 
 window.markAllPresent = function(context = 'individual') {
+    // Immediately apply to visible rows for instant UI feedback
     const selector = context === 'individual' ? '#view-individual .attendance-row' : '.attendance-row';
     const rows = document.querySelectorAll(selector);
     applyPresentToRows(rows);
+
+    // For 'individual' context we want to mark ALL employees (not just the current page)
+        if (context === 'individual') {
+        const dateInput = document.getElementById('attendanceDate');
+        const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+        const projectId = (typeof window.SELECTED_PROJECT_ID !== 'undefined') ? window.SELECTED_PROJECT_ID : 0;
+
+            // Instead of fetching and saving to the database, save drafts in localStorage
+            fetch(`api/attendance.php?action=list&date=${encodeURIComponent(date)}&project_id=${encodeURIComponent(projectId)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        if (typeof showToast === 'function') showToast(data.message || 'Could not fetch employees', 'error');
+                        return;
+                    }
+
+                    const employees = data.data || [];
+                    if (employees.length === 0) {
+                        if (typeof showToast === 'function') showToast('No employees found to mark.', 'warning');
+                        return;
+                    }
+
+                    employees.forEach(emp => {
+                        const empId = emp.employee_id;
+                        const keyStatus = `att_draft_${date}_${empId}_status`;
+                        const keyIn = `att_draft_${date}_${empId}_time_in`;
+                        const keyOut = `att_draft_${date}_${empId}_time_out`;
+                        localStorage.setItem(keyStatus, 'Present');
+                        localStorage.setItem(keyIn, emp.time_in || '08:00');
+                        localStorage.setItem(keyOut, emp.time_out || '17:00');
+                    });
+
+                    if (typeof showToast === 'function') showToast(`${employees.length} employees marked as Present (draft)`, 'info');
+                })
+                .catch(err => {
+                    console.error('Error fetching employees for draft mark-all:', err);
+                    if (typeof showToast === 'function') showToast('System error occurred', 'error');
+                });
+    }
 };
 
 window.markGroupPresent = function(gid) {
@@ -204,9 +244,10 @@ window.saveAllAttendance = function() {
     const projectId = (typeof window.SELECTED_PROJECT_ID !== 'undefined') ? window.SELECTED_PROJECT_ID : 0;
 
     const rows = document.querySelectorAll('.attendance-row');
-    const records = [];
-    let hasData = false;
+    let records = [];
+    const seen = new Set();
 
+    // Collect records from visible rows (per-page)
     rows.forEach(row => {
         const empId = row.dataset.id;
         const statusSelect = row.querySelector('select[name="status"]');
@@ -215,7 +256,6 @@ window.saveAllAttendance = function() {
         const remarksInput = row.querySelector('input[name="remarks"]');
 
         if (statusSelect && statusSelect.value) {
-            hasData = true;
             records.push({
                 employee_id: empId,
                 status: statusSelect.value,
@@ -223,10 +263,37 @@ window.saveAllAttendance = function() {
                 time_out: timeOutInput ? timeOutInput.value : '',
                 remarks: remarksInput ? remarksInput.value : ''
             });
+            seen.add(String(empId));
         }
     });
 
-    if (!hasData) {
+    // Also include any drafts saved in localStorage for this date (these represent employees on other pages)
+    const prefix = `att_draft_${date}_`;
+    const drafts = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(prefix)) continue;
+        // key format: att_draft_{date}_{empId}_{field}
+        const parts = key.split('_');
+        // parts: ['att','draft','YYYY-MM-DD','{empId}','{field}']
+        const empId = parts[3];
+        const field = parts.slice(4).join('_');
+        drafts[empId] = drafts[empId] || { employee_id: empId, status: '', time_in: '', time_out: '', remarks: '' };
+        const val = localStorage.getItem(key);
+        if (field === 'status') drafts[empId].status = val;
+        else if (field === 'time_in') drafts[empId].time_in = val;
+        else if (field === 'time_out') drafts[empId].time_out = val;
+        else if (field === 'remarks') drafts[empId].remarks = val;
+    }
+
+    Object.keys(drafts).forEach(empId => {
+        if (!seen.has(String(empId)) && drafts[empId].status) {
+            records.push(drafts[empId]);
+            seen.add(String(empId));
+        }
+    });
+
+    if (records.length === 0) {
         if(typeof showToast === 'function') showToast('No attendance data to save.', 'warning');
         return;
     }

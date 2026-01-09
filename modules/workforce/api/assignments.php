@@ -1,20 +1,43 @@
 <?php
 /**
  * Assignments API - Workforce Module
- * Handles CRUD operations for workforce project assignments
- * Implements "Unified Assignments" as the single source of location truth.
+ * Location: /api/assignments.php
  */
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
 
-include __DIR__ . '/../project_context.php';
+// 1. Connection Logic
+// We try to include the context. If getWorkforceConnection doesn't exist, we fall back to standard db.
+if (file_exists(__DIR__ . '/../project_context.php')) {
+    include_once __DIR__ . '/../project_context.php';
+}
+if (file_exists(__DIR__ . '/../../core/database.php')) {
+    include_once __DIR__ . '/../../core/database.php';
+}
 
-$conn = getWorkforceConnection();
+// Establish connection
+if (function_exists('getWorkforceConnection')) {
+    $conn = getWorkforceConnection();
+} elseif (isset($conn)) {
+    // $conn is already set by database.php
+} else {
+    // Fallback manual connection if all else fails
+    include __DIR__ . '/../../config/config.php';
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+}
 
-// 1. Handle JSON Input (Crucial for Fetch API)
-// This allows the script to read data sent as application/json
+if ($conn->connect_error) {
+    echo json_encode(['success' => false, 'message' => 'DB Connection Failed']);
+    exit;
+}
+
+// Helper
+function jsonResponse($success, $message, $data = []) {
+    echo json_encode(['success' => $success, 'message' => $message, 'data' => $data]);
+    exit;
+}
+
+// 2. Input Handling
 if (empty($_POST)) {
     $input = json_decode(file_get_contents('php://input'), true);
     if (is_array($input)) {
@@ -23,16 +46,12 @@ if (empty($_POST)) {
     }
 }
 
-// 2. Action Detection
 $action = $_REQUEST['action'] ?? '';
 
 try {
     switch ($action) {
         case 'list':
             listAssignments($conn);
-            break;
-        case 'get':
-            getAssignment($conn, $_REQUEST['id'] ?? 0);
             break;
         case 'create':
             createAssignment($conn);
@@ -41,251 +60,176 @@ try {
             updateAssignment($conn);
             break;
         case 'delete':
-            deleteAssignment($conn, $_REQUEST['id'] ?? 0);
+            deleteAssignment($conn);
             break;
         case 'get_phases':
-            getPhases($conn, $_REQUEST['project_id'] ?? 0);
+            getPhases($conn);
+            break;
+        case 'get_assignment':
+            getAssignment($conn);
             break;
         default:
-            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+            jsonResponse(false, 'Invalid action');
     }
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    jsonResponse(false, $e->getMessage());
 }
-
-$conn->close();
 
 // --- FUNCTIONS ---
 
 function listAssignments($conn) {
-    $project_id = isset($_REQUEST['project_id']) ? intval($_REQUEST['project_id']) : null;
-    $status = $_REQUEST['status'] ?? null;
-    $search = $_REQUEST['search'] ?? '';
-    
-    $sql = "SELECT a.*, 
-                   e.employee_code, e.first_name, e.last_name,
-                   p.project_name, p.project_code,
-                   ph.phase_name
-            FROM workforce_assignments a
-            JOIN workforce_employees e ON a.employee_id = e.employee_id
-            JOIN icmis_projects p ON a.project_id = p.project_id
-            LEFT JOIN icmis_project_phases ph ON a.phase_id = ph.phase_id
-            WHERE 1=1";
-    
-    $params = [];
-    $types = '';
-    
-    // Filter by Project (Context Awareness)
-    if ($project_id && $project_id > 0) {
-        $sql .= " AND a.project_id = ?";
-        $params[] = $project_id;
-        $types .= 'i';
-    }
-    
-    if ($status && $status !== 'all') {
-        $sql .= " AND a.status = ?";
-        $params[] = $status;
-        $types .= 's';
-    }
-    
-    if ($search) {
-        $sql .= " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_code LIKE ? OR a.role LIKE ?)";
-        $searchParam = "%$search%";
-        $params = array_merge($params, [$searchParam, $searchParam, $searchParam, $searchParam]);
-        $types .= 'ssss';
-    }
-    
-    $sql .= " ORDER BY a.status ASC, a.start_date DESC";
-    
-    $stmt = $conn->prepare($sql);
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    $assignments = [];
-    while ($row = $result->fetch_assoc()) {
-        $assignments[] = $row;
-    }
-    $stmt->close();
-    
-    echo json_encode(['success' => true, 'data' => $assignments]);
-}
+    $project_id = isset($_REQUEST['project_id']) ? intval($_REQUEST['project_id']) : 0;
+    $page = isset($_REQUEST['page']) ? max(1, intval($_REQUEST['page'])) : 1;
+    $limit = 10;
+    $offset = ($page - 1) * $limit;
 
-function getAssignment($conn, $id) {
-    if (!$id) throw new Exception("Assignment ID required");
+    $where = "WHERE 1=1";
+    $params = [];
+    $types = "";
+
+    // IMPORTANT: Only filter if project_id is strictly greater than 0
+    if ($project_id > 0) {
+        $where .= " AND wa.project_id = ?";
+        $params[] = $project_id;
+        $types .= "i";
+    }
+
+    // 1. Get Count
+    $countSql = "SELECT COUNT(*) as total FROM workforce_assignments wa $where";
+    $stmt = $conn->prepare($countSql);
+    if (!empty($params)) $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $totalRows = $stmt->get_result()->fetch_assoc()['total'];
+    $stmt->close();
+
+    // 2. Get Data
+    // We LEFT JOIN to ensure we get the assignment even if the employee was deleted
+    $sql = "SELECT wa.*, 
+            e.first_name, e.last_name, e.employee_code, 
+            p.project_name, 
+            ph.phase_name
+            FROM workforce_assignments wa
+            LEFT JOIN workforce_employees e ON wa.employee_id = e.employee_id
+            LEFT JOIN icmis_projects p ON wa.project_id = p.project_id
+            LEFT JOIN icmis_project_phases ph ON wa.phase_id = ph.phase_id
+            $where
+            ORDER BY wa.status ASC, wa.start_date DESC
+            LIMIT ? OFFSET ?";
     
-    $sql = "SELECT a.*, 
-                   e.employee_code, e.first_name, e.last_name,
-                   p.project_name,
-                   ph.phase_name
-            FROM workforce_assignments a
-            JOIN workforce_employees e ON a.employee_id = e.employee_id
-            JOIN icmis_projects p ON a.project_id = p.project_id
-            LEFT JOIN icmis_project_phases ph ON a.phase_id = ph.phase_id
-            WHERE a.assignment_id = ?";
-    
+    $params[] = $limit;
+    $params[] = $offset;
+    $types .= "ii";
+
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $id);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
-    
-    if ($row = $result->fetch_assoc()) {
-        echo json_encode(['success' => true, 'data' => $row, 'assignment' => $row]); // Return both formats for compatibility
-    } else {
-        throw new Exception("Assignment not found");
-    }
-    $stmt->close();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+
+    jsonResponse(true, 'Data fetched', [
+        'assignments' => $data,
+        'pagination' => [
+            'current_page' => $page,
+            'total_pages' => $limit > 0 ? ceil($totalRows / $limit) : 1,
+            'total_records' => $totalRows
+        ]
+    ]);
 }
 
 function createAssignment($conn) {
-    $data = $_POST;
-    
-    if (empty($data['employee_id']) || empty($data['project_id'])) {
-        throw new Exception("Employee and Project are required fields");
-    }
-    
-    // 1. Prevent Duplicate Active Assignments
-    // A person cannot be 'Active' on the same project twice at the same time.
-    $stmt = $conn->prepare("SELECT assignment_id FROM workforce_assignments 
-                           WHERE employee_id = ? AND project_id = ? AND status = 'Active'");
-    $stmt->bind_param("ii", $data['employee_id'], $data['project_id']);
-    $stmt->execute();
-    if ($stmt->get_result()->fetch_assoc()) {
-        // We throw a specific message so the frontend (bulk loader) knows
-        throw new Exception("Employee is already active on this project.");
-    }
-    $stmt->close();
+    $mode = $_POST['mode'] ?? 'individual';
+    $project_id = $_POST['project_id'];
+    $phase_id = !empty($_POST['phase_id']) ? $_POST['phase_id'] : null;
+    $start_date = $_POST['start_date'];
+    $end_date = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
+    $status = 'Active';
 
-    // 2. Auto-Populate Role from Job Title if empty
-    $role = $data['role'] ?? '';
-    if (empty($role)) {
-        $roleStmt = $conn->prepare("SELECT jt.title_name 
-                                    FROM workforce_employees e 
-                                    LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id 
-                                    WHERE e.employee_id = ?");
-        $roleStmt->bind_param("i", $data['employee_id']);
-        $roleStmt->execute();
-        $res = $roleStmt->get_result()->fetch_assoc();
-        if ($res && $res['title_name']) {
-            $role = $res['title_name'];
+    if ($mode === 'group') {
+        $group_id = $_POST['group_id'];
+        
+        $mStmt = $conn->prepare("SELECT employee_id, role_in_group FROM workforce_group_memberships WHERE group_id = ?");
+        $mStmt->bind_param("i", $group_id);
+        $mStmt->execute();
+        $members = $mStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $mStmt->close();
+
+        if (empty($members)) jsonResponse(false, "Selected group has no members.");
+
+        $count = 0;
+        $checkStmt = $conn->prepare("SELECT assignment_id FROM workforce_assignments WHERE employee_id = ? AND project_id = ? AND status = 'Active'");
+        $insStmt = $conn->prepare("INSERT INTO workforce_assignments (employee_id, project_id, phase_id, role, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        
+        foreach ($members as $mem) {
+            $empId = $mem['employee_id'];
+            $role = $mem['role_in_group'] ?: 'Member';
+
+            $checkStmt->bind_param("ii", $empId, $project_id);
+            $checkStmt->execute();
+            if ($checkStmt->get_result()->num_rows == 0) {
+                $insStmt->bind_param("iiissss", $empId, $project_id, $phase_id, $role, $start_date, $end_date, $status);
+                if ($insStmt->execute()) $count++;
+            }
         }
-        $roleStmt->close();
-    }
-    
-    // 3. Insert Assignment
-    $sql = "INSERT INTO workforce_assignments 
-                (employee_id, project_id, phase_id, role, task_description, start_date, end_date, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    
-    $stmt = $conn->prepare($sql);
-    
-    $phase_id = !empty($data['phase_id']) ? intval($data['phase_id']) : null;
-    $status = $data['status'] ?? 'Active';
-    $task_description = $data['task_description'] ?? null;
-    $start_date = !empty($data['start_date']) ? $data['start_date'] : date('Y-m-d');
-    $end_date = !empty($data['end_date']) ? $data['end_date'] : null;
-    
-    $stmt->bind_param("iiisssss",
-        $data['employee_id'],
-        $data['project_id'],
-        $phase_id,
-        $role,
-        $task_description,
-        $start_date,
-        $end_date,
-        $status
-    );
-    
-    if ($stmt->execute()) {
-        echo json_encode([
-            'success' => true, 
-            'message' => 'Assignment created successfully',
-            'id' => $conn->insert_id
-        ]);
+        jsonResponse(true, "Group processed. $count members assigned.");
     } else {
-        throw new Exception("Database Error: " . $stmt->error);
+        $employee_id = $_POST['employee_id'];
+        $role = $_POST['role'];
+
+        $checkStmt = $conn->prepare("SELECT assignment_id FROM workforce_assignments WHERE employee_id = ? AND project_id = ? AND status = 'Active'");
+        $checkStmt->bind_param("ii", $employee_id, $project_id);
+        $checkStmt->execute();
+        if ($checkStmt->get_result()->num_rows > 0) jsonResponse(false, "Employee already active here.");
+
+        if (empty($role)) {
+            $rStmt = $conn->prepare("SELECT jt.title_name FROM workforce_employees e JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id WHERE e.employee_id = ?");
+            $rStmt->bind_param("i", $employee_id);
+            $rStmt->execute();
+            $res = $rStmt->get_result()->fetch_assoc();
+            $role = $res ? $res['title_name'] : 'Staff';
+        }
+
+        $stmt = $conn->prepare("INSERT INTO workforce_assignments (employee_id, project_id, phase_id, role, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iiissss", $employee_id, $project_id, $phase_id, $role, $start_date, $end_date, $status);
+        if ($stmt->execute()) jsonResponse(true, "Assignment created.");
+        else jsonResponse(false, "DB Error: " . $stmt->error);
     }
-    $stmt->close();
 }
 
 function updateAssignment($conn) {
-    $data = $_POST;
-    
-    if (empty($data['assignment_id'])) {
-        throw new Exception("Assignment ID required");
-    }
-    
-    $sql = "UPDATE workforce_assignments SET 
-                employee_id = ?,
-                project_id = ?,
-                phase_id = ?,
-                role = ?,
-                task_description = ?,
-                start_date = ?,
-                end_date = ?,
-                status = ?
-            WHERE assignment_id = ?";
-    
-    $stmt = $conn->prepare($sql);
-    
-    $phase_id = !empty($data['phase_id']) ? intval($data['phase_id']) : null;
-    $task_description = $data['task_description'] ?? null;
-    $end_date = !empty($data['end_date']) ? $data['end_date'] : null;
-    $role = $data['role'] ?? '';
-    
-    $stmt->bind_param("iiisssssi",
-        $data['employee_id'],
-        $data['project_id'],
-        $phase_id,
-        $role,
-        $task_description,
-        $data['start_date'],
-        $end_date,
-        $data['status'],
-        $data['assignment_id']
-    );
-    
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Assignment updated successfully']);
-    } else {
-        throw new Exception("Database Error: " . $stmt->error);
-    }
-    $stmt->close();
+    $id = $_POST['assignment_id'];
+    $role = $_POST['role'];
+    $phase_id = !empty($_POST['phase_id']) ? $_POST['phase_id'] : null;
+    $start_date = $_POST['start_date'];
+    $end_date = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
+    $status = $_POST['status'];
+
+    $stmt = $conn->prepare("UPDATE workforce_assignments SET role=?, phase_id=?, start_date=?, end_date=?, status=? WHERE assignment_id=?");
+    $stmt->bind_param("sisssi", $role, $phase_id, $start_date, $end_date, $status, $id);
+    if ($stmt->execute()) jsonResponse(true, "Updated successfully.");
+    else jsonResponse(false, "Update failed.");
 }
 
-function deleteAssignment($conn, $id) {
-    if (!$id) throw new Exception("Assignment ID required");
-    
+function deleteAssignment($conn) {
+    $id = $_POST['id'];
     $stmt = $conn->prepare("DELETE FROM workforce_assignments WHERE assignment_id = ?");
     $stmt->bind_param("i", $id);
-    
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Assignment deleted successfully']);
-    } else {
-        throw new Exception("Database Error: " . $stmt->error);
-    }
-    $stmt->close();
+    if ($stmt->execute()) jsonResponse(true, "Deleted successfully.");
+    else jsonResponse(false, "Delete failed.");
 }
 
-function getPhases($conn, $project_id) {
-    if (!$project_id) {
-        echo json_encode(['success' => true, 'data' => []]);
-        return;
-    }
-    
-    $stmt = $conn->prepare("SELECT phase_id, phase_name FROM icmis_project_phases WHERE project_id = ? ORDER BY start_date ASC, phase_name ASC");
-    $stmt->bind_param("i", $project_id);
+function getPhases($conn) {
+    $pid = $_REQUEST['project_id'];
+    $stmt = $conn->prepare("SELECT phase_id, phase_name FROM icmis_project_phases WHERE project_id = ?");
+    $stmt->bind_param("i", $pid);
     $stmt->execute();
-    $result = $stmt->get_result();
-    
-    $phases = [];
-    while ($row = $result->fetch_assoc()) {
-        $phases[] = $row;
-    }
-    $stmt->close();
-    
-    echo json_encode(['success' => true, 'data' => $phases]);
+    jsonResponse(true, "Loaded", $stmt->get_result()->fetch_all(MYSQLI_ASSOC));
+}
+
+function getAssignment($conn) {
+    $id = $_REQUEST['id'];
+    $stmt = $conn->prepare("SELECT * FROM workforce_assignments WHERE assignment_id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    jsonResponse(true, "Loaded", $stmt->get_result()->fetch_assoc());
 }
 ?>

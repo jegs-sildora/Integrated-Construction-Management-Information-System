@@ -136,7 +136,7 @@ if ($result && $result->num_rows > 0) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Total Projects</p>
-                        <h2 id="statTotalProjects" class="text-2xl font-bold text-gray-900"><?php echo $totalProjects; ?></h2>
+                        <h2 id="statTotalProjects" class="text-2xl font-black text-gray-900"><?php echo $totalProjects; ?></h2>
                     </div>
                 </div>
             </div>
@@ -150,7 +150,7 @@ if ($result && $result->num_rows > 0) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Active Projects</p>
-                        <h2 id="statActiveProjects" class="text-2xl font-bold text-gray-900"><?php echo $activeCount; ?></h2>
+                        <h2 id="statActiveProjects" class="text-2xl font-black text-gray-900"><?php echo $activeCount; ?></h2>
                     </div>
                 </div>
             </div>
@@ -164,7 +164,7 @@ if ($result && $result->num_rows > 0) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Completed</p>
-                         <h2 id="statCompletedProjects" class="text-2xl font-bold text-gray-900"><?php echo $completedCount; ?></h2>
+                         <h2 id="statCompletedProjects" class="text-2xl font-black text-gray-900"><?php echo $completedCount; ?></h2>
                     </div>
                 </div>
             </div>
@@ -178,7 +178,7 @@ if ($result && $result->num_rows > 0) {
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Total Budget</p>
-                         <h2 id="statTotalBudget" class="text-2xl font-bold text-gray-900">₱<?php echo number_format($totalBudget, 0); ?></h2>
+                         <h2 id="statTotalBudget" class="text-2xl font-black text-gray-900">₱<?php echo number_format($totalBudget, 0); ?></h2>
                     </div>
                 </div>
             </div>

@@ -1,6 +1,23 @@
 /* =========================================
    1. GLOBAL VARIABLES & INIT
    ========================================= */
+
+// AJAX Toast Function
+function showToastAjax(message, type = 'success', persist = false) {
+    if (persist) {
+        sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
+        return;
+    }
+    fetch('/icmis/includes/toast.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, type })
+    }).then(r => r.json()).then(data => {
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', data.html);
+        setTimeout(() => dismissToast(data.id), 4000);
+    }).catch(err => console.error('Toast error:', err));
+}
+
 let orderIdToDelete = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -8,15 +25,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
     const msg = urlParams.get('msg');
     if (msg === 'updated') {
-        showToast('Purchase Order updated successfully!', 'success');
+        showToastAjax('Purchase Order updated successfully!', 'success');
         window.history.replaceState(null, null, window.location.pathname);
     } else if (msg === 'created') {
-        showToast('New Purchase Order created successfully!', 'success');
+        showToastAjax('New Purchase Order created successfully!', 'success');
         window.history.replaceState(null, null, window.location.pathname);
     } else if (msg === 'deleted') {
         const ref = urlParams.get('ref') || '';
         const text = ref ? `Order ${ref} deleted successfully` : 'Order deleted successfully';
-        showToast(text, 'success');
+        showToastAjax(text, 'success');
         // Remove query params so refresh doesn't re-show or re-trigger anything
         window.history.replaceState(null, null, window.location.pathname);
         // Do not reload again; this ensures the toast shows once and no further reloads occur
@@ -69,7 +86,7 @@ function setupDeleteHandler() {
             const idToDelete = inputEl && inputEl.value ? inputEl.value : orderIdToDelete;
 
             if (!idToDelete) {
-                showToast("Error: No Order ID found to delete.", "error");
+                showToastAjax("Error: No Order ID found to delete.", "error");
                 return;
             }
 
@@ -108,7 +125,7 @@ function setupDeleteHandler() {
                     closeDeleteModal();
                     window.location = window.location.pathname + '?' + params.toString();
                 } else {
-                    showToast(data.message || 'Failed to delete order', 'error');
+                    showToastAjax(data.message || 'Failed to delete order', 'error');
                     btn.disabled = false;
                     btn.innerHTML = originalText;
                 }
@@ -117,7 +134,7 @@ function setupDeleteHandler() {
                 console.error("Delete Error:", err);
                 // Clean up error message if it's a long HTML string
                 let msg = err.message.length > 50 ? "Server connection error (Check console)" : err.message;
-                showToast(msg, "error");
+                showToastAjax(msg, "error");
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             });

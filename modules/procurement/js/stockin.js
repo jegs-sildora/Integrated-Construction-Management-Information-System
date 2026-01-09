@@ -1,6 +1,27 @@
 /* =========================================
    GLOBAL VARIABLES & INIT
    ========================================= */
+
+// AJAX Toast Function
+function showToastAjax(message, type = 'success', persist = false) {
+    if (persist) {
+        sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
+        return;
+    }
+    return fetch('../../includes/toast.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, type })
+    }).then(r => r.json()).then(data => {
+        document.getElementById('toast-container').insertAdjacentHTML('beforeend', data.html);
+        setTimeout(() => dismissToast(data.id), 4000);
+    }).catch(err => {
+        console.error('Toast error:', err);
+        // Fallback: show alert if toast fails
+        alert(message);
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Load History Table
     fetchStockHistory();
@@ -120,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const date = document.getElementById('edit_date_received').value;
         if (!stockId) return;
         // Basic validation
-        if (parseFloat(qty) <= 0) { if (typeof showToast === 'function') showToast('Quantity must be greater than 0', 'error'); return; }
+        if (parseFloat(qty) <= 0) { showToastAjax('Quantity must be greater than 0', 'error'); return; }
 
         btn.disabled = true;
         const original = btn.innerText;
@@ -136,18 +157,18 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
             btn.innerText = original;
             if (data.success) {
-                if (typeof showToast === 'function') showToast('Stock item updated', 'success');
+                showToastAjax('Stock item updated', 'success');
                 closeEditStockModal();
                 fetchStockHistory();
             } else {
-                if (typeof showToast === 'function') showToast('Error: ' + (data.message || 'Update failed'), 'error');
+                showToastAjax('Error: ' + (data.message || 'Update failed'), 'error');
             }
         })
         .catch(err => {
             console.error(err);
             btn.disabled = false;
             btn.innerText = original;
-            if (typeof showToast === 'function') showToast('Server error', 'error');
+            showToastAjax('Server error', 'error');
         });
     });
 });
@@ -208,7 +229,7 @@ function loadApprovedPOs() {
             dropdown.appendChild(option);
         });
     })
-    .catch(err => { console.error(err); if (typeof showToast === 'function') showToast('Error loading Purchase Orders', 'error'); });
+    .catch(err => { console.error(err); showToastAjax('Error loading Purchase Orders', 'error'); });
 }
 
 // Fetch Items & Render as TABLE ROWS
@@ -295,7 +316,7 @@ function submitStockIn() {
     const projectId = document.getElementById("current_project_id").value;
     
     if (!poId) {
-        if (typeof showToast === 'function') showToast('Please select a Purchase Order first.', 'error');
+        showToastAjax('Please select a Purchase Order first.', 'error');
         return;
     }
 
@@ -304,7 +325,7 @@ function submitStockIn() {
     const checkboxes = document.querySelectorAll(".item-checkbox:checked");
 
     if (checkboxes.length === 0) {
-        if (typeof showToast === 'function') showToast('Please select at least one item to receive.', 'error');
+        showToastAjax('Please select at least one item to receive.', 'error');
         return;
     }
 
@@ -327,7 +348,7 @@ function submitStockIn() {
     });
 
     if (itemsToReceive.length === 0) {
-        if (typeof showToast === 'function') showToast('Receive quantity must be greater than 0.', 'error');
+        showToastAjax('Receive quantity must be greater than 0.', 'error');
         return;
     }
 
@@ -350,18 +371,18 @@ function submitStockIn() {
     .then(res => res.json())
     .then(data => {
         if(data.success) {
-            if (typeof showToast === 'function') showToast('Stock received successfully!', 'success');
+            showToastAjax('Stock received successfully!', 'success', true);
             closeStockModal();
-            location.reload(); 
+            location.reload();
         } else {
-            if (typeof showToast === 'function') showToast('Error: ' + (data.message || 'Receive failed'), 'error');
+            showToastAjax('Error: ' + (data.message || 'Receive failed'), 'error');
             btn.disabled = false;
             btn.innerText = originalText;
         }
     })
     .catch(err => {
         console.error(err);
-        if (typeof showToast === 'function') showToast('Server connection error.', 'error');
+        showToastAjax('Server connection error.', 'error');
         btn.disabled = false;
         btn.innerText = originalText;
     });
