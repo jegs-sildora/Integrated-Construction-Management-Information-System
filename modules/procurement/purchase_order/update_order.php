@@ -16,6 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // 2. Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/Logger.php';
+
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     echo json_encode(['success' => false, 'message' => 'Database connection failed']);
@@ -147,6 +149,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // --- Commit Transaction ---
         $conn->commit();
+
+        // Log the audit trail
+        Logger::init($conn);
+        Logger::update('Procurement', "Purchase Order Updated: $order_title - Status: $status (₱" . number_format($grand_total, 2) . ")", $po_id);
 
         echo json_encode([
             'success' => true,

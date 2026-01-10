@@ -8,6 +8,7 @@ header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 include __DIR__ . '/../project_context.php';
+require_once __DIR__ . '/../../../core/Logger.php';
 
 $conn = getWorkforceConnection();
 
@@ -210,6 +211,9 @@ function createEmployee($conn) {
     );
     
     if ($stmt->execute()) {
+        $newId = $conn->insert_id;
+        Logger::init($conn);
+        Logger::create('Workforce', "Employee Created: {$data['first_name']} {$data['last_name']} ({$data['employee_code']})", $newId);
         echo json_encode(['success' => true, 'message' => 'Employee created successfully']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to create: ' . $stmt->error]);
@@ -250,6 +254,8 @@ function updateEmployee($conn) {
     );
     
     if ($stmt->execute()) {
+        Logger::init($conn);
+        Logger::update('Workforce', "Employee Updated: {$data['first_name']} {$data['last_name']}", intval($data['employee_id']));
         echo json_encode(['success' => true, 'message' => 'Employee updated successfully']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to update: ' . $stmt->error]);
@@ -275,6 +281,8 @@ function deleteEmployee($conn, $id) {
     $stmt = $conn->prepare("DELETE FROM workforce_employees WHERE employee_id = ?");
     $stmt->bind_param("i", $id);
     if ($stmt->execute()) {
+        Logger::init($conn);
+        Logger::delete('Workforce', "Employee Deleted: ID #$id", intval($id));
         echo json_encode(['success' => true, 'message' => 'Employee deleted successfully']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to delete: ' . $stmt->error]);

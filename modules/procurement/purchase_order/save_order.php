@@ -22,6 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // 2. Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/Logger.php';
+
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     ob_clean();
@@ -143,6 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // --- Commit ---
         $conn->commit();
+
+        // Log the audit trail
+        Logger::init($conn);
+        Logger::create('Procurement', "Purchase Order Created: $po_reference - $order_title (₱" . number_format($grand_total, 2) . ")", $new_po_id);
 
         ob_clean(); 
         echo json_encode([

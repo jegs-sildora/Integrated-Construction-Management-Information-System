@@ -223,11 +223,12 @@ try {
                 }
             }
             
-            $sql = "SELECT so.date_issued as movement_date, i.item_name, 'Stock Out' as type,
-                           so.quantity, NULL as po_reference, so.issued_to as handler
-                    FROM procurement_stock_out so
-                    LEFT JOIN procurement_inventory i ON so.item_id = i.item_id
-                    ORDER BY so.date_issued DESC LIMIT 25";
+                 $sql = "SELECT so.date_issued as movement_date, i.item_name, 'Stock Out' as type,
+                          so.quantity, NULL as po_reference, CONCAT(emp.first_name, ' ', emp.last_name) as handler
+                      FROM procurement_stock_out so
+                      LEFT JOIN procurement_inventory i ON so.item_id = i.item_id
+                      LEFT JOIN workforce_employees emp ON so.issued_to_employee_id = emp.employee_id
+                      ORDER BY so.date_issued DESC LIMIT 25";
             
             $result = $conn->query($sql);
             if ($result) {
@@ -396,12 +397,12 @@ try {
         case 'payroll-report':
             $data['headers'] = ['Employee', 'Period', 'Hours Worked', 'Gross Pay', 'Net Pay', 'Status'];
             
-            $sql = "SELECT e.first_name, e.last_name, pp.period_name, pp.start_date, pp.end_date,
-                           p.hours_worked, p.gross_pay, p.net_pay, p.status 
-                    FROM workforce_payroll p
-                    LEFT JOIN workforce_employees e ON p.employee_id = e.employee_id
-                    LEFT JOIN workforce_payroll_periods pp ON p.period_id = pp.period_id
-                    ORDER BY pp.end_date DESC, e.last_name LIMIT 100";
+                 $sql = "SELECT e.first_name, e.last_name, NULL as period_name, pp.start_date, pp.end_date,
+                          p.hours_worked, p.gross_pay, p.net_pay, p.status 
+                      FROM workforce_payroll p
+                      LEFT JOIN workforce_employees e ON p.employee_id = e.employee_id
+                      LEFT JOIN workforce_payroll_periods pp ON p.period_id = pp.period_id
+                      ORDER BY pp.end_date DESC, e.last_name LIMIT 100";
             
             $result = $conn->query($sql);
             if ($result) {

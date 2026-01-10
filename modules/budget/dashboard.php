@@ -51,15 +51,13 @@
 
   if ($selected_project_id > 0) {
     // ... (Your existing budget calculation logic) ...
-    $sql_project = "SELECT p.project_id, p.project_code, p.project_name,
-                    (SELECT COALESCE(SUM(bp.total_amount), 0) 
-                     FROM budget_proposals bp 
-                     WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
-                    (SELECT COALESCE(SUM(e.amount), 0) 
-                     FROM budget_expenses e 
-                     WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-                    FROM icmis_projects p
-                    WHERE p.project_id = ?";
+    // Use the project's canonical total_budget column; approved expenses still aggregated
+    $sql_project = "SELECT p.project_id, p.project_code, p.project_name, p.total_budget,
+            (SELECT COALESCE(SUM(e.amount), 0) 
+             FROM budget_expenses e 
+             WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
+            FROM icmis_projects p
+            WHERE p.project_id = ?";
     $stmt = $conn->prepare($sql_project);
     $stmt->bind_param("i", $selected_project_id);
     $stmt->execute();

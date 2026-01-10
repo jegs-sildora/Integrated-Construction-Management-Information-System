@@ -64,7 +64,7 @@ if ($result_projects && $result_projects->num_rows > 0) {
 $recent_reports = [];
 $tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
 if ($tableExists && $tableExists->num_rows > 0) {
-    $report_sql = "SELECT report_id, report_type, report_name, project_id, generated_by, created_at FROM budget_generated_reports ORDER BY created_at DESC LIMIT 20";
+    $report_sql = "SELECT report_id AS id, report_type AS category, report_name, project_id, generated_by, created_at FROM budget_generated_reports ORDER BY created_at DESC LIMIT 20";
     $result = $conn->query($report_sql);
     if ($result) {
         while ($row = $result->fetch_assoc()) {
@@ -89,8 +89,6 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     <link rel="icon" type="image/png" sizes="16x16" href="../../assets/images/favicon/favicon-16x16.png">
     <link rel="manifest" href="../../assets/images/favicon/site.webmanifest">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <?php include '../../includes/head_assetsv2.php'; ?>
 
     <style>
@@ -181,72 +179,6 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                     </div>
                 </div>
             </div>
-
-            <!-- Project Context Card -->
-            <?php if ($selected_project_id): ?>
-            <div class="bg-gradient-to-r from-[#e9922c]/10 to-orange-50 border border-[#e9922c]/20 rounded-xl p-6 mb-8 no-print">
-                <div class="flex items-start justify-between">
-                    <div class="flex items-start gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-[#e9922c] flex items-center justify-center flex-shrink-0">
-                            <i data-lucide="building-2" class="w-6 h-6 text-white"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-3 mb-1">
-                                <h2 class="text-lg font-bold text-gray-900"><?php echo htmlspecialchars($current_project_name); ?></h2>
-                                <?php 
-                                $statusColors = [
-                                    'Active' => 'bg-green-100 text-green-700 border-green-200',
-                                    'In Progress' => 'bg-blue-100 text-blue-700 border-blue-200',
-                                    'Planning' => 'bg-yellow-100 text-yellow-700 border-yellow-200',
-                                    'On Hold' => 'bg-gray-100 text-gray-700 border-gray-200',
-                                    'Completed' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                                    'Cancelled' => 'bg-red-100 text-red-700 border-red-200'
-                                ];
-                                $statusClass = $statusColors[$current_project_status] ?? 'bg-gray-100 text-gray-700 border-gray-200';
-                                ?>
-                                <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full border <?php echo $statusClass; ?>">
-                                    <?php echo htmlspecialchars($current_project_status); ?>
-                                </span>
-                            </div>
-                            <div class="flex items-center gap-4 text-sm text-gray-600">
-                                <span class="flex items-center gap-1">
-                                    <i data-lucide="hash" class="w-3.5 h-3.5"></i>
-                                    <?php echo htmlspecialchars($current_project_code); ?>
-                                </span>
-                                <?php if ($current_project_location): ?>
-                                <span class="flex items-center gap-1">
-                                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
-                                    <?php echo htmlspecialchars($current_project_location); ?>
-                                </span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-6 text-right">
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-medium">Total Budget</p>
-                            <p class="text-lg font-bold text-gray-900">₱<?php echo number_format($current_project_budget, 2); ?></p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-medium">Completion</p>
-                            <p class="text-lg font-bold text-[#e9922c]"><?php echo number_format($current_project_completion, 1); ?>%</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <?php else: ?>
-            <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 mb-8 no-print">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="folder-open" class="w-6 h-6 text-gray-500"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-bold text-gray-700">All Projects Selected</h2>
-                        <p class="text-sm text-gray-500">Reports will include data from all projects. Select a specific project from the dropdown above to filter.</p>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
 
             <!-- Category Tabs -->
             <div class="category-tabs mb-8 no-print">
@@ -554,14 +486,14 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             <?php if (count($recent_reports) > 0): ?>
                                 <?php foreach ($recent_reports as $report): ?>
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 font-medium text-gray-900"><?php echo htmlspecialchars($report['report_name']); ?></td>
+                                    <td class="px-6 py-4 font-medium text-gray-900"><?php echo htmlspecialchars($report['report_name'] ?? ''); ?></td>
                                     <td class="px-6 py-4">
                                         <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                                            <?php echo htmlspecialchars($report['category']); ?>
+                                            <?php echo htmlspecialchars($report['category'] ?? ''); ?>
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($report['project_name'] ?? 'All'); ?></td>
-                                    <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($report['generated_by']); ?></td>
+                                    <td class="px-6 py-4 text-gray-600"><?php echo htmlspecialchars($report['generated_by'] ?? ''); ?></td>
                                     <td class="px-6 py-4 text-gray-500"><?php echo date('M j, Y h:i A', strtotime($report['created_at'])); ?></td>
                                     <td class="px-6 py-4 no-print">
                                         <button onclick="downloadReport(<?php echo $report['id']; ?>)" class="text-[#e9922c] hover:text-orange-700 font-medium">
@@ -669,173 +601,30 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         }
 
         // ============================================
-        // REPORT GENERATION
+        // REPORT GENERATION (Print-Based)
         // ============================================
-        async function generateReport(templateType) {
+        function generateReport(templateType) {
             const button = event.target.closest('.generate-btn');
             const projectId = '<?php echo $selected_project_id; ?>';
 
             setLoadingState(button);
 
-            try {
-                const response = await fetch('api/generate_report.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        template: templateType,
-                        project_id: projectId
-                    })
-                });
+            // Build URL for the print-based report
+            let url = `print_report.php?type=${encodeURIComponent(templateType)}`;
+            if (projectId && projectId !== '0') {
+                url += `&project_id=${projectId}`;
+            }
 
-                const contentType = response.headers.get("content-type");
-                if (!contentType || !contentType.includes("application/json")) {
-                    throw new Error("Server returned an invalid format.");
-                }
+            // Open in new tab
+            const win = window.open(url, '_blank', 'noopener,noreferrer');
+            if (win) {
+                win.opener = null;
+            }
 
-                const result = await response.json();
-
-                if (!result.success) {
-                    throw new Error(result.message || 'Failed to generate report');
-                }
-
-                // Generate PDF using jsPDF
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-
-                // Generate the appropriate report
-                generatePDF(doc, templateType, result.data);
-
+            // Show success and reset button state
+            setTimeout(() => {
                 showSuccessState(button);
-
-            } catch (error) {
-                console.error('Generation Error:', error);
-                if (typeof showToast === 'function') {
-                    showToast('Failed: ' + error.message, 'error');
-                } else {
-                    alert('Failed: ' + error.message);
-                }
-                resetLoadingState(button);
-            }
-        }
-
-        // ============================================
-        // PDF GENERATION HELPERS
-        // ============================================
-        function addPDFHeader(doc, title, projectName) {
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-            // Logo placeholder
-            doc.setFillColor(233, 146, 44);
-            doc.rect(pageWidth / 2 - 6, 15, 12, 12, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(10);
-            doc.text('I', pageWidth / 2, 24, { align: 'center' });
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text('ICMIS - Integrated Construction Management Information System', pageWidth / 2, 36, { align: 'center' });
-            
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text(title.toUpperCase(), pageWidth / 2, 44, { align: 'center' });
-
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.setDrawColor(200, 200, 200);
-            doc.rect(14, 50, pageWidth - 28, 18);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text('Project:', 18, 58);
-            doc.text('Date:', 120, 58);
-            doc.setFont('helvetica', 'normal');
-            doc.text(projectName || 'All Projects', 40, 58);
-            doc.text(currentDate, 135, 58);
-
-            return 76;
-        }
-
-        function addPDFFooter(doc, userName) {
-            const pageCount = doc.internal.getNumberOfPages();
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                const footerY = pageHeight - 35;
-
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(9);
-
-                // Prepared By
-                doc.setFont('helvetica', 'bold');
-                doc.text('Prepared By:', 20, footerY);
-                doc.setDrawColor(0, 0, 0);
-                doc.line(20, footerY + 8, 70, footerY + 8);
-                doc.text(userName, 20, footerY + 13);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text('Reports Administrator', 20, footerY + 17);
-
-                // Verified By
-                const centerBase = pageWidth / 2;
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'bold');
-                doc.text('Verified By:', centerBase - 25, footerY);
-                doc.line(centerBase - 25, footerY + 8, centerBase + 25, footerY + 8);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text('Project Engineer', centerBase - 25, footerY + 17);
-
-                // Approved By
-                const rightBase = pageWidth - 70;
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(9);
-                doc.setFont('helvetica', 'bold');
-                doc.text('Approved By:', rightBase, footerY);
-                doc.line(rightBase, footerY + 8, rightBase + 50, footerY + 8);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text('Project Manager', rightBase, footerY + 17);
-
-                // Page Number
-                doc.setTextColor(150, 150, 150);
-                doc.setFont('helvetica', 'normal');
-                doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
-            }
-        }
-
-        function generatePDF(doc, templateType, data) {
-            const userName = '<?php echo $userName; ?>';
-            const projectName = data.project?.name || '<?php echo htmlspecialchars($current_project_name); ?>';
-            const dateStr = new Date().toISOString().split('T')[0];
-
-            let y = addPDFHeader(doc, getReportTitle(templateType), projectName);
-
-            // Generate table based on template type
-            if (data.rows && data.rows.length > 0) {
-                doc.autoTable({
-                    startY: y,
-                    head: [data.headers || []],
-                    body: data.rows,
-                    theme: 'grid',
-                    headStyles: { fillColor: [233, 146, 44] },
-                    styles: { fontSize: 9 }
-                });
-            } else {
-                doc.setFontSize(12);
-                doc.text('No data available for this report.', 14, y + 10);
-            }
-
-            addPDFFooter(doc, userName);
-            doc.save(`${templateType}_${dateStr}.pdf`);
+            }, 500);
         }
 
         function getReportTitle(templateType) {
@@ -857,7 +646,11 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         }
 
         function downloadReport(reportId) {
-            window.location.href = `api/download_report.php?id=${reportId}`;
+            // Open the report download in a new tab/window and prevent the opener from accessing it
+            const url = `api/download_report.php?id=${reportId}`;
+            // Try to use noopener/noreferrer features when supported
+            const win = window.open(url, '_blank', 'noopener,noreferrer');
+            if (win) win.opener = null;
         }
     </script>
 </body>

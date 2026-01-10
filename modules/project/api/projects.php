@@ -8,6 +8,7 @@
 
 // Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/Logger.php';
 header('Content-Type: application/json');
 
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -42,6 +43,12 @@ try {
         $stmt = $conn->prepare("DELETE FROM icmis_projects WHERE project_id = ?");
         $stmt->bind_param("i", $project_id);
         $stmt->execute();
+
+        // Log project deletion to audit trail
+        if ($stmt->affected_rows > 0) {
+            Logger::init($conn);
+            Logger::delete('Project', "Deleted project ID: $project_id", $project_id);
+        }
 
         echo json_encode([
             'success' => $stmt->affected_rows > 0,
@@ -130,6 +137,10 @@ try {
             $stmt->execute();
             $stmt->close();
 
+            // Log project update to audit trail
+            Logger::init($conn);
+            Logger::update('Project', "Updated project: $project_name ($project_code)", $project_id);
+
             echo json_encode(['success' => true, 'message' => 'Project updated successfully']);
         } else {
             // INSERT
@@ -141,6 +152,10 @@ try {
             $stmt->execute();
             $new_id = $conn->insert_id;
             $stmt->close();
+
+            // Log project creation to audit trail
+            Logger::init($conn);
+            Logger::create('Project', "Created new project: $project_name ($project_code)", $new_id);
 
             echo json_encode(['success' => true, 'message' => 'Project added successfully', 'project_id' => $new_id]);
         }

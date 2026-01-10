@@ -32,8 +32,31 @@ $options = [
 $context  = stream_context_create($options);
 $json = @file_get_contents($exportUrl, false, $context);
 if ($json === false) {
-    echo "<h2>Error</h2><p>Failed to fetch report data from server.</p>";
-    exit;
+    // Fallback to cURL if allow_url_fopen is disabled or file_get_contents failed
+    if (function_exists('curl_version')) {
+        $ch = curl_init($exportUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+        $json = curl_exec($ch);
+        $curlErr = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($json === false || $json === '') {
+            echo "<h2>Error</h2><p>Failed to fetch report data from server via HTTP.</p>";
+            echo "<p>cURL error: " . htmlspecialchars($curlErr) . " (HTTP " . intval($httpCode) . ")</p>";
+            exit;
+        }
+    } else {
+        echo "<h2>Error</h2><p>Failed to fetch report data from server. Enable allow_url_fopen or cURL on the server.</p>";
+        exit;
+    }
 }
 
 // Some servers may prepend warnings/notices before JSON; strip leading content until first '{'
@@ -57,6 +80,42 @@ if (!$data || !isset($data['success']) || !$data['success']) {
 
 $payload = $data['data'];
 $project = $payload['project'] ?? [];
+// Helper for report type title (define before logging)
+$reportTitle = match($report_type) {
+    'budget-summary', 'budget_summary' => 'Budget Summary Report',
+    'cost-analysis', 'cost_analysis' => 'Cost Analysis Report',
+    'phase-analysis' => 'Phase Analysis Report',
+    'labor-analysis' => 'Labor Analysis Report',
+    'cash-flow' => 'Cash Flow Report',
+    'expense-log' => 'Expense Log Report',
+    default => ucwords(str_replace(['-', '_'], ' ', $report_type)) . ' Report',
+};
+
+// Record generated report in `budget_generated_reports`
+try {
+    if (function_exists('getBudgetConnection')) {
+        $db = getBudgetConnection();
+        // Prepare a friendly report name
+        $reportName = $reportTitle;
+        if (!empty($project['project_name'])) {
+            $reportName .= ' - ' . $project['project_name'];
+        }
+
+        $generatedBy = $_SESSION['user_name'] ?? 'System';
+
+        // Insert record (created_at uses NOW())
+        $ins = $db->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, ?, ?, NOW())");
+        if ($ins) {
+            $pid = isset($project['project_id']) ? intval($project['project_id']) : intval($project_id ?? 0);
+            $ins->bind_param('ssis', $report_type, $reportName, $pid, $generatedBy);
+            $ins->execute();
+            $ins->close();
+        }
+    }
+} catch (Throwable $e) {
+    // Do not halt report rendering on logging failure; optionally log to error_log
+    error_log('Failed to log generated report: ' . $e->getMessage());
+}
 
 // Helper for report type title
 $reportTitle = match($report_type) {

@@ -8,6 +8,34 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $userName = $_SESSION['user_name'] ?? 'Guest User';
 $userRole = $_SESSION['user_role'] ?? 'Staff';
+
+// If session doesn't have a display name but we have a user_id, try to fetch from DB
+if (($userName === 'Guest User' || empty($userName)) && !empty($_SESSION['user_id'])) {
+    $uid = intval($_SESSION['user_id']);
+    // Ensure we have a mysqli connection available
+    if (!(isset($conn) && $conn instanceof mysqli && !$conn->connect_error)) {
+        $db_path = __DIR__ . '/../config/database.php';
+        if (file_exists($db_path)) require_once $db_path;
+    }
+    if (isset($conn) && $conn instanceof mysqli && !$conn->connect_error) {
+        $q = $conn->prepare("SELECT full_name, role FROM icmis_users WHERE user_id = ? LIMIT 1");
+        if ($q) {
+            $q->bind_param('i', $uid);
+            if ($q->execute()) {
+                $r = $q->get_result();
+                if ($row = $r->fetch_assoc()) {
+                    $userName = $row['full_name'] ?? $userName;
+                    $userRole = $row['role'] ?? $userRole;
+                    // cache into session for subsequent requests
+                    $_SESSION['user_name'] = $userName;
+                    $_SESSION['user_role'] = $userRole;
+                }
+            }
+            $q->close();
+        }
+    }
+}
+
 $nameParts = explode(' ', $userName);
 $userInitials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
 
@@ -19,12 +47,15 @@ $current_uri = $_SERVER['REQUEST_URI'];
 $current_file = basename($_SERVER['PHP_SELF']);
 
 // Define where the Project Dropdown should appear
-$show_project_selector = (
-    strpos($current_uri, '/modules/budget/') !== false ||
-    strpos($current_uri, '/modules/procurement/') !== false ||
-    strpos($current_uri, '/modules/workforce/') !== false ||
-    $current_file === 'dashboard.php' // Main Dashboard
-);
+if (!isset($show_project_selector)) {
+    $show_project_selector = (
+        strpos($current_uri, '/modules/budget/') !== false ||
+        strpos($current_uri, '/modules/procurement/') !== false ||
+        strpos($current_uri, '/modules/workforce/') !== false ||
+        strpos($current_uri, '/modules/reports/') !== false ||
+        $current_file === 'dashboard.php' // Main Dashboard
+    );
+}
 
 // Explicitly hide for Project Module
 if (strpos($current_uri, '/modules/project/') !== false) {
@@ -97,8 +128,14 @@ if (!isset($pageSection) || !isset($pageTitle)) {
     } elseif (strpos($current_uri, '/project/') !== false) {
         $pageSection = 'Projects';
         $pageTitle = 'Management';
+    } elseif (strpos($current_uri, '/reports/') !== false) {
+        $pageSection = 'Reports Center';
+        $pageTitle = 'Overview';
+    } elseif (strpos($current_uri, '/admin/') !== false) {
+        $pageSection = 'ICMIS Administration';
+        $pageTitle = 'Audit Logs';
     } else {
-        $pageSection = 'System';
+        $pageSection = 'ICMIS';
         $pageTitle = 'Dashboard';
     }
 }

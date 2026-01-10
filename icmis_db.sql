@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 10, 2026 at 01:42 AM
+-- Generation Time: Jan 10, 2026 at 08:01 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -45,7 +45,7 @@ CREATE TABLE `budget_expenses` (
 --
 
 INSERT INTO `budget_expenses` (`expense_id`, `project_id`, `phase_id`, `supplier_id`, `category`, `description`, `amount`, `expense_date`, `status`, `created_by`) VALUES
-(1, 1, 1, 7, 'MATERIALS', 'PO-2026-0001 - Phase 1 Materials', 1344.00, '2026-01-08', 'APPROVED', NULL);
+(8, 1, 1, 1, 'MATERIALS', 'PO-2026-0001 - Phase 1 Materials', 1344.00, '2026-01-10', 'APPROVED', NULL);
 
 -- --------------------------------------------------------
 
@@ -147,6 +147,22 @@ CREATE TABLE `budget_proposals` (
 
 INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`, `title`, `description`, `total_amount`, `status`, `created_by`, `created_at`) VALUES
 (1, 1, 1, 'BP-2026-0001', 'Phase 1: Mobilization — Budget Proposal', 'asd', 1344.00, 'APPROVED', 30, '2026-01-08 05:36:48');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `icmis_generated_reports`
+--
+
+CREATE TABLE `icmis_generated_reports` (
+  `id` int NOT NULL,
+  `report_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'budget, procurement, project, workforce',
+  `project_id` int DEFAULT NULL,
+  `project_name` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `generated_by` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -301,7 +317,7 @@ CREATE TABLE `procurement_inventory` (
 --
 
 INSERT INTO `procurement_inventory` (`item_id`, `item_name`, `category`, `quantity`, `unit`, `project_id`, `phase_id`, `unit_cost`, `last_updated`) VALUES
-(3, 'Tie Wire #16 (kg)', 'General', 0.00, 'pcs', 1, 1, 12.00, '2026-01-08 20:59:00');
+(4, 'Tie Wire #16 (kg)', 'General', 0.00, 'pcs', 1, 1, 12.00, '2026-01-10 03:41:25');
 
 -- --------------------------------------------------------
 
@@ -327,7 +343,7 @@ CREATE TABLE `procurement_purchase_orders` (
 --
 
 INSERT INTO `procurement_purchase_orders` (`po_id`, `po_reference`, `project_id`, `phase_id`, `supplier_id`, `order_title`, `order_date`, `total_amount`, `status`, `created_by_user_id`) VALUES
-(1, 'PO-2026-0001', 1, 1, 7, 'Phase 1 Materials', '2026-01-08', 1344.00, 'COMPLETED', 30);
+(6, 'PO-2026-0001', 1, 1, 1, 'Phase 1 Materials', '2026-01-10', 1344.00, 'COMPLETED', 30);
 
 -- --------------------------------------------------------
 
@@ -350,7 +366,7 @@ CREATE TABLE `procurement_purchase_order_items` (
 --
 
 INSERT INTO `procurement_purchase_order_items` (`po_item_id`, `po_id`, `inventory_item_id`, `item_name`, `quantity`, `unit_cost`, `total_cost`) VALUES
-(2, 1, NULL, 'Tie Wire #16 (kg)', 112.00, 12.00, 1344.00);
+(15, 6, NULL, 'Tie Wire #16 (kg)', 112.00, 12.00, 1344.00);
 
 -- --------------------------------------------------------
 
@@ -373,7 +389,7 @@ CREATE TABLE `procurement_stock_in` (
 --
 
 INSERT INTO `procurement_stock_in` (`stock_in_id`, `po_id`, `item_id`, `quantity_received`, `unit_cost`, `total_cost`, `date_received`) VALUES
-(1, 1, 3, 112, 12.00, 1344.00, '2026-01-08');
+(8, 6, 4, 112, 12.00, 1344.00, '2026-01-10');
 
 -- --------------------------------------------------------
 
@@ -395,7 +411,7 @@ CREATE TABLE `procurement_stock_out` (
 --
 
 INSERT INTO `procurement_stock_out` (`stock_out_id`, `item_id`, `quantity`, `issued_to_employee_id`, `project_id`, `date_issued`) VALUES
-(1, 3, 112, 10, NULL, '2026-01-09');
+(2, 4, 112, 110, NULL, '2026-01-10');
 
 -- --------------------------------------------------------
 
@@ -493,249 +509,79 @@ INSERT INTO `workforce_attendance` (`attendance_id`, `employee_id`, `project_id`
 (5, 101, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
 (6, 101, 1, '2026-01-08', '08:15:00', '17:15:00', 'Late', 'Traffic'),
 (7, 101, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(8, 101, 1, '2026-01-10', '08:00:00', '12:00:00', 'Present', 'Half Day Saturday'),
-(9, 101, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(10, 101, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(11, 101, 1, '2026-01-14', '08:00:00', '19:00:00', 'Present', 'Client Visit (2hr OT)'),
-(12, 101, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(13, 101, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(14, 101, 1, '2026-01-17', '08:00:00', '12:00:00', 'Present', 'Half Day Saturday'),
-(15, 101, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(16, 101, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(17, 101, 1, '2026-01-21', NULL, NULL, 'On Leave', 'Sick Leave'),
-(18, 101, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(19, 101, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(20, 101, 1, '2026-01-24', '08:00:00', '12:00:00', 'Present', 'Half Day Saturday'),
-(21, 101, 1, '2026-01-26', '07:50:00', '17:00:00', 'Present', 'Regular'),
-(22, 101, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(23, 101, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(24, 101, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(25, 101, 1, '2026-01-30', '08:00:00', '18:00:00', 'Present', 'End of Month Reporting (1hr OT)'),
-(26, 102, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(27, 102, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(28, 102, 1, '2026-01-05', '07:55:00', '17:00:00', 'Present', 'Regular'),
-(29, 102, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(30, 102, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(31, 102, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(32, 102, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(33, 102, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Full Day Site Work'),
-(34, 102, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(35, 102, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(36, 102, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(37, 102, 1, '2026-01-15', '08:30:00', '17:30:00', 'Late', 'Medical Checkup'),
-(38, 102, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(39, 102, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(40, 102, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(41, 102, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(42, 102, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(43, 102, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(44, 102, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(45, 102, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(46, 102, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(47, 102, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(48, 102, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(49, 102, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(50, 102, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(51, 103, 1, '2026-01-02', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(52, 103, 1, '2026-01-03', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(53, 103, 1, '2026-01-05', '07:00:00', '18:00:00', 'Present', 'Heavy Pouring (2hr OT)'),
-(54, 103, 1, '2026-01-06', '07:30:00', '17:30:00', 'Present', '30min OT'),
-(55, 103, 1, '2026-01-07', '07:30:00', '17:30:00', 'Present', '30min OT'),
-(56, 103, 1, '2026-01-08', '07:30:00', '17:30:00', 'Present', '30min OT'),
-(57, 103, 1, '2026-01-09', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(58, 103, 1, '2026-01-10', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(59, 103, 1, '2026-01-12', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(60, 103, 1, '2026-01-13', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(61, 103, 1, '2026-01-14', '07:30:00', '19:00:00', 'Present', 'Emergency Fix (2hr OT)'),
-(62, 103, 1, '2026-01-15', '07:30:00', '17:30:00', 'Present', '30min OT'),
-(63, 103, 1, '2026-01-16', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(64, 103, 1, '2026-01-17', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(65, 103, 1, '2026-01-19', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(66, 103, 1, '2026-01-20', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(67, 103, 1, '2026-01-21', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(68, 103, 1, '2026-01-22', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(69, 103, 1, '2026-01-23', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(70, 103, 1, '2026-01-24', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(71, 103, 1, '2026-01-26', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(72, 103, 1, '2026-01-27', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(73, 103, 1, '2026-01-28', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(74, 103, 1, '2026-01-29', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(75, 103, 1, '2026-01-30', '07:30:00', '18:00:00', 'Present', 'Month End Clear up (1hr OT)'),
-(76, 104, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(77, 104, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(78, 104, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(79, 104, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(80, 104, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(81, 104, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(82, 104, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(83, 104, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(84, 104, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(85, 104, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(86, 104, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(87, 104, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(88, 104, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(89, 104, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(90, 104, 1, '2026-01-19', NULL, NULL, 'Absent', 'Family Emergency'),
-(91, 104, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(92, 104, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(93, 104, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(94, 104, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(95, 104, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(96, 104, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(97, 104, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(98, 104, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(99, 104, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(100, 104, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(101, 105, 1, '2026-01-02', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(102, 105, 1, '2026-01-03', '07:50:00', '17:00:00', 'Present', 'Regular'),
-(103, 105, 1, '2026-01-05', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(104, 105, 1, '2026-01-06', '07:55:00', '17:00:00', 'Present', 'Regular'),
-(105, 105, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(106, 105, 1, '2026-01-08', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(107, 105, 1, '2026-01-09', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(108, 105, 1, '2026-01-10', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(109, 105, 1, '2026-01-12', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(110, 105, 1, '2026-01-13', '07:45:00', '18:00:00', 'Present', 'Overtime (1hr)'),
-(111, 105, 1, '2026-01-14', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(112, 105, 1, '2026-01-15', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(113, 105, 1, '2026-01-16', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(114, 105, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(115, 105, 1, '2026-01-19', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(116, 105, 1, '2026-01-20', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(117, 105, 1, '2026-01-21', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(118, 105, 1, '2026-01-22', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(119, 105, 1, '2026-01-23', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(120, 105, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(121, 105, 1, '2026-01-26', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(122, 105, 1, '2026-01-27', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(123, 105, 1, '2026-01-28', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(124, 105, 1, '2026-01-29', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(125, 105, 1, '2026-01-30', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(126, 106, 1, '2026-01-02', '08:15:00', '17:00:00', 'Late', 'Overslept'),
-(127, 106, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(128, 106, 1, '2026-01-05', '08:30:00', '17:00:00', 'Late', 'Traffic'),
-(129, 106, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(130, 106, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(131, 106, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(132, 106, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(133, 106, 1, '2026-01-10', NULL, NULL, 'Absent', 'AWOL'),
-(134, 106, 1, '2026-01-12', '08:45:00', '17:00:00', 'Late', 'Late'),
-(135, 106, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(136, 106, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(137, 106, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(138, 106, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(139, 106, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(140, 106, 1, '2026-01-19', NULL, NULL, 'Absent', 'Sick'),
-(141, 106, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(142, 106, 1, '2026-01-21', '08:10:00', '17:00:00', 'Late', 'Late'),
-(143, 106, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(144, 106, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(145, 106, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(146, 106, 1, '2026-01-26', '09:00:00', '17:00:00', 'Late', 'Very Late'),
-(147, 106, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(148, 106, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(149, 106, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(150, 106, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(151, 107, 1, '2026-01-02', '07:15:00', '17:15:00', 'Present', 'Early In'),
-(152, 107, 1, '2026-01-03', '07:20:00', '17:00:00', 'Present', 'Early In'),
-(153, 107, 1, '2026-01-05', '07:10:00', '17:30:00', 'Present', 'Payroll Prep'),
-(154, 107, 1, '2026-01-06', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(155, 107, 1, '2026-01-07', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(156, 107, 1, '2026-01-08', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(157, 107, 1, '2026-01-09', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(158, 107, 1, '2026-01-10', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(159, 107, 1, '2026-01-12', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(160, 107, 1, '2026-01-13', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(161, 107, 1, '2026-01-14', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(162, 107, 1, '2026-01-15', '07:15:00', '18:00:00', 'Present', 'Payroll Closing (1hr OT)'),
-(163, 107, 1, '2026-01-16', '07:30:00', '17:00:00', 'Present', 'Payday Distribution'),
-(164, 107, 1, '2026-01-17', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(165, 107, 1, '2026-01-19', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(166, 107, 1, '2026-01-20', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(167, 107, 1, '2026-01-21', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(168, 107, 1, '2026-01-22', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(169, 107, 1, '2026-01-23', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(170, 107, 1, '2026-01-24', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(171, 107, 1, '2026-01-26', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(172, 107, 1, '2026-01-27', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(173, 107, 1, '2026-01-28', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(174, 107, 1, '2026-01-29', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(175, 107, 1, '2026-01-30', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(176, 108, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Safety Patrol'),
-(177, 108, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Toolbox Meeting'),
-(178, 108, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(179, 108, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(180, 108, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(181, 108, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(182, 108, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(183, 108, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(184, 108, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(185, 108, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(186, 108, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(187, 108, 1, '2026-01-15', '08:00:00', '12:00:00', 'On Leave', 'Half Day Emergency'),
-(188, 108, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(189, 108, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(190, 108, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(191, 108, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(192, 108, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(193, 108, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(194, 108, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(195, 108, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(196, 108, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(197, 108, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(198, 108, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(199, 108, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(200, 108, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(201, 109, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Gate Fabrication'),
-(202, 109, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(203, 109, 1, '2026-01-05', '07:30:00', '17:00:00', 'Present', 'Early Start'),
-(204, 109, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(205, 109, 1, '2026-01-07', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
-(206, 109, 1, '2026-01-08', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
-(207, 109, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(208, 109, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(209, 109, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(210, 109, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(211, 109, 1, '2026-01-14', '08:30:00', '17:30:00', 'Late', 'Late'),
-(212, 109, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(213, 109, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(214, 109, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(215, 109, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(216, 109, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(217, 109, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(218, 109, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(219, 109, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(220, 109, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(221, 109, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(222, 109, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(223, 109, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(224, 109, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(225, 109, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(226, 110, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Site Survey'),
-(227, 110, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(228, 110, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(229, 110, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(230, 110, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(231, 110, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(232, 110, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(233, 110, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(234, 110, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(235, 110, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(236, 110, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(237, 110, 1, '2026-01-15', '08:00:00', '20:00:00', 'Present', 'Emergency Wiring (3hr OT)'),
-(238, 110, 1, '2026-01-16', '13:00:00', '17:00:00', 'Present', 'Half Day (Rest)'),
-(239, 110, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(240, 110, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(241, 110, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(242, 110, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(243, 110, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(244, 110, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(245, 110, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(246, 110, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(247, 110, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(248, 110, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(249, 110, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(250, 110, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular');
+(8, 102, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(9, 102, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(10, 102, 1, '2026-01-05', '07:55:00', '17:00:00', 'Present', 'Regular'),
+(11, 102, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(12, 102, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(13, 102, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(14, 102, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(15, 103, 1, '2026-01-02', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(16, 103, 1, '2026-01-03', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(17, 103, 1, '2026-01-05', '07:00:00', '18:00:00', 'Present', 'Heavy Pouring (2hr OT)'),
+(18, 103, 1, '2026-01-06', '07:30:00', '17:30:00', 'Present', '30min OT'),
+(19, 103, 1, '2026-01-07', '07:30:00', '17:30:00', 'Present', '30min OT'),
+(20, 103, 1, '2026-01-08', '07:30:00', '17:30:00', 'Present', '30min OT'),
+(21, 103, 1, '2026-01-09', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(22, 104, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(23, 104, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(24, 104, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(25, 104, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(26, 104, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(27, 104, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(28, 104, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(29, 105, 1, '2026-01-02', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(30, 105, 1, '2026-01-03', '07:50:00', '17:00:00', 'Present', 'Regular'),
+(31, 105, 1, '2026-01-05', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(32, 105, 1, '2026-01-06', '07:55:00', '17:00:00', 'Present', 'Regular'),
+(33, 105, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(34, 105, 1, '2026-01-08', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(35, 105, 1, '2026-01-09', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(36, 106, 1, '2026-01-02', '08:15:00', '17:00:00', 'Late', 'Overslept'),
+(37, 106, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(38, 106, 1, '2026-01-05', '08:30:00', '17:00:00', 'Late', 'Traffic'),
+(39, 106, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(40, 106, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(41, 106, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(42, 106, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(43, 107, 1, '2026-01-02', '07:15:00', '17:15:00', 'Present', 'Early In'),
+(44, 107, 1, '2026-01-03', '07:20:00', '17:00:00', 'Present', 'Early In'),
+(45, 107, 1, '2026-01-05', '07:10:00', '17:30:00', 'Present', 'Payroll Prep'),
+(46, 107, 1, '2026-01-06', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(47, 107, 1, '2026-01-07', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(48, 107, 1, '2026-01-08', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(49, 107, 1, '2026-01-09', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(50, 108, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Safety Patrol'),
+(51, 108, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Toolbox Meeting'),
+(52, 108, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(53, 108, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(54, 108, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(55, 108, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(56, 108, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(57, 109, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Gate Fabrication'),
+(58, 109, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(59, 109, 1, '2026-01-05', '07:30:00', '17:00:00', 'Present', 'Early Start'),
+(60, 109, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(61, 109, 1, '2026-01-07', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
+(62, 109, 1, '2026-01-08', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
+(63, 109, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(64, 110, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Site Survey'),
+(65, 110, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(66, 110, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(67, 110, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(68, 110, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(69, 110, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(70, 110, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(71, 101, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(72, 109, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(73, 107, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(74, 104, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(75, 102, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(76, 108, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(77, 110, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(78, 103, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(79, 105, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
+(80, 106, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', '');
 
 -- --------------------------------------------------------
 
@@ -815,6 +661,42 @@ INSERT INTO `workforce_employee_groups` (`group_id`, `group_code`, `group_name`,
 (8, 'GRP-2026-008', 'Survey and Layout', 102, 'Ensures technical alignment and elevation accuracy based on blueprints.'),
 (9, 'GRP-2026-009', 'General Labor Force', 106, 'Support team for hauling, mixing, and site cleanliness maintenance.'),
 (10, 'GRP-2026-010', 'Emergency Response', 108, 'Special designated team for handling site accidents and first aid.');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `workforce_generated_reports`
+--
+
+CREATE TABLE `workforce_generated_reports` (
+  `report_id` int NOT NULL,
+  `project_id` int DEFAULT NULL,
+  `report_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `report_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `generated_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `workforce_generated_reports`
+--
+
+INSERT INTO `workforce_generated_reports` (`report_id`, `project_id`, `report_type`, `report_name`, `generated_by`, `created_at`) VALUES
+(1, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:24:24'),
+(2, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:28:25'),
+(3, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:29:16'),
+(4, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:36:51'),
+(5, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:40:25'),
+(6, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:41:50'),
+(7, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:44:14'),
+(8, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:52:28'),
+(9, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:53:23'),
+(10, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:53:58'),
+(11, 1, 'attendance-summary', 'Attendance Summary (Feb 2026)', 'John Doe', '2026-01-10 06:54:09'),
+(12, 1, 'assignment-report', 'Assignment Report', 'John Doe', '2026-01-10 06:54:13'),
+(13, 1, 'payroll-report', 'Payroll Report (Jan 2026)', 'John Doe', '2026-01-10 06:54:17'),
+(14, 1, 'workforce-analytics', 'Workforce Analytics', 'John Doe', '2026-01-10 06:54:41'),
+(15, 4, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:54:52');
 
 -- --------------------------------------------------------
 
@@ -924,16 +806,26 @@ CREATE TABLE `workforce_payroll` (
 --
 
 INSERT INTO `workforce_payroll` (`payroll_id`, `employee_id`, `period_id`, `hours_worked`, `gross_pay`, `net_pay`, `status`) VALUES
-(1, 101, 1, 88.00, 32500.00, 28000.00, 'Processed'),
-(2, 102, 1, 88.00, 22500.00, 20500.00, 'Processed'),
-(3, 103, 1, 96.00, 14400.00, 13800.00, 'Processed'),
-(4, 104, 1, 96.00, 10800.00, 10300.00, 'Processed'),
-(5, 105, 1, 88.00, 8250.00, 8000.00, 'Processed'),
-(6, 106, 1, 80.00, 5000.00, 4800.00, 'Processed'),
-(7, 107, 1, 88.00, 8800.00, 8400.00, 'Approved'),
-(8, 108, 1, 88.00, 17500.00, 16000.00, 'Approved'),
-(9, 109, 1, 40.00, 4250.00, 4100.00, 'Calculated'),
-(10, 110, 1, 40.00, 5500.00, 5300.00, 'Calculated');
+(11, 101, 9, 65.75, 33183.59, 30008.59, 'Processed'),
+(12, 102, 9, 64.08, 22521.63, 19846.63, 'Processed'),
+(13, 103, 9, 70.50, 10818.75, 9104.12, 'Processed'),
+(14, 104, 9, 64.00, 7200.00, 5992.00, 'Processed'),
+(15, 105, 9, 65.25, 6146.48, 5085.98, 'Processed'),
+(16, 106, 9, 63.25, 3953.13, 3241.56, 'Processed'),
+(17, 107, 9, 71.00, 7275.00, 6056.50, 'Processed'),
+(18, 108, 9, 64.00, 17500.00, 15075.00, 'Processed'),
+(19, 109, 9, 66.50, 7132.03, 5933.55, 'Processed'),
+(20, 110, 9, 64.00, 8800.00, 7368.00, 'Processed'),
+(21, 101, 10, 65.75, 33183.59, 30008.59, 'Processed'),
+(22, 102, 10, 64.08, 22521.63, 19846.63, 'Processed'),
+(23, 103, 10, 70.50, 10818.75, 9104.13, 'Processed'),
+(24, 104, 10, 64.00, 7200.00, 5992.00, 'Processed'),
+(25, 105, 10, 65.25, 6146.48, 5085.98, 'Processed'),
+(26, 106, 10, 63.25, 3953.13, 3241.56, 'Processed'),
+(27, 107, 10, 71.00, 7275.00, 6056.50, 'Processed'),
+(28, 108, 10, 64.00, 17500.00, 15075.00, 'Processed'),
+(29, 109, 10, 66.50, 7132.03, 5933.55, 'Processed'),
+(30, 110, 10, 64.00, 8800.00, 7368.00, 'Processed');
 
 -- --------------------------------------------------------
 
@@ -956,16 +848,7 @@ CREATE TABLE `workforce_payroll_periods` (
 --
 
 INSERT INTO `workforce_payroll_periods` (`period_id`, `start_date`, `end_date`, `pay_date`, `status`, `processed_by`, `created_at`) VALUES
-(1, '2026-01-01', '2026-01-15', '2026-01-16', 'Closed', 101, '2026-01-09 23:26:17'),
-(2, '2026-01-16', '2026-01-31', '2026-02-01', 'Open', 101, '2026-01-09 23:26:17'),
-(3, '2025-12-16', '2025-12-31', '2026-01-01', 'Closed', 101, '2026-01-09 23:26:17'),
-(4, '2025-12-01', '2025-12-15', '2025-12-16', 'Closed', 107, '2026-01-09 23:26:17'),
-(5, '2025-11-16', '2025-11-30', '2025-12-01', 'Closed', 107, '2026-01-09 23:26:17'),
-(6, '2025-11-01', '2025-11-15', '2025-11-16', 'Closed', 107, '2026-01-09 23:26:17'),
-(7, '2025-10-16', '2025-10-31', '2025-11-01', 'Closed', 107, '2026-01-09 23:26:17'),
-(8, '2025-10-01', '2025-10-15', '2025-10-16', 'Closed', 107, '2026-01-09 23:26:17'),
-(9, '2025-09-16', '2025-09-30', '2025-10-01', 'Closed', 107, '2026-01-09 23:26:17'),
-(10, '2025-09-01', '2025-09-15', '2025-09-16', 'Closed', 107, '2026-01-09 23:26:17');
+(10, '2026-01-01', '2026-01-15', '2026-01-10', 'Closed', NULL, '2026-01-10 04:26:51');
 
 --
 -- Indexes for dumped tables
@@ -1003,6 +886,15 @@ ALTER TABLE `budget_proposals`
   ADD KEY `fk_prop_project` (`project_id`),
   ADD KEY `fk_prop_phase` (`phase_id`),
   ADD KEY `fk_prop_creator` (`created_by`);
+
+--
+-- Indexes for table `icmis_generated_reports`
+--
+ALTER TABLE `icmis_generated_reports`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_category` (`category`),
+  ADD KEY `idx_project_id` (`project_id`),
+  ADD KEY `idx_created_at` (`created_at`);
 
 --
 -- Indexes for table `icmis_projects`
@@ -1118,6 +1010,13 @@ ALTER TABLE `workforce_employee_groups`
   ADD KEY `fk_group_leader` (`group_leader_id`);
 
 --
+-- Indexes for table `workforce_generated_reports`
+--
+ALTER TABLE `workforce_generated_reports`
+  ADD PRIMARY KEY (`report_id`),
+  ADD KEY `idx_workforce_rep_project` (`project_id`);
+
+--
 -- Indexes for table `workforce_group_memberships`
 --
 ALTER TABLE `workforce_group_memberships`
@@ -1154,7 +1053,7 @@ ALTER TABLE `workforce_payroll_periods`
 -- AUTO_INCREMENT for table `budget_expenses`
 --
 ALTER TABLE `budget_expenses`
-  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `budget_generated_reports`
@@ -1173,6 +1072,12 @@ ALTER TABLE `budget_line_items`
 --
 ALTER TABLE `budget_proposals`
   MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `icmis_generated_reports`
+--
+ALTER TABLE `icmis_generated_reports`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `icmis_projects`
@@ -1202,31 +1107,31 @@ ALTER TABLE `icmis_users`
 -- AUTO_INCREMENT for table `procurement_inventory`
 --
 ALTER TABLE `procurement_inventory`
-  MODIFY `item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_orders`
 --
 ALTER TABLE `procurement_purchase_orders`
-  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_order_items`
 --
 ALTER TABLE `procurement_purchase_order_items`
-  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_in`
 --
 ALTER TABLE `procurement_stock_in`
-  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_out`
 --
 ALTER TABLE `procurement_stock_out`
-  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `procurement_suppliers`
@@ -1244,7 +1149,7 @@ ALTER TABLE `workforce_assignments`
 -- AUTO_INCREMENT for table `workforce_attendance`
 --
 ALTER TABLE `workforce_attendance`
-  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=251;
+  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
 
 --
 -- AUTO_INCREMENT for table `workforce_employees`
@@ -1257,6 +1162,12 @@ ALTER TABLE `workforce_employees`
 --
 ALTER TABLE `workforce_employee_groups`
   MODIFY `group_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `workforce_generated_reports`
+--
+ALTER TABLE `workforce_generated_reports`
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `workforce_group_memberships`
@@ -1274,7 +1185,7 @@ ALTER TABLE `workforce_job_titles`
 -- AUTO_INCREMENT for table `workforce_payroll`
 --
 ALTER TABLE `workforce_payroll`
-  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `workforce_payroll_periods`
@@ -1400,6 +1311,12 @@ ALTER TABLE `workforce_employees`
 --
 ALTER TABLE `workforce_employee_groups`
   ADD CONSTRAINT `fk_group_leader` FOREIGN KEY (`group_leader_id`) REFERENCES `workforce_employees` (`employee_id`);
+
+--
+-- Constraints for table `workforce_generated_reports`
+--
+ALTER TABLE `workforce_generated_reports`
+  ADD CONSTRAINT `fk_workforce_rep_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `workforce_group_memberships`

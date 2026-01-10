@@ -39,7 +39,9 @@ $budget_path = '/icmis/modules/budget/';
 $procurement_path = '/icmis/modules/procurement/';
 $workforce_path = '/icmis/modules/workforce/';
 $project_path = '/icmis/modules/project/'; 
-$reports_path = '/icmis/modules/reports/'; 
+$reports_path = '/icmis/modules/reports/';
+$logs_path = '/icmis/modules/admin/'; 
+$admin_path = '/icmis/modules/admin/'; 
 
 // ------------------------------------------------------------------
 // ACTIVE STATE LOGIC
@@ -85,7 +87,10 @@ $is_workforce_reports = ($current_page === 'reports.php' && $is_workforce);
 // 7. REPORTS MODULE
 $is_reports = strpos($current_uri, '/modules/reports/') !== false;
 
-// 8. TASK MANAGEMENT (removed - navigation consolidated under Project Management)
+// 8. AUDIT LOGS MODULE (Admin Only)
+$is_audit_logs = (strpos($current_uri, '/modules/logs/') !== false || strpos($current_uri, '/modules/admin/audit_logs') !== false);
+
+// 9. TASK MANAGEMENT (removed - navigation consolidated under Project Management)
 ?>
 <aside class="w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
     <div class="px-4 py-[1.1rem] border-b border-gray-200 ml-10">
@@ -181,9 +186,24 @@ $is_reports = strpos($current_uri, '/modules/reports/') !== false;
                     <svg class="w-3.5 h-3.5" style="stroke-width: 1.17;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span class="<?php echo $is_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Reports</span>
+                    <span class="<?php echo $is_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Reports Center</span>
                 </a>
             </li>
+
+            <?php 
+            // Audit Logs - Only visible to Admin users
+            $user_role = $_SESSION['user_role'] ?? '';
+            if (strtolower($user_role) === 'admin'): 
+            ?>
+            <li>
+                <a href="<?php echo $logs_path; ?>audit_logs.php" class="flex items-center gap-3 px-3 py-2 <?php echo $is_audit_logs ? 'text-[#e9922c] bg-orange-50 border-r-4 border-[#e9922c] -mr-3' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg transition-colors duration-200 group">
+                    <svg class="w-3.5 h-3.5" style="stroke-width: 1.17;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="<?php echo $is_audit_logs ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Audit Logs</span>
+                </a>
+            </li>
+            <?php endif; ?>
 
             <li>
                 <a href="<?php echo $root_path; ?>admin.php" class="flex items-center gap-3 px-3 py-2 <?php echo $is_admin ? 'text-[#e9922c] bg-orange-50 border-r-4 border-[#e9922c] -mr-3' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg transition-colors duration-200 group">

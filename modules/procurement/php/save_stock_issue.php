@@ -16,10 +16,10 @@ $conn->set_charset("utf8mb4");
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $item_id = intval($_POST['stock_itemID'] ?? 0);
     $qtyToIssue = intval($_POST['stock_quantity'] ?? 0);
-    $issuedTo = trim($_POST['stock_issuedTo'] ?? '');
+    $issuedToId = intval($_POST['stock_issuedTo'] ?? 0);
     $project_id = intval($_POST['stock_projectID'] ?? 0);
 
-    if ($item_id <= 0 || $qtyToIssue <= 0 || empty($issuedTo)) {
+    if ($item_id <= 0 || $qtyToIssue <= 0 || $issuedToId <= 0) {
         echo json_encode(["status" => "error", "message" => "Invalid input data"]);
         exit;
     }
@@ -50,11 +50,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         $stmtUpdate->close();
 
-        // Insert into stock_out
-        $insertSql = "INSERT INTO procurement_stock_out (item_id, quantity, issued_to, date_issued, project_id) VALUES (?, ?, ?, CURDATE(), ?)";
-        $stmtInsert = $conn->prepare($insertSql);
-        $project_param = $project_id > 0 ? $project_id : null;
-        $stmtInsert->bind_param("iisi", $item_id, $qtyToIssue, $issuedTo, $project_param);
+        // Insert into stock_out using issued_to_employee_id
+        if ($project_id > 0) {
+            $insertSql = "INSERT INTO procurement_stock_out (item_id, quantity, issued_to_employee_id, date_issued, project_id) VALUES (?, ?, ?, CURDATE(), ?)";
+            $stmtInsert = $conn->prepare($insertSql);
+            $stmtInsert->bind_param("iiii", $item_id, $qtyToIssue, $issuedToId, $project_id);
+        } else {
+            $insertSql = "INSERT INTO procurement_stock_out (item_id, quantity, issued_to_employee_id, date_issued) VALUES (?, ?, ?, CURDATE())";
+            $stmtInsert = $conn->prepare($insertSql);
+            $stmtInsert->bind_param("iii", $item_id, $qtyToIssue, $issuedToId);
+        }
         if (!$stmtInsert->execute()) {
             throw new Exception("Failed to record transaction.");
         }

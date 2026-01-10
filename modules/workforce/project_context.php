@@ -11,7 +11,7 @@
  * - workforce_assignments: assignment_id, employee_id, project_id, phase_id, role, task_description, start_date, end_date, status
  * - workforce_attendance: attendance_id, employee_id, project_id, attendance_date, time_in, time_out, status, remarks
  * - workforce_payroll: payroll_id, employee_id, period_id, hours_worked, gross_pay, net_pay, status
- * - workforce_payroll_periods: period_id, period_name, start_date, end_date, pay_date, status
+ * - workforce_payroll_periods: period_id, start_date, end_date, pay_date, status
  * - workforce_employee_groups: group_id, group_name, group_leader_id, description
  * - workforce_group_memberships: membership_id, employee_id, group_id, role_in_group, joined_date
  */

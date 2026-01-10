@@ -4,14 +4,13 @@
 -- Run this SQL to create the required tables for the Reports module
 
 -- Generated Reports Log Table
-CREATE TABLE IF NOT EXISTS `generated_reports` (
+CREATE TABLE IF NOT EXISTS `icmis_generated_reports` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
     `report_name` VARCHAR(100) NOT NULL,
     `category` VARCHAR(50) NOT NULL COMMENT 'budget, procurement, project, workforce',
     `project_id` INT(11) DEFAULT NULL,
     `project_name` VARCHAR(200) DEFAULT NULL,
     `generated_by` VARCHAR(100) NOT NULL,
-    `file_path` VARCHAR(255) DEFAULT NULL COMMENT 'Path to stored PDF if saved',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_category` (`category`),

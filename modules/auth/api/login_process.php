@@ -4,6 +4,7 @@
 // 1. Load Configuration
 require_once '../../../config/config.php';
 require_once BASE_PATH . '/config/database.php';
+require_once BASE_PATH . '/core/Logger.php';
 
 // 2. Start Session
 if (session_status() === PHP_SESSION_NONE) {
@@ -38,6 +39,10 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['login'])) 
             $_SESSION['user_id'] = $row['user_id'];
             $_SESSION['user_name'] = $row['full_name'];
             $_SESSION['user_role'] = $row['role'];
+
+            // Log successful login to audit trail
+            Logger::init($conn);
+            Logger::login($row['user_id'], $row['full_name']);
 
             // Redirect to Dashboard
             header("Location: " . BASE_URL . "dashboard.php");

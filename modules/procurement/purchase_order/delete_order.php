@@ -12,6 +12,8 @@ ini_set('display_errors', 0);
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/Logger.php';
+
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     ob_clean();
@@ -63,6 +65,10 @@ try {
     $delete_header_stmt->close();
 
     $conn->commit();
+
+    // Log the audit trail
+    Logger::init($conn);
+    Logger::delete('Procurement', "Purchase Order Deleted: " . $po['po_reference'], $po_id);
 
     ob_clean();
     echo json_encode([

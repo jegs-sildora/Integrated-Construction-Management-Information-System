@@ -16,6 +16,7 @@ if (file_exists(__DIR__ . '/../project_context.php')) {
 if (file_exists(__DIR__ . '/../../../config/database.php')) {
     include_once __DIR__ . '/../../../config/database.php';
 }
+require_once __DIR__ . '/../../../core/Logger.php';
 
 // Establish Connection
 if (function_exists('getWorkforceConnection')) {
@@ -366,6 +367,12 @@ function lockPayrollPeriod($conn, $project_id, $month, $period) {
         }
 
         $conn->commit();
+
+        // Log the audit trail
+        $period_label = date('M d', strtotime($start)) . '-' . date('d, Y', strtotime($end));
+        Logger::init($conn);
+        Logger::create('Workforce', "Payroll Locked: Period $period_label for Project #$project_id (" . count($employees) . " employees processed)", $period_id);
+
         echo json_encode(['success' => true, 'message' => 'Payroll Locked.']);
     } catch (Exception $e) {
         $conn->rollback();

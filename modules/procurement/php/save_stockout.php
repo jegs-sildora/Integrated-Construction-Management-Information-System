@@ -4,6 +4,8 @@ header('Content-Type: application/json');
 
 // Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/Logger.php';
+
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
@@ -81,6 +83,11 @@ try {
     $insertStmt->close();
 
     $conn->commit();
+
+    // Log the audit trail
+    Logger::init($conn);
+    Logger::create('Procurement', "Stock Issued: $qty units to Employee #$issued_to_id", $item_id);
+
     echo json_encode(['status' => 'success', 'message' => 'Stock issued successfully!']);
 
 } catch (Exception $e) {

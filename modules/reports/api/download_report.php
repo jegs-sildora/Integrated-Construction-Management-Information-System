@@ -23,7 +23,7 @@ if ($report_id <= 0) {
 }
 
 // Fetch report details from budget_generated_reports table
-$stmt = $conn->prepare("SELECT report_id, report_type, report_name, project_id, generated_by, created_at FROM budget_generated_reports WHERE report_id = ?");
+$stmt = $conn->prepare("SELECT report_id AS id, report_type AS category, report_name, project_id, generated_by, created_at FROM budget_generated_reports WHERE report_id = ?");
 $stmt->bind_param("i", $report_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -49,6 +49,13 @@ if ($report['project_id'] > 0) {
 }
 
 $userName = $report['generated_by'] ?? 'Admin';
+
+// Ensure project_name is available in report array for template
+if (!empty($project) && isset($project['project_name'])) {
+    $report['project_name'] = $project['project_name'];
+} else {
+    $report['project_name'] = 'All Projects';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

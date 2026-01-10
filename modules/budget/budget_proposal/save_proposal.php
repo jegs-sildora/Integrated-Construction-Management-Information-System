@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Include config for database connection
 require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/Logger.php';
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -165,6 +166,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Commit transaction
         $conn->commit();
         
+        // Log budget proposal submission to audit trail
+        Logger::init($conn);
+        Logger::create('Budget', "Submitted budget proposal: $title ($code) - ₱" . number_format($total_amount, 2), $proposal_id);
+
         echo json_encode([
             'success' => true, 
             'message' => 'Proposal saved successfully',
