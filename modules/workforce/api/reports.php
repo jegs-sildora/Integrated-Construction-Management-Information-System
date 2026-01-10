@@ -1,17 +1,9 @@
 <?php
 /**
  * Reports API - Workforce Module
- * 
- * Provides data for generating PDF reports
- * 
- * DATABASE SCHEMA (from icmis_db.sql):
- * - workforce_employees: employee_id, employee_code, user_id, job_title_id, first_name, last_name, email, phone, status (ENUM: Active, Inactive, Terminated), hire_date
- * - workforce_job_titles: job_title_id, title_name, department, description, default_daily_rate, is_active
- * - workforce_assignments: assignment_id, employee_id, project_id, phase_id, role, task_description, start_date, end_date, status (ENUM: Active, Completed, Cancelled)
- * - workforce_attendance: attendance_id, employee_id, project_id, attendance_date, time_in, time_out, status (ENUM: Present, Absent, Late, On Leave), remarks
- * - icmis_projects: project_id, project_code, project_name, etc.
- * - icmis_project_phases: phase_id, project_id, phase_name, etc.
+ * * Provides data for generating PDF reports and logs generation history.
  */
+session_start(); // Ensure session is active for capturing 'generated_by'
 header('Content-Type: application/json');
 
 include __DIR__ . '/../project_context.php';
@@ -66,10 +58,42 @@ function generateReportData($conn) {
             return;
     }
     
+    // Log the successful generation to the database
+    logReportGeneration($conn, $project_id, $type, $month);
+
     echo json_encode(['success' => true, 'data' => $data]);
 }
 
-// Employee Directory Data
+// --- Logging Function ---
+
+function logReportGeneration($conn, $project_id, $type, $month) {
+    // Map types to readable names
+    $reportNames = [
+        'employee-directory' => 'Employee Directory',
+        'attendance-summary' => 'Attendance Summary (' . date('M Y', strtotime($month)) . ')',
+        'assignment-report' => 'Assignment Report',
+        'payroll-report' => 'Payroll Report (' . date('M Y', strtotime($month)) . ')',
+        'workforce-analytics' => 'Workforce Analytics'
+    ];
+
+    $reportName = $reportNames[$type] ?? 'Workforce Report';
+    $generatedBy = $_SESSION['user_name'] ?? 'System'; // Adjust based on your session variable
+
+    // Check if table exists to avoid errors during development
+    $checkTable = $conn->query("SHOW TABLES LIKE 'workforce_generated_reports'");
+    if ($checkTable && $checkTable->num_rows > 0) {
+        $sql = "INSERT INTO workforce_generated_reports (project_id, report_type, report_name, generated_by, created_at) VALUES (?, ?, ?, ?, NOW())";
+        $stmt = $conn->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param("isss", $project_id, $type, $reportName, $generatedBy);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+}
+
+// --- Data Fetching Functions ---
+
 function getEmployeeDirectoryData($conn, $project_id) {
     $sql = "SELECT DISTINCT e.employee_id, e.employee_code, e.first_name, e.last_name,
                    e.email, e.phone, e.status, e.hire_date,
@@ -93,7 +117,6 @@ function getEmployeeDirectoryData($conn, $project_id) {
     return ['employees' => $employees];
 }
 
-// Attendance Summary Data
 function getAttendanceSummaryData($conn, $project_id, $month) {
     $start_date = $month . '-01';
     $end_date = date('Y-m-t', strtotime($start_date));
@@ -128,7 +151,6 @@ function getAttendanceSummaryData($conn, $project_id, $month) {
     return ['attendance' => $attendance];
 }
 
-// Assignment Report Data
 function getAssignmentReportData($conn, $project_id) {
     $sql = "SELECT a.assignment_id,
                    CONCAT(e.first_name, ' ', e.last_name) as employee_name,
@@ -160,13 +182,10 @@ function getAssignmentReportData($conn, $project_id) {
     return ['assignments' => $assignments];
 }
 
-// Payroll Report Data
-// Uses workforce_job_titles.default_daily_rate for each employee's rate
 function getPayrollReportData($conn, $project_id, $month) {
     $start_date = $month . '-01';
     $end_date = date('Y-m-t', strtotime($start_date));
     
-    // Join with workforce_job_titles to get default_daily_rate per employee
     $sql = "SELECT e.employee_id, e.employee_code,
                    CONCAT(e.first_name, ' ', e.last_name) as employee_name,
                    COALESCE(jt.default_daily_rate, 800) as daily_rate,
@@ -211,9 +230,7 @@ function getPayrollReportData($conn, $project_id, $month) {
     return ['payroll' => $payroll, 'totals' => $totals];
 }
 
-// Workforce Analytics Data
 function getWorkforceAnalyticsData($conn, $project_id) {
-    // Basic stats
     $stats = [
         'total_employees' => 0,
         'active_employees' => 0,
@@ -221,7 +238,7 @@ function getWorkforceAnalyticsData($conn, $project_id) {
         'avg_attendance' => 0
     ];
     
-    // Total employees assigned
+    // Total employees
     $sql = "SELECT COUNT(DISTINCT employee_id) as count FROM workforce_assignments WHERE project_id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $project_id);
@@ -248,9 +265,8 @@ function getWorkforceAnalyticsData($conn, $project_id) {
     $stats['total_assignments'] = $result->fetch_assoc()['count'] ?? 0;
     $stmt->close();
     
-    // Average attendance rate (last 30 days)
-    $sql = "SELECT 
-                ROUND(AVG(CASE WHEN att.status = 'Present' THEN 100 ELSE 0 END), 1) as avg_rate
+    // Avg Attendance
+    $sql = "SELECT ROUND(AVG(CASE WHEN att.status = 'Present' THEN 100 ELSE 0 END), 1) as avg_rate
             FROM workforce_attendance att
             WHERE att.project_id = ? 
             AND att.attendance_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";

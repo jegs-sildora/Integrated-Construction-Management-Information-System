@@ -119,10 +119,10 @@ function saveGroup($conn, $action) {
             $stmt->execute();
             $group_id = $conn->insert_id;
 
-            // Generate Code
+            // Generate Code with zero-padded numeric suffix (e.g. GRP-2026-001)
             $year = date('Y');
-            $custom_code = "GRP-{$year}-{$group_id}";
-            $conn->query("UPDATE workforce_employee_groups SET group_code = '$custom_code' WHERE group_id = $group_id");
+            $custom_code = sprintf('GRP-%s-%03d', $year, $group_id);
+            $conn->query("UPDATE workforce_employee_groups SET group_code = '{$conn->real_escape_string($custom_code)}' WHERE group_id = {$group_id}");
 
         } else {
             $group_id = $_POST['group_id'] ?? 0;
@@ -135,6 +135,17 @@ function saveGroup($conn, $action) {
 
             // Clear members to re-insert
             $conn->query("DELETE FROM workforce_group_memberships WHERE group_id = $group_id");
+
+            // Ensure a group_code exists for older records: generate if missing
+            $res = $conn->query("SELECT group_code FROM workforce_employee_groups WHERE group_id = $group_id LIMIT 1");
+            if ($res) {
+                $row = $res->fetch_assoc();
+                if (empty($row['group_code'])) {
+                    $year = date('Y');
+                    $custom_code = sprintf('GRP-%s-%03d', $year, $group_id);
+                    $conn->query("UPDATE workforce_employee_groups SET group_code = '{$conn->real_escape_string($custom_code)}' WHERE group_id = {$group_id}");
+                }
+            }
         }
 
         if (!empty($members)) {

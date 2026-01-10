@@ -192,20 +192,20 @@ $userName = $_SESSION['user_name'] ?? "Admin";
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><i data-lucide="users" class="w-5 h-5"></i></div>
-                    <div><p class="text-xs font-medium text-gray-500">Total Active</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['total']; ?></h3></div>
+                    <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center"><i data-lucide="users" class="w-5 h-5"></i></div>
+                    <div><p class="text-xs  uppercase font-bold text-gray-500">Total Active</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['total']; ?></h3></div>
                 </div>
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center"><i data-lucide="user-check" class="w-5 h-5"></i></div>
-                    <div><p class="text-xs font-medium text-gray-500">Present</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['present']; ?></h3></div>
+                    <div class="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center"><i data-lucide="user-check" class="w-5 h-5"></i></div>
+                    <div><p class="text-xs  uppercase font-bold text-gray-500">Present</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['present']; ?></h3></div>
                 </div>
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center"><i data-lucide="user-x" class="w-5 h-5"></i></div>
-                    <div><p class="text-xs font-medium text-gray-500">Absent</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['absent']; ?></h3></div>
+                    <div class="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center"><i data-lucide="user-x" class="w-5 h-5"></i></div>
+                    <div><p class="text-xs  uppercase font-bold text-gray-500">Absent</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['absent']; ?></h3></div>
                 </div>
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
                     <div class="w-10 h-10 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center"><i data-lucide="clock" class="w-5 h-5"></i></div>
-                    <div><p class="text-xs font-medium text-gray-500">Late</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['late']; ?></h3></div>
+                    <div><p class="text-xs  uppercase font-bold text-gray-500">Late</p><h3 class="text-xl font-black text-gray-900"><?php echo $stats['late']; ?></h3></div>
                 </div>
             </div>
 

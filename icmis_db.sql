@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 09, 2026 at 02:16 PM
+-- Generation Time: Jan 10, 2026 at 01:42 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -32,11 +32,11 @@ CREATE TABLE `budget_expenses` (
   `project_id` int NOT NULL,
   `phase_id` int DEFAULT NULL,
   `supplier_id` int DEFAULT NULL,
-  `category` enum('MATERIALS','LABOR','EQUIPMENT') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `description` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `category` enum('MATERIALS','LABOR','EQUIPMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
   `expense_date` date NOT NULL,
-  `status` enum('PENDING','APPROVED','REJECTED') COLLATE utf8mb4_unicode_ci DEFAULT 'PENDING',
+  `status` enum('PENDING','APPROVED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'PENDING',
   `created_by` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -56,9 +56,9 @@ INSERT INTO `budget_expenses` (`expense_id`, `project_id`, `phase_id`, `supplier
 CREATE TABLE `budget_generated_reports` (
   `report_id` int NOT NULL,
   `project_id` int DEFAULT NULL,
-  `report_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `report_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `generated_by` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `report_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `report_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `generated_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -107,8 +107,8 @@ INSERT INTO `budget_generated_reports` (`report_id`, `project_id`, `report_type`
 CREATE TABLE `budget_line_items` (
   `line_item_id` int NOT NULL,
   `proposal_id` int NOT NULL,
-  `category` enum('MATERIAL','LABOR','EQUIPMENT') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` enum('MATERIAL','LABOR','EQUIPMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `quantity` decimal(10,2) DEFAULT NULL,
   `unit_cost` decimal(15,2) DEFAULT NULL,
   `duration` decimal(10,2) DEFAULT '1.00',
@@ -132,11 +132,11 @@ CREATE TABLE `budget_proposals` (
   `proposal_id` int NOT NULL,
   `project_id` int NOT NULL,
   `phase_id` int DEFAULT NULL,
-  `code` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `total_amount` decimal(15,2) NOT NULL,
-  `status` enum('DRAFT','PENDING','APPROVED','REJECTED') COLLATE utf8mb4_unicode_ci DEFAULT 'DRAFT',
+  `status` enum('DRAFT','PENDING','APPROVED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'DRAFT',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -156,11 +156,11 @@ INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`,
 
 CREATE TABLE `icmis_projects` (
   `project_id` int NOT NULL,
-  `project_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `project_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `location` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('Planning','In Progress','Active','On Hold','Completed','Cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'Planning',
+  `project_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `project_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('Planning','In Progress','Active','On Hold','Completed','Cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Planning',
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
   `completion_rate` decimal(5,2) DEFAULT '0.00',
@@ -185,12 +185,12 @@ INSERT INTO `icmis_projects` (`project_id`, `project_code`, `project_name`, `des
 CREATE TABLE `icmis_project_phases` (
   `phase_id` int NOT NULL,
   `project_id` int NOT NULL,
-  `phase_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `phase_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
   `duration` int DEFAULT '0' COMMENT 'Duration in days',
-  `status` enum('Not Started','In Progress','Completed') COLLATE utf8mb4_unicode_ci DEFAULT 'Not Started'
+  `status` enum('Not Started','In Progress','Completed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Not Started'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -210,13 +210,13 @@ CREATE TABLE `icmis_tasks` (
   `task_id` int NOT NULL,
   `project_id` int NOT NULL,
   `phase_id` int DEFAULT NULL,
-  `task_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `task_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `assigned_to_employee_id` int DEFAULT NULL,
   `start_date` date DEFAULT NULL,
   `due_date` date DEFAULT NULL,
-  `status` enum('Not Started','In Progress','Completed','On Hold') COLLATE utf8mb4_unicode_ci DEFAULT 'Not Started',
-  `priority` enum('Low','Medium','High','Urgent') COLLATE utf8mb4_unicode_ci DEFAULT 'Medium'
+  `status` enum('Not Started','In Progress','Completed','On Hold') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Not Started',
+  `priority` enum('Low','Medium','High','Urgent') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Medium'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -234,11 +234,11 @@ INSERT INTO `icmis_tasks` (`task_id`, `project_id`, `phase_id`, `task_name`, `de
 
 CREATE TABLE `icmis_users` (
   `user_id` int NOT NULL,
-  `full_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role` enum('Admin','Manager','Staff','Budget_Officer','Procurement_Officer') COLLATE utf8mb4_unicode_ci DEFAULT 'Staff',
-  `avatar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `full_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `role` enum('Admin','Manager','Staff','Budget_Officer','Procurement_Officer') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Staff',
+  `avatar` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -286,10 +286,10 @@ INSERT INTO `icmis_users` (`user_id`, `full_name`, `email`, `password`, `role`, 
 
 CREATE TABLE `procurement_inventory` (
   `item_id` int NOT NULL,
-  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'Uncategorized',
+  `item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Uncategorized',
   `quantity` decimal(10,2) DEFAULT '0.00',
-  `unit` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `unit` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `project_id` int DEFAULT NULL,
   `phase_id` int DEFAULT NULL,
   `unit_cost` decimal(15,2) DEFAULT '0.00',
@@ -311,14 +311,14 @@ INSERT INTO `procurement_inventory` (`item_id`, `item_name`, `category`, `quanti
 
 CREATE TABLE `procurement_purchase_orders` (
   `po_id` int NOT NULL,
-  `po_reference` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `po_reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `project_id` int NOT NULL,
   `phase_id` int DEFAULT NULL,
   `supplier_id` int NOT NULL,
-  `order_title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `order_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `order_date` date DEFAULT (curdate()),
   `total_amount` decimal(15,2) DEFAULT '0.00',
-  `status` enum('PENDING','APPROVED','REJECTED','COMPLETED') COLLATE utf8mb4_unicode_ci DEFAULT 'PENDING',
+  `status` enum('PENDING','APPROVED','REJECTED','COMPLETED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'PENDING',
   `created_by_user_id` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -339,7 +339,7 @@ CREATE TABLE `procurement_purchase_order_items` (
   `po_item_id` int NOT NULL,
   `po_id` int NOT NULL,
   `inventory_item_id` int DEFAULT NULL,
-  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `quantity` decimal(10,2) NOT NULL,
   `unit_cost` decimal(15,2) NOT NULL,
   `total_cost` decimal(15,2) NOT NULL
@@ -405,12 +405,12 @@ INSERT INTO `procurement_stock_out` (`stock_out_id`, `item_id`, `quantity`, `iss
 
 CREATE TABLE `procurement_suppliers` (
   `supplier_id` int NOT NULL,
-  `supplier_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `contact_person` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `contact_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address` text COLLATE utf8mb4_unicode_ci,
-  `status` enum('Active','Inactive') COLLATE utf8mb4_unicode_ci DEFAULT 'Active'
+  `supplier_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contact_person` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `status` enum('Active','Inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -441,11 +441,11 @@ CREATE TABLE `workforce_assignments` (
   `employee_id` int NOT NULL,
   `project_id` int NOT NULL,
   `phase_id` int DEFAULT NULL,
-  `role` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `task_description` text COLLATE utf8mb4_unicode_ci,
+  `role` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `task_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
-  `status` enum('Active','Completed','Cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'Active'
+  `status` enum('Active','Completed','Cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -453,9 +453,16 @@ CREATE TABLE `workforce_assignments` (
 --
 
 INSERT INTO `workforce_assignments` (`assignment_id`, `employee_id`, `project_id`, `phase_id`, `role`, `task_description`, `start_date`, `end_date`, `status`) VALUES
-(26, 26, 1, NULL, 'Glazier', NULL, '2026-01-08', NULL, 'Active'),
-(27, 27, 1, NULL, 'Skilled Laborer', NULL, '2026-01-08', NULL, 'Active'),
-(28, 28, 1, NULL, 'Site Helper', NULL, '2026-01-08', NULL, 'Active');
+(1, 101, 1, 1, 'Project Manager', 'Overall supervision of Phase 1 mobilization and structural works.', '2026-01-05', '2026-06-30', 'Active'),
+(2, 102, 1, 1, 'Site Engineer', 'Supervise daily structural integrity and compliance with blueprints.', '2026-01-05', '2026-06-30', 'Active'),
+(3, 103, 1, 1, 'General Foreman', 'Manage workforce schedules and daily site deliverables.', '2026-01-05', '2026-06-30', 'Active'),
+(4, 104, 1, 1, 'Master Mason', 'Lead masonry works for perimeter fencing and foundation.', '2026-01-07', '2026-04-15', 'Active'),
+(5, 105, 1, 1, 'Mason', 'Concrete mixing and hollow block laying for Phase 1.', '2026-01-07', '2026-04-15', 'Active'),
+(6, 106, 1, 1, 'Construction Helper', 'Hauling materials and assisting masonry team.', '2026-01-07', '2026-04-15', 'Active'),
+(7, 107, 1, 1, 'Timekeeper', 'Record daily attendance and monitor work hours.', '2026-01-05', '2026-12-31', 'Active'),
+(8, 108, 1, 1, 'Safety Officer', 'Implement site safety protocols and conduct daily toolbox meetings.', '2026-01-05', '2026-12-31', 'Active'),
+(9, 109, 1, 1, 'Welder', 'Fabrication of steel reinforcement bars and temporary gates.', '2026-01-10', '2026-03-30', 'Active'),
+(10, 110, 1, 1, 'Lead Electrician', 'Installation of temporary power supply for construction equipment.', '2026-01-10', '2026-03-30', 'Active');
 
 -- --------------------------------------------------------
 
@@ -470,9 +477,265 @@ CREATE TABLE `workforce_attendance` (
   `attendance_date` date NOT NULL,
   `time_in` time DEFAULT NULL,
   `time_out` time DEFAULT NULL,
-  `status` enum('Present','Absent','Late','On Leave') COLLATE utf8mb4_unicode_ci NOT NULL,
-  `remarks` text COLLATE utf8mb4_unicode_ci
+  `status` enum('Present','Absent','Late','On Leave') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `workforce_attendance`
+--
+
+INSERT INTO `workforce_attendance` (`attendance_id`, `employee_id`, `project_id`, `attendance_date`, `time_in`, `time_out`, `status`, `remarks`) VALUES
+(1, 101, 1, '2026-01-02', '07:45:00', '17:00:00', 'Present', 'Site Inspection'),
+(2, 101, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(3, 101, 1, '2026-01-05', '07:30:00', '18:00:00', 'Present', 'Manpower Meeting (1hr OT)'),
+(4, 101, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(5, 101, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(6, 101, 1, '2026-01-08', '08:15:00', '17:15:00', 'Late', 'Traffic'),
+(7, 101, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(8, 101, 1, '2026-01-10', '08:00:00', '12:00:00', 'Present', 'Half Day Saturday'),
+(9, 101, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(10, 101, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(11, 101, 1, '2026-01-14', '08:00:00', '19:00:00', 'Present', 'Client Visit (2hr OT)'),
+(12, 101, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(13, 101, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(14, 101, 1, '2026-01-17', '08:00:00', '12:00:00', 'Present', 'Half Day Saturday'),
+(15, 101, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(16, 101, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(17, 101, 1, '2026-01-21', NULL, NULL, 'On Leave', 'Sick Leave'),
+(18, 101, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(19, 101, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(20, 101, 1, '2026-01-24', '08:00:00', '12:00:00', 'Present', 'Half Day Saturday'),
+(21, 101, 1, '2026-01-26', '07:50:00', '17:00:00', 'Present', 'Regular'),
+(22, 101, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(23, 101, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(24, 101, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(25, 101, 1, '2026-01-30', '08:00:00', '18:00:00', 'Present', 'End of Month Reporting (1hr OT)'),
+(26, 102, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(27, 102, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(28, 102, 1, '2026-01-05', '07:55:00', '17:00:00', 'Present', 'Regular'),
+(29, 102, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(30, 102, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(31, 102, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(32, 102, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(33, 102, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Full Day Site Work'),
+(34, 102, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(35, 102, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(36, 102, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(37, 102, 1, '2026-01-15', '08:30:00', '17:30:00', 'Late', 'Medical Checkup'),
+(38, 102, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(39, 102, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(40, 102, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(41, 102, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(42, 102, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(43, 102, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(44, 102, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(45, 102, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(46, 102, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(47, 102, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(48, 102, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(49, 102, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(50, 102, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(51, 103, 1, '2026-01-02', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(52, 103, 1, '2026-01-03', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(53, 103, 1, '2026-01-05', '07:00:00', '18:00:00', 'Present', 'Heavy Pouring (2hr OT)'),
+(54, 103, 1, '2026-01-06', '07:30:00', '17:30:00', 'Present', '30min OT'),
+(55, 103, 1, '2026-01-07', '07:30:00', '17:30:00', 'Present', '30min OT'),
+(56, 103, 1, '2026-01-08', '07:30:00', '17:30:00', 'Present', '30min OT'),
+(57, 103, 1, '2026-01-09', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(58, 103, 1, '2026-01-10', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(59, 103, 1, '2026-01-12', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(60, 103, 1, '2026-01-13', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(61, 103, 1, '2026-01-14', '07:30:00', '19:00:00', 'Present', 'Emergency Fix (2hr OT)'),
+(62, 103, 1, '2026-01-15', '07:30:00', '17:30:00', 'Present', '30min OT'),
+(63, 103, 1, '2026-01-16', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(64, 103, 1, '2026-01-17', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(65, 103, 1, '2026-01-19', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(66, 103, 1, '2026-01-20', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(67, 103, 1, '2026-01-21', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(68, 103, 1, '2026-01-22', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(69, 103, 1, '2026-01-23', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(70, 103, 1, '2026-01-24', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(71, 103, 1, '2026-01-26', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(72, 103, 1, '2026-01-27', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(73, 103, 1, '2026-01-28', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(74, 103, 1, '2026-01-29', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(75, 103, 1, '2026-01-30', '07:30:00', '18:00:00', 'Present', 'Month End Clear up (1hr OT)'),
+(76, 104, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(77, 104, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(78, 104, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(79, 104, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(80, 104, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(81, 104, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(82, 104, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(83, 104, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(84, 104, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(85, 104, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(86, 104, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(87, 104, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(88, 104, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(89, 104, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(90, 104, 1, '2026-01-19', NULL, NULL, 'Absent', 'Family Emergency'),
+(91, 104, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(92, 104, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(93, 104, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(94, 104, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(95, 104, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(96, 104, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(97, 104, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(98, 104, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(99, 104, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(100, 104, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(101, 105, 1, '2026-01-02', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(102, 105, 1, '2026-01-03', '07:50:00', '17:00:00', 'Present', 'Regular'),
+(103, 105, 1, '2026-01-05', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(104, 105, 1, '2026-01-06', '07:55:00', '17:00:00', 'Present', 'Regular'),
+(105, 105, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(106, 105, 1, '2026-01-08', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(107, 105, 1, '2026-01-09', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(108, 105, 1, '2026-01-10', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(109, 105, 1, '2026-01-12', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(110, 105, 1, '2026-01-13', '07:45:00', '18:00:00', 'Present', 'Overtime (1hr)'),
+(111, 105, 1, '2026-01-14', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(112, 105, 1, '2026-01-15', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(113, 105, 1, '2026-01-16', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(114, 105, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(115, 105, 1, '2026-01-19', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(116, 105, 1, '2026-01-20', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(117, 105, 1, '2026-01-21', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(118, 105, 1, '2026-01-22', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(119, 105, 1, '2026-01-23', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(120, 105, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(121, 105, 1, '2026-01-26', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(122, 105, 1, '2026-01-27', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(123, 105, 1, '2026-01-28', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(124, 105, 1, '2026-01-29', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(125, 105, 1, '2026-01-30', '07:45:00', '17:00:00', 'Present', 'Regular'),
+(126, 106, 1, '2026-01-02', '08:15:00', '17:00:00', 'Late', 'Overslept'),
+(127, 106, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(128, 106, 1, '2026-01-05', '08:30:00', '17:00:00', 'Late', 'Traffic'),
+(129, 106, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(130, 106, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(131, 106, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(132, 106, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(133, 106, 1, '2026-01-10', NULL, NULL, 'Absent', 'AWOL'),
+(134, 106, 1, '2026-01-12', '08:45:00', '17:00:00', 'Late', 'Late'),
+(135, 106, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(136, 106, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(137, 106, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(138, 106, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(139, 106, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(140, 106, 1, '2026-01-19', NULL, NULL, 'Absent', 'Sick'),
+(141, 106, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(142, 106, 1, '2026-01-21', '08:10:00', '17:00:00', 'Late', 'Late'),
+(143, 106, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(144, 106, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(145, 106, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(146, 106, 1, '2026-01-26', '09:00:00', '17:00:00', 'Late', 'Very Late'),
+(147, 106, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(148, 106, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(149, 106, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(150, 106, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(151, 107, 1, '2026-01-02', '07:15:00', '17:15:00', 'Present', 'Early In'),
+(152, 107, 1, '2026-01-03', '07:20:00', '17:00:00', 'Present', 'Early In'),
+(153, 107, 1, '2026-01-05', '07:10:00', '17:30:00', 'Present', 'Payroll Prep'),
+(154, 107, 1, '2026-01-06', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(155, 107, 1, '2026-01-07', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(156, 107, 1, '2026-01-08', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(157, 107, 1, '2026-01-09', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(158, 107, 1, '2026-01-10', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(159, 107, 1, '2026-01-12', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(160, 107, 1, '2026-01-13', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(161, 107, 1, '2026-01-14', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(162, 107, 1, '2026-01-15', '07:15:00', '18:00:00', 'Present', 'Payroll Closing (1hr OT)'),
+(163, 107, 1, '2026-01-16', '07:30:00', '17:00:00', 'Present', 'Payday Distribution'),
+(164, 107, 1, '2026-01-17', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(165, 107, 1, '2026-01-19', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(166, 107, 1, '2026-01-20', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(167, 107, 1, '2026-01-21', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(168, 107, 1, '2026-01-22', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(169, 107, 1, '2026-01-23', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(170, 107, 1, '2026-01-24', '07:30:00', '17:00:00', 'Present', 'Regular'),
+(171, 107, 1, '2026-01-26', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(172, 107, 1, '2026-01-27', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(173, 107, 1, '2026-01-28', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(174, 107, 1, '2026-01-29', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(175, 107, 1, '2026-01-30', '07:15:00', '17:15:00', 'Present', 'Regular'),
+(176, 108, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Safety Patrol'),
+(177, 108, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Toolbox Meeting'),
+(178, 108, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(179, 108, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(180, 108, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(181, 108, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(182, 108, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(183, 108, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(184, 108, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(185, 108, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(186, 108, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(187, 108, 1, '2026-01-15', '08:00:00', '12:00:00', 'On Leave', 'Half Day Emergency'),
+(188, 108, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(189, 108, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(190, 108, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(191, 108, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(192, 108, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(193, 108, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(194, 108, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(195, 108, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(196, 108, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(197, 108, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(198, 108, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(199, 108, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(200, 108, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(201, 109, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Gate Fabrication'),
+(202, 109, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(203, 109, 1, '2026-01-05', '07:30:00', '17:00:00', 'Present', 'Early Start'),
+(204, 109, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(205, 109, 1, '2026-01-07', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
+(206, 109, 1, '2026-01-08', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
+(207, 109, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(208, 109, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(209, 109, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(210, 109, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(211, 109, 1, '2026-01-14', '08:30:00', '17:30:00', 'Late', 'Late'),
+(212, 109, 1, '2026-01-15', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(213, 109, 1, '2026-01-16', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(214, 109, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(215, 109, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(216, 109, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(217, 109, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(218, 109, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(219, 109, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(220, 109, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(221, 109, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(222, 109, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(223, 109, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(224, 109, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(225, 109, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(226, 110, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Site Survey'),
+(227, 110, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(228, 110, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(229, 110, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(230, 110, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(231, 110, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(232, 110, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(233, 110, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(234, 110, 1, '2026-01-12', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(235, 110, 1, '2026-01-13', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(236, 110, 1, '2026-01-14', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(237, 110, 1, '2026-01-15', '08:00:00', '20:00:00', 'Present', 'Emergency Wiring (3hr OT)'),
+(238, 110, 1, '2026-01-16', '13:00:00', '17:00:00', 'Present', 'Half Day (Rest)'),
+(239, 110, 1, '2026-01-17', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(240, 110, 1, '2026-01-19', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(241, 110, 1, '2026-01-20', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(242, 110, 1, '2026-01-21', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(243, 110, 1, '2026-01-22', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(244, 110, 1, '2026-01-23', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(245, 110, 1, '2026-01-24', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(246, 110, 1, '2026-01-26', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(247, 110, 1, '2026-01-27', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(248, 110, 1, '2026-01-28', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(249, 110, 1, '2026-01-29', '08:00:00', '17:00:00', 'Present', 'Regular'),
+(250, 110, 1, '2026-01-30', '08:00:00', '17:00:00', 'Present', 'Regular');
 
 -- --------------------------------------------------------
 
@@ -482,28 +745,28 @@ CREATE TABLE `workforce_attendance` (
 
 CREATE TABLE `workforce_employees` (
   `employee_id` int NOT NULL,
-  `employee_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `employee_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` int DEFAULT NULL,
   `job_title_id` int DEFAULT NULL,
-  `employment_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'Full-time',
-  `payment_type` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'Monthly',
+  `employment_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Full-time',
+  `payment_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Monthly',
   `daily_rate` decimal(10,2) DEFAULT '0.00',
   `monthly_salary` decimal(15,2) DEFAULT '0.00',
-  `bank_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `bank_account` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `emergency_contact_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `emergency_contact_phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bank_account` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `emergency_contact_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `emergency_contact_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `supervisor_id` int DEFAULT NULL,
-  `notes` text COLLATE utf8mb4_unicode_ci,
-  `first_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `suffix` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `gender` enum('Male','Female','Other','Prefer not to say') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `first_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `suffix` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `gender` enum('Male','Female','Other','Prefer not to say') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `birthday` date DEFAULT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address` text COLLATE utf8mb4_unicode_ci,
-  `status` enum('Active','Inactive','Terminated') COLLATE utf8mb4_unicode_ci DEFAULT 'Active',
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `status` enum('Active','Inactive','Terminated') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Active',
   `hire_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -512,35 +775,16 @@ CREATE TABLE `workforce_employees` (
 --
 
 INSERT INTO `workforce_employees` (`employee_id`, `employee_code`, `user_id`, `job_title_id`, `employment_type`, `payment_type`, `daily_rate`, `monthly_salary`, `bank_name`, `bank_account`, `emergency_contact_name`, `emergency_contact_phone`, `supervisor_id`, `notes`, `first_name`, `last_name`, `suffix`, `gender`, `birthday`, `email`, `phone`, `address`, `status`, `hire_date`) VALUES
-(1, 'EMP-2026-001', 2, 1, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Marco', 'Villar', NULL, NULL, NULL, 'marco.v@icmis.com', '0917-100-0001', NULL, 'Active', '2026-01-05'),
-(2, 'EMP-2026-002', 3, 2, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Diana', 'Lim', NULL, NULL, NULL, 'diana.l@icmis.com', '0917-100-0002', NULL, 'Active', '2026-01-05'),
-(3, 'EMP-2026-003', 4, 3, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Rico', 'Morales', NULL, NULL, NULL, 'rico.m@icmis.com', '0917-100-0003', NULL, 'Active', '2026-01-06'),
-(4, 'EMP-2026-004', 5, 4, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Carla', 'Sandoval', NULL, NULL, NULL, 'carla.s@icmis.com', '0917-100-0004', NULL, 'Active', '2026-01-02'),
-(5, 'EMP-2026-005', 8, 5, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Luis', 'Ortega', NULL, NULL, NULL, 'luis.o@icmis.com', '0917-100-0005', NULL, 'Active', '2026-01-05'),
-(6, 'EMP-2026-006', 6, 6, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Gina', 'Reyes', NULL, NULL, NULL, 'gina.r@icmis.com', '0917-100-0006', NULL, 'Active', '2026-01-03'),
-(7, 'EMP-2026-007', 7, 7, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Paulo', 'Santos', NULL, NULL, NULL, 'paulo.s@icmis.com', '0917-100-0007', NULL, 'Active', '2026-01-03'),
-(8, 'EMP-2026-008', 9, 8, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Tess', 'Garcia', NULL, NULL, NULL, 'tess.g@icmis.com', '0917-100-0008', NULL, 'Active', '2026-01-04'),
-(9, 'EMP-2026-009', 10, 9, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Jun', 'Abad', NULL, NULL, NULL, 'jun.a@icmis.com', '0917-100-0009', NULL, 'Active', '2026-01-05'),
-(10, 'EMP-2026-010', 11, 10, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Bert', 'Torres', NULL, NULL, NULL, 'bert.t@icmis.com', '0917-100-0010', NULL, 'Active', '2026-01-05'),
-(11, 'EMP-2026-011', 12, 11, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Ricardo', 'Dalisay', NULL, NULL, NULL, 'ricardo.d@icmis.com', '0917-200-0011', NULL, 'Active', '2026-01-10'),
-(12, 'EMP-2026-012', 13, 12, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Efren', 'Bata', NULL, NULL, NULL, 'efren.b@icmis.com', '0917-200-0012', NULL, 'Active', '2026-01-10'),
-(13, 'EMP-2026-013', 14, 13, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Joel', 'Cruz', NULL, NULL, NULL, 'joel.c@icmis.com', '0917-200-0013', NULL, 'Active', '2026-01-12'),
-(14, 'EMP-2026-014', 15, 14, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Mark', 'Go', NULL, NULL, NULL, 'mark.g@icmis.com', '0917-200-0014', NULL, 'Active', '2026-01-12'),
-(15, 'EMP-2026-015', 16, 15, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Romy', 'Diaz', NULL, NULL, NULL, 'romy.d@icmis.com', '0917-200-0015', NULL, 'Active', '2026-01-12'),
-(16, 'EMP-2026-016', 17, 16, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Dante', 'Alip', NULL, NULL, NULL, 'dante.a@icmis.com', '0917-200-0016', NULL, 'Active', '2026-01-11'),
-(17, 'EMP-2026-017', 18, 17, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Steve', 'Paz', NULL, NULL, NULL, 'steve.p@icmis.com', '0917-300-0017', NULL, 'Active', '2026-01-15'),
-(18, 'EMP-2026-018', 19, 18, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Ryan', 'Yap', NULL, NULL, NULL, 'ryan.y@icmis.com', '0917-300-0018', NULL, 'Active', '2026-01-15'),
-(19, 'EMP-2026-019', 20, 19, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Mario', 'Pineda', NULL, NULL, NULL, 'mario.p@icmis.com', '0917-300-0019', NULL, 'Active', '2026-01-15'),
-(20, 'EMP-2026-020', 21, 20, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Luigi', 'Pineda', NULL, NULL, NULL, 'luigi.p@icmis.com', '0917-300-0020', NULL, 'Active', '2026-01-15'),
-(21, 'EMP-2026-021', 22, 21, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Ken', 'Sy', NULL, NULL, NULL, 'ken.s@icmis.com', '0917-300-0021', NULL, 'Active', '2026-01-15'),
-(22, 'EMP-2026-022', 23, 22, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Manny', 'Wood', NULL, NULL, NULL, 'manny.w@icmis.com', '0917-400-0022', NULL, 'Active', '2026-02-01'),
-(23, 'EMP-2026-023', 24, 23, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Jack', 'Solis', NULL, NULL, NULL, 'jack.s@icmis.com', '0917-400-0023', NULL, 'Active', '2026-01-10'),
-(24, 'EMP-2026-024', 25, 24, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Peter', 'Vega', NULL, NULL, NULL, 'peter.v@icmis.com', '0917-400-0024', NULL, 'Active', '2026-02-05'),
-(25, 'EMP-2026-025', 26, 25, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Tyler', 'Tan', NULL, NULL, NULL, 'tyler.t@icmis.com', '0917-400-0025', NULL, 'Active', '2026-02-05'),
-(26, 'EMP-2026-026', 27, 26, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Jose', 'Glas', NULL, NULL, NULL, 'jose.g@icmis.com', '0917-400-0026', NULL, 'Active', '2026-02-10'),
-(27, 'EMP-2026-027', 28, 27, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Boyet', 'Labos', NULL, NULL, NULL, 'boyet.l@icmis.com', '0917-500-0027', NULL, 'Active', '2026-01-05'),
-(28, 'EMP-2026-028', 29, 28, NULL, NULL, 0.00, 0.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Juan', 'Dela Cruz', NULL, NULL, NULL, 'juan.d@icmis.com', '0917-500-0028', NULL, 'Active', '2026-01-05'),
-(39, 'EMP-2026-029', NULL, 1, 'Full-time', 'Monthly', 2500.00, 65000.00, 'Land Bank of the Philippines (LANDBANK)', '090129091092091090', 'Math Badajos', '+63 909090909', NULL, '0', 'Math', 'Badajos', 'Jr.', 'Male', '2005-09-22', 'math.badajos@icmis.com', '+63 9099010900', 'asdfasdfasdffdf', 'Active', '2026-01-09');
+(101, 'EMP-2026-001', 1, 1, 'Regular', 'Monthly', 2500.00, 65000.00, 'BPI', '1010-2020-30', 'Elena Bautista', '0917-000-0001', 101, 'Project Lead', 'Ramon', 'Bautista', 'None', 'Male', '1980-05-15', 'ramon.b@icmis.com', '0917-111-2222', 'Block 5 Lot 2, Davao City', 'Active', '2025-12-01'),
+(102, 'EMP-2026-002', 2, 2, 'Regular', 'Monthly', 1800.00, 45000.00, 'BDO', '0011-2233-44', 'Mark Geran', '0917-000-0002', 101, 'License No. 54321', 'Sarah', 'Geran', 'None', 'Female', '1992-08-20', 'sarah.g@icmis.com', '0917-333-4444', 'Downtown Area, Davao City', 'Active', '2026-01-05'),
+(103, 'EMP-2026-003', 3, 11, 'Project-Based', 'Daily', 1200.00, 31200.00, 'Metrobank', '3333-4444-55', 'Juana Peñaflorida', '0918-000-0003', 101, 'Senior Foreman', 'Efren', 'Peñaflorida', 'Jr.', 'Male', '1975-11-30', 'efren.p@icmis.com', '0918-555-6666', 'Toril, Davao City', 'Active', '2026-01-07'),
+(104, 'EMP-2026-004', 4, 12, 'Contractual', 'Daily', 900.00, 23400.00, 'Landbank', '5555-6666-77', 'Lola Flora', '0919-000-0004', 101, 'Skill Lvl 3', 'Cardo', 'Dalisay', 'None', 'Male', '1985-01-10', 'cardo.d@icmis.com', '0919-777-8888', 'Matina, Davao City', 'Active', '2026-01-07'),
+(105, 'EMP-2026-005', 5, 13, 'Contractual', 'Daily', 750.00, 19500.00, 'Cash Card', 'CC-9988-77', 'Maria Penduko', '0920-000-0005', 101, 'Masonry A', 'Pedro', 'Penduko', 'None', 'Male', '1988-03-25', 'pedro.p@icmis.com', '0920-999-0000', 'Buhangin, Davao City', 'Active', '2026-01-08'),
+(106, 'EMP-2026-006', 6, 28, 'Contractual', 'Daily', 500.00, 13000.00, 'Cash Card', 'CC-1122-33', 'Nanay Tamad', '0921-000-0006', 101, 'General Labor', 'Juan', 'Tamad', 'None', 'Male', '1995-06-12', 'juan.t@icmis.com', '0921-123-4567', 'Agdao, Davao City', 'Active', '2026-01-08'),
+(107, 'EMP-2026-007', 7, 9, 'Regular', 'Daily', 800.00, 20800.00, 'BPI', '8888-9999-00', 'Padre Damaso', '0922-000-0007', 101, 'Admin Support', 'Maria', 'Clara', 'None', 'Female', '1993-02-14', 'maria.c@icmis.com', '0922-234-5678', 'Ecoland, Davao City', 'Active', '2026-01-05'),
+(108, 'EMP-2026-008', 8, 5, 'Regular', 'Monthly', 1500.00, 35000.00, 'BDO', '7777-8888-99', 'Elias Ibarra', '0923-000-0008', 101, 'COSH Certified', 'Crisostomo', 'Ibarra', 'None', 'Male', '1982-12-30', 'cris.i@icmis.com', '0923-345-6789', 'Lanang, Davao City', 'Active', '2026-01-05'),
+(109, 'EMP-2026-009', 9, 15, 'Contractual', 'Daily', 850.00, 22100.00, 'Metrobank', '2222-1111-00', 'Gregoria De Jesus', '0924-000-0009', 101, 'SMAW NCII', 'Andres', 'Bonifacio', 'None', 'Male', '1983-11-30', 'andres.b@icmis.com', '0924-456-7890', 'Panacan, Davao City', 'Active', '2026-01-10'),
+(110, 'EMP-2026-010', 10, 17, 'Project-Based', 'Daily', 1100.00, 28600.00, 'Landbank', '4444-5555-66', 'Ina Mabini', '0925-000-0010', 101, 'Lic. Master Electrician', 'Apolinario', 'Mabini', 'None', 'Male', '1984-07-23', 'pol.m@icmis.com', '0925-567-8901', 'Talomo, Davao City', 'Active', '2026-01-10');
 
 -- --------------------------------------------------------
 
@@ -550,10 +794,10 @@ INSERT INTO `workforce_employees` (`employee_id`, `employee_code`, `user_id`, `j
 
 CREATE TABLE `workforce_employee_groups` (
   `group_id` int NOT NULL,
-  `group_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `group_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `group_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `group_leader_id` int DEFAULT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -561,20 +805,16 @@ CREATE TABLE `workforce_employee_groups` (
 --
 
 INSERT INTO `workforce_employee_groups` (`group_id`, `group_code`, `group_name`, `group_leader_id`, `description`) VALUES
-(7, 'GRP-2026-7', 'Test Team', 11, '');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `workforce_employee_skills`
---
-
-CREATE TABLE `workforce_employee_skills` (
-  `employee_skill_id` int NOT NULL,
-  `employee_id` int NOT NULL,
-  `skill_id` int NOT NULL,
-  `proficiency_level` enum('Beginner','Intermediate','Advanced','Expert') COLLATE utf8mb4_unicode_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+(1, 'GRP-2026-001', 'Civil Works Team Alpha', 103, 'Primary structural team responsible for foundation and column erection.'),
+(2, 'GRP-2026-002', 'Masonry Unit 1', 104, 'Specialized team for hollow block laying and wall plastering.'),
+(3, 'GRP-2026-003', 'Electrical Installation', 110, 'Responsible for all roughing-ins, wiring, and panel board termination.'),
+(4, 'GRP-2026-004', 'Site Safety Committee', 108, 'Oversight group for Occupational Safety and Health (OSH) compliance.'),
+(5, 'GRP-2026-005', 'Logistics and Support', 107, 'Handles material receiving, inventory monitoring, and timekeeping.'),
+(6, 'GRP-2026-006', 'Steel Fabrication', 109, 'Responsible for cutting, bending, and installing rebar reinforcements.'),
+(7, 'GRP-2026-007', 'Project Management', 101, 'Top-level supervision and stakeholder coordination team.'),
+(8, 'GRP-2026-008', 'Survey and Layout', 102, 'Ensures technical alignment and elevation accuracy based on blueprints.'),
+(9, 'GRP-2026-009', 'General Labor Force', 106, 'Support team for hauling, mixing, and site cleanliness maintenance.'),
+(10, 'GRP-2026-010', 'Emergency Response', 108, 'Special designated team for handling site accidents and first aid.');
 
 -- --------------------------------------------------------
 
@@ -586,7 +826,7 @@ CREATE TABLE `workforce_group_memberships` (
   `membership_id` int NOT NULL,
   `employee_id` int NOT NULL,
   `group_id` int NOT NULL,
-  `role_in_group` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `role_in_group` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `joined_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -595,9 +835,21 @@ CREATE TABLE `workforce_group_memberships` (
 --
 
 INSERT INTO `workforce_group_memberships` (`membership_id`, `employee_id`, `group_id`, `role_in_group`, `joined_date`) VALUES
-(36, 9, 7, 'Timekeeper', '2026-01-08'),
-(37, 16, 7, 'Heavy Equipment Operator', '2026-01-08'),
-(38, 12, 7, 'Master Mason', '2026-01-08');
+(1, 103, 1, 'Team Leader', '2026-01-07'),
+(2, 104, 1, 'Senior Technical Member', '2026-01-07'),
+(3, 104, 2, 'Team Leader', '2026-01-07'),
+(4, 105, 2, 'Mason', '2026-01-08'),
+(5, 106, 2, 'Assistant', '2026-01-08'),
+(6, 110, 3, 'Head Electrician', '2026-01-10'),
+(7, 108, 4, 'Safety Chairman', '2026-01-05'),
+(8, 107, 5, 'Logistics Coordinator', '2026-01-05'),
+(9, 109, 6, 'Fabrication Lead', '2026-01-10'),
+(10, 101, 7, 'Project Director', '2026-01-05'),
+(11, 102, 7, 'Technical Supervisor', '2026-01-05'),
+(12, 102, 8, 'Chief Surveyor', '2026-01-05'),
+(13, 106, 9, 'Head Laborer', '2026-01-08'),
+(14, 103, 10, 'First Aid Responder', '2026-01-07'),
+(15, 108, 10, 'Response Coordinator', '2026-01-05');
 
 -- --------------------------------------------------------
 
@@ -607,9 +859,9 @@ INSERT INTO `workforce_group_memberships` (`membership_id`, `employee_id`, `grou
 
 CREATE TABLE `workforce_job_titles` (
   `job_title_id` int NOT NULL,
-  `title_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `department` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
+  `title_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `department` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `default_daily_rate` decimal(10,2) DEFAULT NULL,
   `default_monthly_salary` decimal(15,2) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT '1',
@@ -654,63 +906,6 @@ INSERT INTO `workforce_job_titles` (`job_title_id`, `title_name`, `department`, 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `workforce_leave_balances`
---
-
-CREATE TABLE `workforce_leave_balances` (
-  `balance_id` int NOT NULL,
-  `employee_id` int NOT NULL,
-  `leave_type_id` int NOT NULL,
-  `balance` decimal(5,2) DEFAULT '0.00'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `workforce_leave_requests`
---
-
-CREATE TABLE `workforce_leave_requests` (
-  `request_id` int NOT NULL,
-  `employee_id` int NOT NULL,
-  `leave_type_id` int NOT NULL,
-  `start_date` date NOT NULL,
-  `end_date` date NOT NULL,
-  `reason` text COLLATE utf8mb4_unicode_ci,
-  `status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_unicode_ci DEFAULT 'Pending',
-  `reviewed_by` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `workforce_leave_types`
---
-
-CREATE TABLE `workforce_leave_types` (
-  `leave_type_id` int NOT NULL,
-  `leave_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `max_days_per_year` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `workforce_notifications`
---
-
-CREATE TABLE `workforce_notifications` (
-  `notification_id` int NOT NULL,
-  `recipient_user_id` int DEFAULT NULL,
-  `title` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `message` text COLLATE utf8mb4_unicode_ci,
-  `is_read` tinyint(1) DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `workforce_payroll`
 --
 
@@ -721,21 +916,24 @@ CREATE TABLE `workforce_payroll` (
   `hours_worked` decimal(5,2) DEFAULT NULL,
   `gross_pay` decimal(10,2) DEFAULT NULL,
   `net_pay` decimal(10,2) DEFAULT NULL,
-  `status` enum('Calculated','Approved','Processed') COLLATE utf8mb4_unicode_ci DEFAULT 'Calculated'
+  `status` enum('Calculated','Approved','Processed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Calculated'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
 --
--- Table structure for table `workforce_payroll_config`
+-- Dumping data for table `workforce_payroll`
 --
 
-CREATE TABLE `workforce_payroll_config` (
-  `config_id` int NOT NULL,
-  `config_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `config_value` text COLLATE utf8mb4_unicode_ci,
-  `config_type` enum('Tax','Contribution','Overtime','Allowance') COLLATE utf8mb4_unicode_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `workforce_payroll` (`payroll_id`, `employee_id`, `period_id`, `hours_worked`, `gross_pay`, `net_pay`, `status`) VALUES
+(1, 101, 1, 88.00, 32500.00, 28000.00, 'Processed'),
+(2, 102, 1, 88.00, 22500.00, 20500.00, 'Processed'),
+(3, 103, 1, 96.00, 14400.00, 13800.00, 'Processed'),
+(4, 104, 1, 96.00, 10800.00, 10300.00, 'Processed'),
+(5, 105, 1, 88.00, 8250.00, 8000.00, 'Processed'),
+(6, 106, 1, 80.00, 5000.00, 4800.00, 'Processed'),
+(7, 107, 1, 88.00, 8800.00, 8400.00, 'Approved'),
+(8, 108, 1, 88.00, 17500.00, 16000.00, 'Approved'),
+(9, 109, 1, 40.00, 4250.00, 4100.00, 'Calculated'),
+(10, 110, 1, 40.00, 5500.00, 5300.00, 'Calculated');
 
 -- --------------------------------------------------------
 
@@ -745,25 +943,29 @@ CREATE TABLE `workforce_payroll_config` (
 
 CREATE TABLE `workforce_payroll_periods` (
   `period_id` int NOT NULL,
-  `period_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `pay_date` date DEFAULT NULL,
-  `status` enum('Open','Closed','Processed') COLLATE utf8mb4_unicode_ci DEFAULT 'Open'
+  `status` enum('Open','Closed','Processing') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Open',
+  `processed_by` int DEFAULT NULL COMMENT 'Employee ID of the person who processed this',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
 --
--- Table structure for table `workforce_skills`
+-- Dumping data for table `workforce_payroll_periods`
 --
 
-CREATE TABLE `workforce_skills` (
-  `skill_id` int NOT NULL,
-  `skill_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `workforce_payroll_periods` (`period_id`, `start_date`, `end_date`, `pay_date`, `status`, `processed_by`, `created_at`) VALUES
+(1, '2026-01-01', '2026-01-15', '2026-01-16', 'Closed', 101, '2026-01-09 23:26:17'),
+(2, '2026-01-16', '2026-01-31', '2026-02-01', 'Open', 101, '2026-01-09 23:26:17'),
+(3, '2025-12-16', '2025-12-31', '2026-01-01', 'Closed', 101, '2026-01-09 23:26:17'),
+(4, '2025-12-01', '2025-12-15', '2025-12-16', 'Closed', 107, '2026-01-09 23:26:17'),
+(5, '2025-11-16', '2025-11-30', '2025-12-01', 'Closed', 107, '2026-01-09 23:26:17'),
+(6, '2025-11-01', '2025-11-15', '2025-11-16', 'Closed', 107, '2026-01-09 23:26:17'),
+(7, '2025-10-16', '2025-10-31', '2025-11-01', 'Closed', 107, '2026-01-09 23:26:17'),
+(8, '2025-10-01', '2025-10-15', '2025-10-16', 'Closed', 107, '2026-01-09 23:26:17'),
+(9, '2025-09-16', '2025-09-30', '2025-10-01', 'Closed', 107, '2026-01-09 23:26:17'),
+(10, '2025-09-01', '2025-09-15', '2025-09-16', 'Closed', 107, '2026-01-09 23:26:17');
 
 --
 -- Indexes for dumped tables
@@ -916,14 +1118,6 @@ ALTER TABLE `workforce_employee_groups`
   ADD KEY `fk_group_leader` (`group_leader_id`);
 
 --
--- Indexes for table `workforce_employee_skills`
---
-ALTER TABLE `workforce_employee_skills`
-  ADD PRIMARY KEY (`employee_skill_id`),
-  ADD KEY `fk_skill_emp` (`employee_id`),
-  ADD KEY `fk_skill_id` (`skill_id`);
-
---
 -- Indexes for table `workforce_group_memberships`
 --
 ALTER TABLE `workforce_group_memberships`
@@ -938,36 +1132,6 @@ ALTER TABLE `workforce_job_titles`
   ADD PRIMARY KEY (`job_title_id`);
 
 --
--- Indexes for table `workforce_leave_balances`
---
-ALTER TABLE `workforce_leave_balances`
-  ADD PRIMARY KEY (`balance_id`),
-  ADD KEY `fk_leave_emp` (`employee_id`),
-  ADD KEY `fk_leave_type` (`leave_type_id`);
-
---
--- Indexes for table `workforce_leave_requests`
---
-ALTER TABLE `workforce_leave_requests`
-  ADD PRIMARY KEY (`request_id`),
-  ADD KEY `fk_req_emp` (`employee_id`),
-  ADD KEY `fk_req_type` (`leave_type_id`),
-  ADD KEY `fk_req_reviewer` (`reviewed_by`);
-
---
--- Indexes for table `workforce_leave_types`
---
-ALTER TABLE `workforce_leave_types`
-  ADD PRIMARY KEY (`leave_type_id`);
-
---
--- Indexes for table `workforce_notifications`
---
-ALTER TABLE `workforce_notifications`
-  ADD PRIMARY KEY (`notification_id`),
-  ADD KEY `fk_notif_user` (`recipient_user_id`);
-
---
 -- Indexes for table `workforce_payroll`
 --
 ALTER TABLE `workforce_payroll`
@@ -976,22 +1140,11 @@ ALTER TABLE `workforce_payroll`
   ADD KEY `fk_payroll_period` (`period_id`);
 
 --
--- Indexes for table `workforce_payroll_config`
---
-ALTER TABLE `workforce_payroll_config`
-  ADD PRIMARY KEY (`config_id`);
-
---
 -- Indexes for table `workforce_payroll_periods`
 --
 ALTER TABLE `workforce_payroll_periods`
-  ADD PRIMARY KEY (`period_id`);
-
---
--- Indexes for table `workforce_skills`
---
-ALTER TABLE `workforce_skills`
-  ADD PRIMARY KEY (`skill_id`);
+  ADD PRIMARY KEY (`period_id`),
+  ADD KEY `fk_period_processor` (`processed_by`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -1085,37 +1238,31 @@ ALTER TABLE `procurement_suppliers`
 -- AUTO_INCREMENT for table `workforce_assignments`
 --
 ALTER TABLE `workforce_assignments`
-  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `workforce_attendance`
 --
 ALTER TABLE `workforce_attendance`
-  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=251;
 
 --
 -- AUTO_INCREMENT for table `workforce_employees`
 --
 ALTER TABLE `workforce_employees`
-  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
 
 --
 -- AUTO_INCREMENT for table `workforce_employee_groups`
 --
 ALTER TABLE `workforce_employee_groups`
-  MODIFY `group_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT for table `workforce_employee_skills`
---
-ALTER TABLE `workforce_employee_skills`
-  MODIFY `employee_skill_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `group_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `workforce_group_memberships`
 --
 ALTER TABLE `workforce_group_memberships`
-  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `workforce_job_titles`
@@ -1124,52 +1271,16 @@ ALTER TABLE `workforce_job_titles`
   MODIFY `job_title_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
--- AUTO_INCREMENT for table `workforce_leave_balances`
---
-ALTER TABLE `workforce_leave_balances`
-  MODIFY `balance_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `workforce_leave_requests`
---
-ALTER TABLE `workforce_leave_requests`
-  MODIFY `request_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `workforce_leave_types`
---
-ALTER TABLE `workforce_leave_types`
-  MODIFY `leave_type_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `workforce_notifications`
---
-ALTER TABLE `workforce_notifications`
-  MODIFY `notification_id` int NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `workforce_payroll`
 --
 ALTER TABLE `workforce_payroll`
-  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `workforce_payroll_config`
---
-ALTER TABLE `workforce_payroll_config`
-  MODIFY `config_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `workforce_payroll_periods`
 --
 ALTER TABLE `workforce_payroll_periods`
-  MODIFY `period_id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `workforce_skills`
---
-ALTER TABLE `workforce_skills`
-  MODIFY `skill_id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `period_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Constraints for dumped tables
@@ -1291,13 +1402,6 @@ ALTER TABLE `workforce_employee_groups`
   ADD CONSTRAINT `fk_group_leader` FOREIGN KEY (`group_leader_id`) REFERENCES `workforce_employees` (`employee_id`);
 
 --
--- Constraints for table `workforce_employee_skills`
---
-ALTER TABLE `workforce_employee_skills`
-  ADD CONSTRAINT `fk_skill_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_skill_id` FOREIGN KEY (`skill_id`) REFERENCES `workforce_skills` (`skill_id`) ON DELETE CASCADE;
-
---
 -- Constraints for table `workforce_group_memberships`
 --
 ALTER TABLE `workforce_group_memberships`
@@ -1305,32 +1409,10 @@ ALTER TABLE `workforce_group_memberships`
   ADD CONSTRAINT `fk_mem_group` FOREIGN KEY (`group_id`) REFERENCES `workforce_employee_groups` (`group_id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `workforce_leave_balances`
+-- Constraints for table `workforce_payroll_periods`
 --
-ALTER TABLE `workforce_leave_balances`
-  ADD CONSTRAINT `fk_leave_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`),
-  ADD CONSTRAINT `fk_leave_type` FOREIGN KEY (`leave_type_id`) REFERENCES `workforce_leave_types` (`leave_type_id`);
-
---
--- Constraints for table `workforce_leave_requests`
---
-ALTER TABLE `workforce_leave_requests`
-  ADD CONSTRAINT `fk_req_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`),
-  ADD CONSTRAINT `fk_req_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `workforce_employees` (`employee_id`),
-  ADD CONSTRAINT `fk_req_type` FOREIGN KEY (`leave_type_id`) REFERENCES `workforce_leave_types` (`leave_type_id`);
-
---
--- Constraints for table `workforce_notifications`
---
-ALTER TABLE `workforce_notifications`
-  ADD CONSTRAINT `fk_notif_user` FOREIGN KEY (`recipient_user_id`) REFERENCES `icmis_users` (`user_id`);
-
---
--- Constraints for table `workforce_payroll`
---
-ALTER TABLE `workforce_payroll`
-  ADD CONSTRAINT `fk_payroll_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`),
-  ADD CONSTRAINT `fk_payroll_period` FOREIGN KEY (`period_id`) REFERENCES `workforce_payroll_periods` (`period_id`);
+ALTER TABLE `workforce_payroll_periods`
+  ADD CONSTRAINT `fk_period_processor` FOREIGN KEY (`processed_by`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

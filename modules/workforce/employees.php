@@ -279,7 +279,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             <i data-lucide="users" class="w-5 h-5 text-blue-600"></i>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500">Total Employees</p>
+                            <p class="text-xs text-gray-500 uppercase font-bold">Total Employees</p>
                             <h3 id="stat-total" class="text-xl font-black text-gray-900"><?php echo $stats['total']; ?></h3>
                         </div>
                     </div>
@@ -290,7 +290,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             <i data-lucide="user-check" class="w-5 h-5 text-green-600"></i>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500">Active</p>
+                            <p class="text-xs text-gray-500 uppercase font-bold">Active</p>
                             <h3 id="stat-active" class="text-xl font-black text-gray-900"><?php echo $stats['active']; ?></h3>
                         </div>
                     </div>
@@ -301,7 +301,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             <i data-lucide="user-x" class="w-5 h-5 text-red-600"></i>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500">Inactive</p>
+                            <p class="text-xs text-gray-500 uppercase font-bold">Inactive</p>
                             <h3 id="stat-inactive" class="text-xl font-black text-gray-900"><?php echo $stats['inactive']; ?></h3>
                         </div>
                     </div>
@@ -312,7 +312,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                             <i data-lucide="user-plus" class="w-5 h-5 text-orange-600"></i>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500">New This Month</p>
+                            <p class="text-xs text-gray-500 uppercase font-bold">New This Month</p>
                             <h3 id="stat-new" class="text-xl font-black text-gray-900"><?php echo $stats['new_this_month']; ?></h3>
                         </div>
                     </div>

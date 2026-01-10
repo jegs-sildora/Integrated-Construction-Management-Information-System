@@ -1,192 +1,4 @@
-<!-- View Expense Details Modal -->
-<div id="viewExpenseModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-zoom-in">
-        
-        <!-- Header Section with Dark Gradient -->
-        <div class="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5 relative">
-            <!-- Top Orange Border -->
-            <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#e9922c] via-orange-300 to-[#e9922c]"></div>
-            
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <!-- ICMIS Logo -->
-                    <div class="w-12 h-12 bg-gradient-to-br from-[#e9922c] to-[#d17f1f] rounded-lg flex items-center justify-center text-white text-2xl font-bold transform shadow-lg">
-                        I
-                    </div>
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Expense Details</h2>
-                        <p class="text-gray-300 text-sm">Complete expense information</p>
-                    </div>
-                </div>
-                <button onclick="closeViewExpenseModal()" class="text-white hover:bg-white/10 rounded-lg p-2 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <!-- Scrollable Content Area -->
-        <div class="overflow-y-auto max-h-[calc(90vh-80px)] p-6 space-y-6">
-            
-            <!-- Company Header -->
-            <div class="text-center pb-6 border-b-2 border-dashed border-gray-200">
-                <div class="flex justify-center mb-3">
-                    <div class="w-16 h-16 bg-gradient-to-br from-[#e9922c] to-[#d17f1f] rounded-2xl flex items-center justify-center text-white text-4xl font-bold transform shadow-lg">
-                        I
-                    </div>
-                </div>
-                <h1 class="text-3xl font-bold text-gray-900 mb-1">ICMIS</h1>
-                <p class="text-sm text-gray-500 mb-3">Integrated Construction Management Information System</p>
-                <div class="inline-block px-4 py-2 bg-gradient-to-r from-orange-100 to-amber-100 border-2 border-orange-300 rounded-full">
-                    <span class="text-sm font-semibold text-orange-700">EXPENSE RECORD</span>
-                </div>
-            </div>
-
-            <!-- Information Grid -->
-            <div class="grid grid-cols-2 gap-4">
-                <!-- Expense Date -->
-                <div class="bg-white border-2 border-orange-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-semibold">Expense Date</p>
-                            <p id="view-expense-date" class="text-lg font-bold text-gray-900">-</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Category -->
-                <div class="bg-white border-2 border-purple-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-semibold">Category</p>
-                            <div id="view-category" class="mt-1">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Status -->
-                <div class="bg-white border-2 border-blue-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-semibold">Status</p>
-                            <div id="view-status" class="mt-1">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Amount -->
-                <div class="bg-white border-2 border-green-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-semibold">Amount</p>
-                            <p id="view-amount" class="text-lg font-bold text-gray-900">₱0.00</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Project Card -->
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-xs text-blue-700 uppercase font-semibold mb-1">Project</p>
-                        <p id="view-project" class="text-xl font-bold text-blue-900">-</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Description Card -->
-            <div class="bg-gradient-to-br from-amber-50 to-orange-100 border-2 border-orange-300 rounded-xl p-4">
-                <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 bg-gradient-to-br from-[#e9922c] to-[#d17f1f] rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-xs text-orange-700 uppercase font-semibold mb-2">Description</p>
-                        <p id="view-description" class="text-base text-orange-900 leading-relaxed">-</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Supplier Information -->
-            <div class="border-t-4 border-dashed border-gray-300 pt-6">
-                <h3 class="text-lg font-bold text-gray-900 uppercase mb-4">Supplier Information</h3>
-                <div class="bg-white border-2 border-gray-200 rounded-xl p-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Supplier Name</p>
-                            <p id="view-supplier-name" class="text-base font-bold text-gray-900">-</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Contact Phone</p>
-                            <p id="view-supplier-phone" class="text-base text-gray-700">-</p>
-                        </div>
-                        <div class="col-span-2">
-                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Email</p>
-                            <p id="view-supplier-email" class="text-base text-gray-700">-</p>
-                        </div>
-                        <div class="col-span-2">
-                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Address</p>
-                            <p id="view-supplier-address" class="text-base text-gray-700">-</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Timestamps -->
-            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Created At</p>
-                        <p id="view-created-at" class="text-gray-700">-</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Last Updated</p>
-                        <p id="view-updated-at" class="text-gray-700">-</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer Note -->
-            <div class="text-center pt-4 border-t border-gray-200">
-                <p class="text-sm text-gray-500">This is an official expense record from ICMIS</p>
-                <p class="text-xs text-gray-400 mt-1">Generated on <?php echo date('F j, Y \a\t g:i A'); ?></p>
-            </div>
-        </div>
-
-        <!-- Bottom Orange Border -->
-        <div class="h-0.5 bg-gradient-to-r from-[#e9922c] via-orange-300 to-[#e9922c]"></div>
-    </div>
-</div>
-
+<!-- View Expense Details Modal removed -->
 <!-- Edit Expense Modal -->
 <div id="editExpenseModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-zoom-in">
@@ -410,60 +222,7 @@
 <script>
     let currentExpenseId = null;
 
-    // View Expense Modal
-    function openExpenseModal(expenseId) {
-        currentExpenseId = expenseId;
-        
-        fetch(`budget_expenses/get_expense_details.php?id=${expenseId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const expense = data.expense;
-                    
-                    // Populate view modal
-                    document.getElementById('view-expense-date').textContent = expense.formatted_date;
-                    document.getElementById('view-amount').textContent = '₱' + formatPeso(parseFloat(expense.amount));
-                    document.getElementById('view-description').textContent = expense.description;
-                    document.getElementById('view-project').textContent = expense.project_code + ' - ' + expense.project_name;
-                    document.getElementById('view-supplier-name').textContent = expense.supplier_name || 'N/A';
-                    document.getElementById('view-supplier-phone').textContent = expense.phone || 'N/A';
-                    document.getElementById('view-supplier-email').textContent = expense.email || 'N/A';
-                    document.getElementById('view-supplier-address').textContent = expense.address || 'N/A';
-                    document.getElementById('view-created-at').textContent = expense.formatted_created;
-                    document.getElementById('view-updated-at').textContent = expense.formatted_updated;
-                    
-                    // Category badge
-                    const categoryBadges = {
-                        'MATERIALS': '<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">Materials</span>',
-                        'LABOR': '<span class="px-3 py-1 bg-cyan-100 text-cyan-700 rounded text-xs font-medium">Labor</span>',
-                        'EQUIPMENT': '<span class="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">Equipment</span>'
-                    };
-                    document.getElementById('view-category').innerHTML = categoryBadges[expense.category];
-                    
-                    // Status badge
-                    const statusBadges = {
-                        'APPROVED': '<span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Approved</span>',
-                        'PENDING': '<span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">Pending</span>',
-                        'REJECTED': '<span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">Rejected</span>'
-                    };
-                    document.getElementById('view-status').innerHTML = statusBadges[expense.status];
-                    
-                    document.getElementById('viewExpenseModal').classList.remove('hidden');
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    showToast('Failed to load expense details: ' + data.message, 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('Error loading expense details', 'error');
-            });
-    }
-
-    function closeViewExpenseModal() {
-        document.getElementById('viewExpenseModal').classList.add('hidden');
-        document.body.style.overflow = '';
-    }
+    // View Expense Modal removed
 
     // Edit Expense Modal
     function openEditExpenseModal(expenseId) {
@@ -619,12 +378,9 @@
         }
     }
 
-    // Close modals on escape key
+    // Close modals on escape key (view modal removed)
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (!document.getElementById('viewExpenseModal').classList.contains('hidden')) {
-                closeViewExpenseModal();
-            }
             if (!document.getElementById('editExpenseModal').classList.contains('hidden')) {
                 closeEditExpenseModal();
             }
@@ -635,10 +391,6 @@
     });
 
     // Close modals when clicking outside
-    document.getElementById('viewExpenseModal')?.addEventListener('click', function(e) {
-        if (e.target === this) closeViewExpenseModal();
-    });
-    
     document.getElementById('editExpenseModal')?.addEventListener('click', function(e) {
         if (e.target === this) closeEditExpenseModal();
     });

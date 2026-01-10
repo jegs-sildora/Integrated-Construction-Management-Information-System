@@ -301,9 +301,15 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   
   
-  <style>
-    * { font-family: 'Inter', sans-serif; }
-  </style>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .employee-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #e9922c, #f59e0b); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
+        .tab-btn.active { border-color: #e9922c; color: #e9922c; }
+        .tab-btn.inactive { border-color: transparent; color: #6b7280; }
+        .tab-btn.inactive:hover { color: #374151; }
+        .group-details { transition: max-height 0.3s ease-in-out; max-height: 0; overflow: hidden; }
+        .group-details.open { max-height: 2000px; }
+    </style>
 </head>
 <body class="bg-gray-50">
   <?php 
@@ -313,24 +319,34 @@
   ?>
 
   <!-- Main Content Area -->
-  <main class="ml-56 mt-20 p-6">
+  <main class="ml-56 mt-16 p-6">
     <div class="max-w-7xl mx-auto">
+      <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
+        <button onclick="window.location.href='expenses.php'" id="tab-employees" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-[#e9922c] text-[#e9922c] transition-colors">
+              Procurement Expense
+        </button>
+        <button onclick="window.location.href='payroll_expenses.php'" id="tab-groups" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+              Payroll Expense
+        </button>
+        </div>
+      </div>
       <!-- Page Header Section -->
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-2xl text-gray-900 font-bold">Expenses</h1>
           <p class="text-sm text-gray-500 mt-1">Expenses are automatically synced from completed Purchase Orders</p>
         </div>
+        
         <!-- Info Badge: Expenses now come from Procurement -->
         <div class="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2.5 rounded-lg border border-blue-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="text-sm font-medium">Synced from Procurement</span>
+          <span class="text-sm font-bold">Synced from Procurement</span>
         </div>
       </div>
 
-      <!-- Expenses Table -->
+      <div id="procurementView">
       <?php if (empty($expenses)): ?>
       <!-- Empty State Card -->
       <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
@@ -421,7 +437,7 @@
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Item/Description</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Supplier Name</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -484,12 +500,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                       <div class="flex items-center justify-center gap-2">
-                        <button onclick="openExpenseViewModal(<?php echo $expense['expense_id']; ?>)" class="text-gray-400 hover:text-blue-800 transition-colors" title="View Details">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
+                        <!-- View modal removed; keep Procurement link -->
                         <!-- Edit removed: Expenses now come from Procurement POs -->
                         <a href="/icmis/modules/procurement/orders.php?po_id=<?php echo $expense['po_id'] ?? ''; ?>" class="text-gray-400 hover:text-green-800 transition-colors" title="View in Procurement">
                           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -520,54 +531,28 @@
         </div>
       </div>
       <?php endif; ?>
+      </div>
+
+      <div id="payrollView" class="hidden">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+          <div class="max-w-md mx-auto">
+            <div class="flex justify-center mb-6">
+              <div class="bg-gray-100 rounded-full p-6">
+                <i data-lucide="file-text" class="w-10 h-10 text-gray-500"></i>
+              </div>
+            </div>
+            <h2 class="text-xl text-gray-900 font-bold mb-3">Payroll Expenses</h2>
+            <p class="text-gray-500 mb-6">View and manage payroll-related disbursements and reports.</p>
+            <a href="../workforce/payroll.php" class="inline-flex items-center gap-2 px-4 py-2 bg-[#e9922c] text-white rounded-md font-semibold">Open Payroll Expenses</a>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
   <!-- Toast included globally via header.php -->
 
-  <!-- View Expense Modal -->
-  <div id="viewExpenseModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full transform transition-all animate-modal-slide-in max-h-[90vh] overflow-y-auto">
-      <!-- Modal Header -->
-      <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-t-2xl sticky top-0 z-10">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <div class="bg-white rounded-full p-3 shadow-lg">
-              <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <h3 class="text-2xl font-bold text-white">Expense Details</h3>
-              <p class="text-blue-100 text-sm mt-1">View expense information</p>
-            </div>
-          </div>
-          <button onclick="closeViewExpenseModal()" class="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-all">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Modal Body -->
-      <div id="viewExpenseContent" class="p-8">
-        <div class="flex items-center justify-center py-12">
-          <svg class="animate-spin h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="flex items-center justify-end gap-3 p-6 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
-        <button onclick="closeViewExpenseModal()" class="px-6 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all font-semibold shadow-sm">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- View Expense Modal removed -->
 
   <!-- Delete Expense Modal -->
   <div id="deleteExpenseModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -651,12 +636,37 @@
       animation: modal-slide-in 0.3s ease-out forwards;
     }
 
-    #viewExpenseModal,
     #deleteExpenseModal {
       transition: opacity 0.2s ease-out;
     }
   </style>
         
   <script src="js/expenses.js"></script>
+  <script>
+    function switchExpensesTab(tab) {
+      const p = document.getElementById('procurementView');
+      const w = document.getElementById('payrollView');
+      const bProc = document.getElementById('tabProcurement');
+      const bPay = document.getElementById('tabPayroll');
+      if (!p || !w || !bProc || !bPay) return;
+      if (tab === 'payroll') {
+        p.classList.add('hidden');
+        w.classList.remove('hidden');
+        bProc.classList.remove('bg-[#e9922c]','text-white');
+        bProc.classList.add('border','border-gray-200','text-gray-700');
+        bPay.classList.add('bg-[#e9922c]','text-white');
+        bPay.classList.remove('border','border-gray-200');
+      } else {
+        p.classList.remove('hidden');
+        w.classList.add('hidden');
+        bPay.classList.remove('bg-[#e9922c]','text-white');
+        bPay.classList.add('border','border-gray-200','text-gray-700');
+        bProc.classList.add('bg-[#e9922c]','text-white');
+        bProc.classList.remove('border','border-gray-200');
+      }
+    }
+    // Initialize default tab
+    document.addEventListener('DOMContentLoaded', function(){ if(document.getElementById('tabProcurement')) switchExpensesTab('procurement'); });
+  </script>
 </body>
 </html>
