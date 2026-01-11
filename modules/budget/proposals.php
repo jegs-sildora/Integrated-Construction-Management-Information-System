@@ -91,7 +91,7 @@
     include __DIR__ . '/../../includes/header.php'; 
   ?>
 
-  <main class="ml-56 mt-18 p-6">
+  <main class="ml-56 mt-18 p-6 transition-all duration-300 animate-fade-in">
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-2xl text-gray-900 font-bold">Budget Proposals</h1>
@@ -106,7 +106,7 @@
     </div>
 
     <?php if (empty($proposals)): ?>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 transition-all duration-300 animate-fade-in">
       <div class="max-w-md mx-auto text-center">
         <div class="flex justify-center mb-6">
           <div class="bg-orange-50 rounded-full p-6">

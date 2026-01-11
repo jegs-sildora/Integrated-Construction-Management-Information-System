@@ -1,4 +1,3 @@
-
 ---
 
 # 🏗️ ICMIS - Integrated Construction Management Information System
@@ -9,7 +8,7 @@
 
 ## 📁 System Overview
 
-**ICMIS** is a comprehensive **web-based construction management system** built with **PHP** and **MySQL**, designed specifically for managing construction projects end-to-end. The system follows a modular architecture with clear separation of concerns, featuring a modern UI built with **Tailwind CSS**.
+**ICMIS** is a comprehensive **web-based construction management system** built with **PHP** and **MySQL**, designed specifically for managing construction projects end-to-end. The system follows a modular architecture with clear separation of concerns, featuring a modern UI built with **Tailwind CSS v4**.
 
 ---
 
@@ -20,10 +19,17 @@
 ```
 /icmis
 ├── /config          → Global Configuration Layer
-├── /core            → System Core Logic (The "Brain")
+├── /core            → System Core Logic (Logger, Context)
 ├── /includes        → Shared UI Components
 ├── /assets          → Static Public Assets
 ├── /modules         → Business Logic Subsystems
+│   ├── /admin       → System Administration & Audit Logs
+│   ├── /auth        → Authentication & Authorization
+│   ├── /project     → Project, Phase & Task Management
+│   ├── /budget      → Budget Proposals & Expense Tracking
+│   ├── /procurement → Suppliers, POs, Inventory & Stock
+│   ├── /workforce   → Employees, Attendance & Payroll
+│   └── /reports     → Centralized Multi-Module Reporting
 ├── index.php        → Entry Point (Login/Router)
 └── dashboard.php    → Main System Dashboard
 ```
@@ -54,10 +60,40 @@ Establishes a **MySQLi** connection object (`$conn`) that is included across all
 ## 🧠 Core System Logic (core)
 
 ### Context.php
-Handles **project/phase context management** across the application. This is crucial for:
-- Maintaining user's selected project across different modules
+Handles **project/phase context management** across the application:
+- Maintains user's selected project across different modules
 - Session-based state persistence
 - Cross-module context awareness
+- Helper functions: `getProjectContext()`, `setProjectContext()`
+
+### Logger.php
+**Centralized Audit Trail System** for recording user actions across all modules:
+
+```php
+// Usage Example
+require_once BASE_PATH . '/core/Logger.php';
+Logger::log('CREATE', 'Project', 'Created new project: Project Alpha', $project_id);
+```
+
+**Features:**
+- Static helper class (no instantiation needed)
+- Automatic user detection from session
+- IP address and user agent logging
+- Module-based categorization
+- PHP 8.4+ compatibility (avoids deprecated `mysqli::ping()`)
+
+**Supported Actions:**
+| Action | Description |
+|--------|-------------|
+| `CREATE` | New record creation |
+| `UPDATE` | Record modification |
+| `DELETE` | Record removal |
+| `LOGIN` | User authentication |
+| `LOGOUT` | Session termination |
+| `VIEW` | Record access |
+| `EXPORT` | Report generation |
+| `APPROVE` | Workflow approval |
+| `REJECT` | Workflow rejection |
 
 ---
 
@@ -66,7 +102,7 @@ Handles **project/phase context management** across the application. This is cru
 ### sidebar.php
 The **navigation backbone** of the application featuring:
 - Company branding and logo
-- Module navigation links with icons
+- Module navigation links with Lucide icons
 - Collapsible sub-menus for each module
 - Active state highlighting based on current page
 - Responsive design with smooth transitions
@@ -75,7 +111,7 @@ The **navigation backbone** of the application featuring:
 The **top navigation bar** containing:
 - Dynamic page title and section breadcrumbs
 - Project context selector (dropdown)
-- User profile information
+- User profile information with avatar
 - Global notification system integration
 - Quick action buttons
 
@@ -84,16 +120,25 @@ A **notification component** for displaying:
 - Success messages (green)
 - Warning alerts (yellow)
 - Error notifications (red)
-- Auto-dismiss functionality with animations
+- Auto-dismiss functionality with slide animations
 
 ### head_assets.php / head_assetsv2.php
 Centralized asset loading for:
-- Tailwind CSS framework
-- Font Awesome icons
-- Lucide icons
-- Google Fonts (Inter, Arimo)
+- **Tailwind CSS v4** framework (via CDN)
+- **Lucide** icons
+- **Font Awesome 6** icons
+- **Google Fonts** (Inter, Montserrat, Poppins)
 - Favicon configuration
-- Common meta tags
+- Custom CSS variables and animations:
+  - `animate-fade-in` - Page load animation
+  - `animate-slide-in` / `animate-slide-out` - Modal transitions
+  - `transition-all duration-300` - Smooth state changes
+
+### report_print_layout.php
+Print-optimized wrapper for generated reports with:
+- Clean header/footer formatting
+- Print media queries
+- Professional document styling
 
 ---
 
@@ -113,11 +158,12 @@ Handles all user authentication, authorization, and session management for the e
 4. **Session Establishment**: Creates session variables upon successful login:
    - `$_SESSION['user_id']` - Unique user identifier
    - `$_SESSION['user_name']` - Display name
-   - `$_SESSION['user_role']` - Permission level (Admin, Manager, Staff, Budget_Officer, Procurement_Officer)
-5. **Error Handling**: Redirects with error messages for failed attempts
+   - `$_SESSION['user_role']` - Permission level
+5. **Audit Logging**: Records login via `Logger::login()`
+6. **Error Handling**: Redirects with error messages for failed attempts
 
 #### logout.php
-Securely destroys user sessions and redirects to login page.
+Securely destroys user sessions, logs the action, and redirects to login page.
 
 #### signup_process.php
 Handles new user registration with:
@@ -129,11 +175,44 @@ Handles new user registration with:
 ### User Roles & Permissions
 | Role | Access Level |
 |------|-------------|
-| `Admin` | Full system access |
+| `Admin` | Full system access, audit log viewing |
 | `Manager` | Project oversight, approvals |
 | `Staff` | Basic operations |
 | `Budget_Officer` | Budget module full access |
 | `Procurement_Officer` | Procurement module full access |
+
+---
+
+## 🛠️ Admin Module (admin)
+
+### Purpose
+System administration tools including comprehensive audit trail viewing.
+
+### audit_logs.php - Audit Trail Viewer
+
+**Functionality:**
+
+1. **Filterable Log Display**
+   - Filter by module (Project, Budget, Procurement, Workforce, Auth, Reports)
+   - Filter by action type (CREATE, UPDATE, DELETE, LOGIN, etc.)
+   - Search by details/description
+   - Date range filtering
+
+2. **AJAX-Powered Interface**
+   - Debounced filter auto-submission (no Apply button needed)
+   - AJAX pagination without page reload
+   - Loading overlay during fetch operations
+   - Real-time result count badge
+
+3. **Clickable Row Details**
+   - Click any row to view full payload in modal
+   - JSON-formatted payload display
+   - Timestamp and user attribution
+
+4. **Pagination**
+   - 10 records per page
+   - AJAX-powered page navigation
+   - Total record count display
 
 ---
 
@@ -167,16 +246,20 @@ The **foundation module** that manages all construction projects, their phases, 
      - Project manager assignment
    - **Read**: List all projects with filtering/search
    - **Update**: Edit project details
-   - **Delete**: Remove projects (with dependency checks)
+   - **Delete**: Remove projects with **cascading deletion** of all related data
 
-3. **Project Status Tracking**
+3. **Cascade Delete Warning**
+   When deleting a project, user is warned:
+   > "This will permanently delete all phases, tasks, budget proposals, expenses, purchase orders, inventory, workforce assignments, and attendance records associated with this project."
+
+4. **Project Status Tracking**
    - Planning, In Progress, Active, On Hold, Completed, Cancelled
    - Completion percentage tracking
    - Visual status indicators with color coding
 
-4. **Project Manager Assignment**
-   - Links to `workforce_employees` for manager selection
-   - Displays manager name in project listings
+5. **Audit Integration**
+   - All CRUD operations logged with descriptive messages
+   - Delete logs include project name and code: `"Deleted project: Project Name (PRJ-2026-001)"`
 
 ---
 
@@ -202,10 +285,6 @@ The **foundation module** that manages all construction projects, their phases, 
    - Completed phases count
    - Upcoming phases
 
-4. **Project Filter**
-   - Filter phases by specific project
-   - Cross-project phase overview
-
 ---
 
 ### tasks.php - Task Management
@@ -223,16 +302,27 @@ The **foundation module** that manages all construction projects, their phases, 
    - Not Started, In Progress, Completed, On Hold
    - Overdue detection and highlighting
 
-3. **Task Dashboard**
-   - Total tasks overview
-   - In-progress tasks count
-   - Overdue tasks alert
+3. **Drag-and-Drop Status Updates**
+   - Quick status change via API
 
-4. **Filtering Capabilities**
-   - Filter by project
-   - Filter by phase
-   - Filter by assignee
-   - Search by task name
+---
+
+### gantt.php - Gantt Chart Visualization
+
+**Functionality:**
+
+1. **Interactive Gantt Chart**
+   - Powered by **Frappe Gantt** library
+   - Visual timeline of phases and tasks
+   - Dependency visualization
+
+2. **View Modes**
+   - Day, Week (default), Month view toggles
+   - Zoom in/out functionality
+
+3. **Task Interaction**
+   - Click tasks to view details
+   - Visual progress indicators
 
 ---
 
@@ -253,27 +343,28 @@ Manages all financial aspects of construction projects including budget proposal
 
 **Functionality:**
 
-1. **Financial Overview**
+1. **Financial Overview Cards**
    - Total approved budget (from proposals)
    - Actual spending (from expenses)
    - Remaining budget calculation
-   - Budget utilization percentage
+   - Active phases count
 
 2. **Intelligent Budget Alerts**
    - **Green (Good)**: Under 70% utilization
    - **Yellow (Warning)**: 70-85% utilization
    - **Red (High)**: Over 85% utilization
 
-3. **Phase-Based Budget Visualization**
+3. **Phase Budget Cards**
    - Per-phase budget allocation
    - Per-phase spending breakdown
    - Phase utilization percentages
-   - Date ranges from master phase table
+   - Clickable cards open detailed receipt modal
 
-4. **Chart Visualization**
-   - Monthly spending trends
-   - Budget vs. Actual comparison
-   - Category distribution (Materials, Labor, Equipment)
+4. **Phase Receipt Modal**
+   - Professional receipt-style layout
+   - Budget proposals list for phase
+   - Expense line items
+   - PDF download capability
 
 ---
 
@@ -282,7 +373,7 @@ Manages all financial aspects of construction projects including budget proposal
 **Functionality:**
 
 1. **Proposal Creation**
-   - Proposal code (auto-generated: BP-XXX)
+   - Proposal code (auto-generated: BP-YYYY-XXX)
    - Title and description
    - Project and phase association
    - Total amount calculation
@@ -299,67 +390,38 @@ Manages all financial aspects of construction projects including budget proposal
    - Status progression: DRAFT → PENDING → APPROVED/REJECTED
    - Approval tracking with user attribution
 
-4. **Proposal Actions**
-   - View detailed breakdown
-   - Edit proposals (draft/pending only)
-   - Download as PDF
-   - Delete proposals
-
 ---
 
 ### expenses.php - Expense Tracker
 
 **Functionality:**
 
-1. **Expense Recording**
-   - Project and phase association
-   - Category (Materials, Labor, Equipment)
-   - Supplier linkage
-   - Description and amount
-   - Expense date
-   - Status (Pending, Approved, Rejected)
-
-2. **Phase-Based Expense View**
+1. **Phase-Based Expense View**
    - Expense breakdown by construction phase
    - Phase budget vs. actual spending
    - Real-time utilization calculations
 
-3. **Expense Management**
-   - Add new expenses
-   - Edit existing records
-   - Export to PDF
-   - Delete with confirmation
+2. **Expense Recording**
+   - Project and phase association
+   - Category (Materials, Labor, Equipment)
+   - Supplier linkage
+   - Description and amount
+   - Status (Pending, Approved, Rejected)
 
-4. **Budget Alert System**
+3. **Budget Alert System**
    - Visual indicators when approaching budget limits
    - Color-coded status based on utilization
 
 ---
 
-### reports.php - Financial Reports
+### payroll_expenses.php - Payroll-Linked Expenses
 
 **Functionality:**
 
-1. **Report Templates**
-   - **Budget Summary Report**: Overview of all budget allocations
-   - **Expense Report**: Detailed expense listings
-   - **Variance Report**: Budget vs. Actual analysis
-   - **Phase Budget Report**: Per-phase financial status
-
-2. **Report Generation**
-   - Project-specific filtering
-   - Date range selection
-   - Real-time data compilation
-
-3. **Export Options**
-   - Print-optimized layouts
-   - PDF generation with jsPDF
-   - Professional formatting with headers/footers
-
-4. **Report History**
-   - Saved generated reports
-   - Re-download capability
-   - Audit trail for compliance
+1. **Automatic Expense Generation**
+   - Links processed payroll to budget expenses
+   - Creates LABOR category expenses
+   - Maintains payroll-expense relationship
 
 ---
 
@@ -384,22 +446,18 @@ Manages the complete procurement lifecycle from supplier management to purchase 
 
 1. **Supplier Registry**
    - Maintain approved vendor list
-   - Supplier information:
-     - Company name
-     - Contact person
-     - Phone and email
-     - Physical address
-     - Active/Inactive status
+   - Supplier information (name, contact, email, address)
+   - Active/Inactive status management
 
-2. **Supplier CRUD**
+2. **AJAX Pagination**
+   - 10 suppliers per page
+   - Client-side pagination controls
+   - Real-time page navigation
+
+3. **Supplier CRUD**
    - Add new suppliers with modal form
    - Edit supplier details
-   - Deactivate/reactivate suppliers
-   - Delete suppliers (with PO check)
-
-3. **Supplier Validation**
-   - Prevent deletion if associated with POs
-   - Status-based filtering
+   - Delete suppliers (with PO dependency check)
 
 ---
 
@@ -411,22 +469,15 @@ Manages the complete procurement lifecycle from supplier management to purchase 
    - Auto-generated PO reference (PO-YYYY-XXX)
    - Project and phase association
    - Supplier selection
-   - Order title and date
-   - Line items from inventory
+   - Line items from inventory masterlist
 
-2. **PO Line Items**
-   - Item selection from inventory masterlist
-   - Quantity and unit cost specification
-   - Automatic total calculation
-
-3. **PO Workflow**
+2. **PO Workflow**
    - Status progression: PENDING → APPROVED → COMPLETED/REJECTED
    - KPI dashboard (Total, Pending, Approved, Completed)
 
-4. **PO Management**
-   - View detailed order breakdown
-   - Edit orders (pending only)
-   - Delete with confirmation modal
+3. **PO to Budget Integration**
+   - Approved/Completed POs can create budget expenses
+   - Links procurement to financial tracking
 
 ---
 
@@ -440,20 +491,9 @@ Manages the complete procurement lifecycle from supplier management to purchase 
    - Low stock alerts
 
 2. **Item Management**
-   - Item name and description
-   - Category classification
-   - Quantity and unit of measure
-   - Unit cost
-   - Last updated timestamp
-
-3. **Stock Level Monitoring**
-   - Real-time quantity tracking
-   - Low stock threshold warnings
-   - Color-coded status indicators
-
-4. **Print Functionality**
-   - Print-optimized report layout
-   - Project-specific inventory views
+   - Item name, category, quantity, unit
+   - Unit cost tracking
+   - Project/phase association
 
 ---
 
@@ -465,16 +505,7 @@ Manages the complete procurement lifecycle from supplier management to purchase 
    - Select from approved purchase orders
    - Receive items against PO quantities
    - Partial receiving support
-
-2. **Receipt Recording**
-   - Date received
-   - Quantity received
-   - Link to original PO
-   - Automatic inventory update
-
-3. **Empty State Handling**
-   - Guidance when no approved POs exist
-   - Clear instructions for workflow
+   - Automatic inventory quantity update
 
 ---
 
@@ -485,17 +516,12 @@ Manages the complete procurement lifecycle from supplier management to purchase 
 1. **Stock Issuance**
    - Issue items to personnel/sites
    - Project association
-   - Issued-to tracking
-   - Date of issuance
-
-2. **Inventory Deduction**
-   - Automatic stock level reduction
+   - Automatic stock level deduction
    - Prevents over-issuance
-   - Audit trail maintenance
 
 ---
 
-## 👷 Labor & Workforce Module (workforce)
+## 👷 Workforce Module (workforce)
 
 ### Purpose
 Comprehensive human resource management for construction workforce including employee management, attendance tracking, payroll processing, and workforce assignments.
@@ -505,17 +531,36 @@ Comprehensive human resource management for construction workforce including emp
 - `workforce_job_titles` - Position definitions with rates
 - `workforce_employee_groups` - Team definitions
 - `workforce_group_memberships` - Team assignments
-- `workforce_employee_skills` - Skill mapping
-- `workforce_skills` - Skill masterlist
 - `workforce_assignments` - Project assignments
 - `workforce_attendance` - Daily attendance
-- `workforce_leave_types` - Leave categories
-- `workforce_leave_requests` - Leave applications
-- `workforce_leave_balances` - Leave credits
 - `workforce_payroll_periods` - Pay periods
 - `workforce_payroll` - Payroll records
-- `workforce_payroll_config` - Tax and deduction rates
-- `workforce_notifications` - System notifications
+
+---
+
+### dashboard.php - Workforce Dashboard
+
+**Functionality:**
+
+1. **Statistics Overview**
+   - Total employees
+   - Active employees
+   - On leave count
+   - Today's attendance rate
+
+2. **Personnel Status Chart**
+   - Bar chart showing Active/On Leave/Inactive counts
+   - Powered by Chart.js
+
+3. **Quick Actions**
+   - Add Employee shortcut
+   - Log Attendance shortcut
+   - Process Payroll shortcut
+
+4. **Recent Activity Feed**
+   - Latest workforce-related audit logs
+   - Action type badges (CREATE, UPDATE, DELETE)
+   - User attribution
 
 ---
 
@@ -525,34 +570,37 @@ Comprehensive human resource management for construction workforce including emp
 
 1. **Employee Registry**
    - Employee code (auto-generated: EMP-YYYY-XXX)
-   - Personal information (first name, last name)
-   - Contact details (email, phone)
-   - Job title assignment
+   - Personal information (name, contact, address)
+   - Job title assignment with rate inheritance
+   - Employment type (Regular, Contractual, Project-Based)
+   - Payment type (Daily, Monthly)
    - Status tracking (Active, Inactive, Terminated)
-   - Hire date
 
 2. **Statistics Dashboard**
    - Total employees
    - Active employees
-   - Inactive employees
    - New hires this month
 
-3. **Employee CRUD**
-   - Add employees with modal form
-   - Edit employee details
-   - Status changes
-   - Job title assignment
-
-4. **Employee Groups Tab**
-   - Team formation (e.g., "Team Alpha - Structural")
-   - Group leader assignment
-   - Member management
-   - Role within group
-
-5. **Search & Filter**
+3. **Search & Filter**
    - Search by name, role, or ID
    - Filter by status
-   - Result count display
+
+---
+
+### employee_groups.php - Team Management
+
+**Functionality:**
+
+1. **Group Formation**
+   - Create teams (e.g., "Civil Works Team Alpha")
+   - Auto-generated group codes
+   - Group leader assignment
+   - Description and purpose
+
+2. **Group Statistics**
+   - Total groups
+   - Active groups
+   - Total members across groups
 
 ---
 
@@ -561,29 +609,15 @@ Comprehensive human resource management for construction workforce including emp
 **Functionality:**
 
 1. **Daily Attendance Recording**
-   - Date selection (defaults to today)
+   - Date selection with calendar
+   - Project-specific attendance
    - Time in/Time out entry
-   - Status selection:
-     - Present
-     - Absent
-     - Late
-     - On Leave
-
-2. **Attendance Statistics**
-   - Total employees
-   - Present count
-   - Absent count
-   - Late count
-
-3. **Attendance Table**
-   - Employee listing with project assignment
-   - Editable time fields
-   - Status dropdowns
+   - Status selection (Present, Absent, Late, On Leave)
    - Remarks field
 
-4. **Bulk Operations**
-   - Save all attendance at once
-   - Date-based filtering
+2. **Bulk Save**
+   - Save all attendance records at once
+   - Real-time validation
 
 ---
 
@@ -595,18 +629,12 @@ Comprehensive human resource management for construction workforce including emp
    - Employee to project mapping
    - Phase-specific assignments
    - Role definition for assignment
-   - Task descriptions
    - Start and end dates
+   - Task descriptions
 
 2. **Assignment Status**
    - Active, Completed, Cancelled
    - Visual status indicators
-
-3. **Assignment Management**
-   - View all assignments
-   - Edit assignments
-   - Reassign employees
-   - Track assignment history
 
 ---
 
@@ -615,137 +643,108 @@ Comprehensive human resource management for construction workforce including emp
 **Functionality:**
 
 1. **Period-Based Payroll**
-   - Monthly period selection
+   - Create payroll periods (start/end dates)
    - Project-specific payroll
 
 2. **Payroll Calculation**
-   - Attendance-based computation:
-     - Present days × Daily rate
-     - Half-day considerations
-     - Overtime calculations
-   - Gross pay computation
-   - Deductions (tax, contributions)
+   - Attendance-based computation
+   - Daily rate × Days worked
+   - Overtime calculations
+   - Deductions (SSS, PhilHealth, Pag-IBIG, Tax)
    - Net pay calculation
 
-3. **Payroll Summary**
-   - Total employees
-   - Total gross pay
-   - Total deductions
-   - Total net pay
-
-4. **Export Options**
-   - Print payroll report
+3. **Payroll Actions**
+   - Calculate payroll for period
+   - Approve/Process payroll
    - Export to PDF
-   - Professional formatting
-
----
-
-### reports.php - Workforce Reports
-
-**Functionality:**
-
-1. **Report Templates**
-   - Employee Roster Report
-   - Attendance Summary Report
-   - Assignment Report
-   - Payroll Summary Report
-
-2. **Statistics Display**
-   - Total employees assigned
-   - Active employees
-   - Total assignments
-   - Attendance rate
-
-3. **Report Generation**
-   - Project-specific filtering
-   - PDF export capability
-   - Print optimization
 
 ---
 
 ## 📈 Centralized Reports Module (reports)
 
 ### Purpose
-Provides a unified reporting center that aggregates data from all modules (Budget, Procurement, Project, Workforce) for comprehensive analysis.
+Provides a unified reporting center that aggregates data from all modules for comprehensive analysis.
 
 ### index.php - Reports Center
 
 **Functionality:**
 
 1. **Multi-Module Report Hub**
-   - Budget Reports
-   - Procurement Reports
-   - Project Reports
-   - Workforce Reports
+   - Budget Reports (Summary, Variance, Phase)
+   - Procurement Reports (Inventory, PO Status)
+   - Project Reports (Status, Timeline)
+   - Workforce Reports (Roster, Attendance, Payroll)
 
 2. **Project Context**
    - Select specific project or "All Projects"
-   - Project details display (status, location, budget, completion)
+   - Project details display
 
 3. **Report Categories**
    - Category tabs for organization
    - Template cards for each report type
 
-4. **Recent Reports**
-   - History of generated reports
+4. **Recent Reports History**
+   - Previously generated reports
    - Quick re-download
    - Audit compliance
 
-5. **Print & Export**
-   - Print-optimized CSS
+5. **Export Options**
+   - Print-optimized layouts
    - PDF generation with jsPDF
-   - Professional headers and footers
+   - Professional headers/footers
 
 ---
 
-## 🔄 Cross-Module Integration
+## 🔄 Database Schema & Relationships
 
-### Project Context System
-Every module respects the **selected project context** stored in session:
+### Foreign Key Cascade Configuration
 
-```php
-// Pattern used across modules
-$selected_project_id = getProjectContext($conn);
-// or
-$_SESSION['current_project_id']
-```
+All foreign keys are configured with appropriate `ON DELETE` actions:
 
-This ensures:
-- Consistent data filtering across modules
-- Seamless navigation without losing context
-- User-specific view customization
+| Table | Foreign Key | References | On Delete |
+|-------|-------------|------------|-----------|
+| `icmis_project_phases` | `fk_phase_project` | `icmis_projects` | CASCADE |
+| `icmis_tasks` | `fk_task_project` | `icmis_projects` | CASCADE |
+| `icmis_tasks` | `fk_task_phase` | `icmis_project_phases` | SET NULL |
+| `budget_proposals` | `fk_prop_project` | `icmis_projects` | CASCADE |
+| `budget_proposals` | `fk_prop_phase` | `icmis_project_phases` | CASCADE |
+| `budget_expenses` | `fk_exp_project` | `icmis_projects` | CASCADE |
+| `budget_expenses` | `fk_exp_phase` | `icmis_project_phases` | CASCADE |
+| `budget_line_items` | `fk_line_prop` | `budget_proposals` | CASCADE |
+| `procurement_purchase_orders` | `fk_po_project` | `icmis_projects` | CASCADE |
+| `procurement_purchase_orders` | `fk_po_phase` | `icmis_project_phases` | CASCADE |
+| `procurement_inventory` | `fk_inv_project` | `icmis_projects` | CASCADE |
+| `procurement_stock_in` | `fk_stockin_po` | `procurement_purchase_orders` | CASCADE |
+| `procurement_stock_out` | `fk_stockout_proj` | `icmis_projects` | CASCADE |
+| `workforce_assignments` | `fk_assign_proj` | `icmis_projects` | CASCADE |
+| `workforce_assignments` | `fk_assign_phase` | `icmis_project_phases` | CASCADE |
+| `workforce_attendance` | `fk_att_proj` | `icmis_projects` | CASCADE |
 
-### Data Relationships
+### Data Relationships Diagram
 
 ```
 icmis_projects (Central Hub)
     │
-    ├── icmis_project_phases
-    │       └── icmis_tasks
-    │
-    ├── budget_proposals
-    │       └── budget_line_items
-    │
-    ├── budget_expenses
-    │
-    ├── procurement_purchase_orders
-    │       └── procurement_purchase_order_items
-    │
-    ├── procurement_stock_out
-    │
-    └── workforce_assignments
-            └── workforce_attendance
+    ├── icmis_project_phases ──────────────────┐
+    │       └── icmis_tasks                    │
+    │                                          │
+    ├── budget_proposals ──────────────────────┤
+    │       └── budget_line_items              │
+    │                                          │
+    ├── budget_expenses ───────────────────────┤
+    │       └── (links to suppliers)           │
+    │                                          │
+    ├── procurement_purchase_orders ───────────┤
+    │       ├── procurement_purchase_order_items
+    │       └── procurement_stock_in           │
+    │                                          │
+    ├── procurement_inventory                  │
+    │       └── procurement_stock_out          │
+    │                                          │
+    ├── workforce_assignments ─────────────────┤
+    │                                          │
+    └── workforce_attendance ──────────────────┘
 ```
-
-### Supplier Integration
-- `budget_expenses` can reference `procurement_suppliers`
-- `procurement_purchase_orders` link to `procurement_suppliers`
-- Centralized vendor management
-
-### Employee-Task Linkage
-- `icmis_tasks` → `assigned_to_employee_id` → `workforce_employees`
-- `workforce_assignments` → Phase-specific role definitions
-- `workforce_attendance` → Project-based tracking
 
 ---
 
@@ -770,23 +769,36 @@ if (!isset($_SESSION['user_id'])) {
 - Session status checks before operations
 - Proper session destruction on logout
 
+### Audit Trail
+- All sensitive operations logged via Logger class
+- User attribution with timestamps
+- IP address tracking
+- Tamper-evident log storage
+
 ---
 
 ## 🎨 UI/UX Framework
 
 ### Design System
 - **Primary Color**: `#e9922c` (Orange - construction branding)
-- **Typography**: Inter font family
-- **Layout**: Sidebar + Header + Content area
-- **Cards**: Rounded corners, subtle shadows
+- **Typography**: Inter font family (Google Fonts)
+- **Layout**: Fixed sidebar (256px) + Header + Content area
+- **Cards**: Rounded corners (`rounded-xl`), subtle shadows
 - **Tables**: Striped rows, hover effects
 - **Modals**: Slide-in animations, backdrop blur
 
+### Animation Classes
+```css
+.animate-fade-in    /* Page load fade-in (0.2s) */
+.animate-slide-in   /* Modal slide from right (0.4s) */
+.animate-slide-out  /* Modal slide to right (0.4s) */
+.transition-all duration-300  /* Smooth state changes */
+```
+
 ### Responsive Design
-- Fixed sidebar (256px / ml-56)
-- Content area adapts to viewport
+- Fixed sidebar with content offset (`ml-56`)
 - Grid layouts for stat cards
-- Print-specific styles
+- Print-specific styles (`@media print`)
 
 ---
 
@@ -795,10 +807,50 @@ if (!isset($_SESSION['user_id'])) {
 | Layer | Technology |
 |-------|------------|
 | **Backend** | PHP 8.x |
-| **Database** | MySQL 8.x |
-| **Frontend** | HTML5, Tailwind CSS 4 |
-| **JavaScript** | Vanilla JS, Lucide Icons |
+| **Database** | MySQL 8.x with InnoDB (FK support) |
+| **Frontend** | HTML5, Tailwind CSS v4 |
+| **JavaScript** | Vanilla JS, Chart.js, Frappe Gantt |
+| **Icons** | Lucide Icons, Font Awesome 6 |
 | **PDF Generation** | jsPDF + AutoTable |
-| **Server** | Laragon (Apache) |
+| **Server** | Laragon (Apache/Nginx) |
+
+---
+
+## 🔧 Key Implementation Patterns
+
+### Safe JSON Response Parsing
+Client-side fetch calls use safe JSON parsing to handle server errors gracefully:
+```javascript
+async function parseJSONResponse(res) {
+    const text = await res.text();
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        console.error('Invalid JSON response:', text);
+        throw new Error('Server returned invalid response');
+    }
+}
+```
+
+### Project Context Pattern
+Every module that operates on project-specific data uses the context pattern:
+```php
+include __DIR__ . '/project_context.php';
+$conn = getModuleConnection();
+$selected_project_id = getProjectContext($conn);
+```
+
+### AJAX Pagination Pattern
+Tables with large datasets use AJAX pagination:
+```javascript
+function fetchPage(page) {
+    fetch(`api/endpoint.php?page=${page}&per_page=10`)
+        .then(res => res.json())
+        .then(data => {
+            renderTable(data.items);
+            renderPagination(data.total, data.page, data.per_page);
+        });
+}
+```
 
 ---

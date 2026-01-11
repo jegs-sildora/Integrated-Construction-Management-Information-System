@@ -75,6 +75,8 @@ document.addEventListener('DOMContentLoaded', function(){
             }
         }
 
+        const maxDigits = parseInt(phoneInput.dataset.maxDigits || '10', 10) || 10;
+
         ensurePhonePrefix();
 
         phoneInput.addEventListener('input', function(){
@@ -87,8 +89,9 @@ document.addEventListener('DOMContentLoaded', function(){
             }
             
             const body = currentVal.substring(prefix.length);
-            const cleanBody = body.replace(/[^0-9]/g, ''); 
-            
+            let cleanBody = body.replace(/[^0-9]/g, '');
+            if(cleanBody.length > maxDigits) cleanBody = cleanBody.substring(0, maxDigits);
+
             if(body !== cleanBody) {
                 phoneInput.value = prefix + cleanBody;
             } else {
@@ -128,8 +131,8 @@ document.addEventListener('DOMContentLoaded', function(){
 
     async function loadJobTitlesAndDepartments(){
         try{
-            // Try fetching from API
-            const res = await fetch('modules/workforce/api/get_form_options.php');
+            // Try fetching from API (use absolute path to avoid relative dupes)
+            const res = await fetch('/icmis/modules/workforce/api/get_form_options.php');
             const text = await res.text();
             let j = null;
             try{ j = JSON.parse(text); } catch(e){}

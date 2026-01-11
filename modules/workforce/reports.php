@@ -85,7 +85,7 @@ $breadcrumbHTML .= '</div>';
         ?>
     </div>
 
-    <main class="ml-56 mt-20 p-6 transition-all duration-300">
+    <main class="ml-56 mt-20 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             
             <div class="border-b border-gray-200 pb-6 mb-8 no-print">

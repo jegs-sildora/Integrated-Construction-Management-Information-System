@@ -15,8 +15,10 @@ function showToastAjax(message, type = 'success', persist = false) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    fetchSuppliers();
+    fetchSuppliers(1);
 });
+
+let currentSuppliersPage = 1;
 
 let isEditMode = false;
 let supplierToDelete = null;
@@ -26,9 +28,10 @@ let supplierToDelete = null;
 /* =========================================
    1. FETCH & RENDER TABLE (Fixed Error Handling)
    ========================================= */
-async function fetchSuppliers() {
+async function fetchSuppliers(page = 1) {
+    currentSuppliersPage = page;
     try {
-        const response = await fetch('php/fetch_suppliers.php');
+        const response = await fetch('php/fetch_suppliers.php?page=' + page + '&per_page=10');
         const responseText = await response.text(); // Read raw text first
 
         let data;
@@ -53,6 +56,7 @@ async function fetchSuppliers() {
 
         if (!suppliersList || suppliersList.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-slate-500">No suppliers found.</td></tr>';
+            renderSuppliersPagination(0, page, 10);
             return;
         }
 
@@ -70,7 +74,7 @@ async function fetchSuppliers() {
                     <td class="text-center px-6 py-4">
                         <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass}">${sup.status}</span>
                     </td>
-                    <td class="px-6 py-4 flex gap-3 text-slate-400">
+                    <td class="px-6 py-6 flex gap-3 text-slate-400">
                         <i class="fa-regular fa-pen-to-square hover:text-green-500 cursor-pointer transition-colors" onclick='openEditModal(${JSON.stringify(sup)})' title="Edit"></i>
                         <i class="fa-regular fa-trash-can hover:text-red-500 cursor-pointer transition-colors" onclick="deleteSupplier(${sup.supplier_id})" title="Delete"></i>
                     </td>
@@ -79,10 +83,59 @@ async function fetchSuppliers() {
             tbody.innerHTML += row;
         });
 
+        // Render pagination
+        if (data && typeof data.total !== 'undefined') {
+            renderSuppliersPagination(data.total, data.page || page, data.per_page || 10);
+        }
+
     } catch (error) {
         console.error('Fetch Network Error:', error);
         showToastAjax("Connection failed", "error");
     }
+}
+
+function renderSuppliersPagination(total, page, per_page) {
+    const container = document.getElementById('suppliersPagination');
+    if (!container) return;
+
+    const totalPages = per_page > 0 ? Math.ceil(total / per_page) : 0;
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '<div class="flex items-center justify-end gap-2 p-4">';
+    // Previous
+    if (page > 1) {
+        html += `<button class="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm ajax-sup-page" data-page="${page-1}">Previous</button>`;
+    }
+
+    // Page numbers (show up to 7 with truncation)
+    const maxPagesToShow = 7;
+    let start = Math.max(1, page - Math.floor(maxPagesToShow/2));
+    let end = Math.min(totalPages, start + maxPagesToShow - 1);
+    if (end - start + 1 < maxPagesToShow) start = Math.max(1, end - maxPagesToShow + 1);
+
+    for (let p = start; p <= end; p++) {
+        if (p === page) html += `<button class="px-3 py-1.5 bg-[#e9922c] text-white rounded-md text-sm font-semibold">${p}</button>`;
+        else html += `<button class="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm ajax-sup-page" data-page="${p}">${p}</button>`;
+    }
+
+    // Next
+    if (page < totalPages) {
+        html += `<button class="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm ajax-sup-page" data-page="${page+1}">Next</button>`;
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    // Attach handlers
+    container.querySelectorAll('.ajax-sup-page').forEach(btn => {
+        btn.addEventListener('click', function(){
+            const p = parseInt(this.dataset.page);
+            fetchSuppliers(p);
+        });
+    });
 }
 
 /* =========================================

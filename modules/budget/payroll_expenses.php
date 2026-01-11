@@ -73,7 +73,7 @@
     include __DIR__ . '/../../includes/header.php';
   ?>
 
-  <main class="ml-56 mt-16 p-6">
+  <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
     <div class="max-w-7xl mx-auto">
       <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
         <button onclick="window.location.href='expenses.php'" id="tab-employees" class="tab-btn px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">

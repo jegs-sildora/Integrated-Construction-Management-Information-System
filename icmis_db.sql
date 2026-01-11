@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 10, 2026 at 08:01 AM
+-- Generation Time: Jan 11, 2026 at 08:15 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -67,36 +67,19 @@ CREATE TABLE `budget_generated_reports` (
 --
 
 INSERT INTO `budget_generated_reports` (`report_id`, `project_id`, `report_type`, `report_name`, `generated_by`, `created_at`) VALUES
-(1, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:14:20'),
-(2, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:14:26'),
-(3, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:15:48'),
-(4, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:15:50'),
-(5, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:15:56'),
-(6, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:17:28'),
-(7, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:17:28'),
-(8, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:21:46'),
-(9, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:31:24'),
-(10, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:38:01'),
-(11, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:41:17'),
-(12, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:41:31'),
-(13, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:45:27'),
-(14, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 00:53:23'),
-(15, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 01:04:19'),
-(16, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 01:18:00'),
-(17, 1, 'phase-analysis', 'Phase Analysis (Phase 1)', 'John Doe', '2026-01-07 01:27:17'),
-(18, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 01:27:38'),
-(19, 1, 'labor-analysis', 'Labor Cost Analysis', 'John Doe', '2026-01-07 01:27:42'),
-(20, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 01:28:01'),
-(21, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-07 04:33:06'),
-(22, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-07 04:34:48'),
-(23, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-08 18:51:25'),
-(24, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-08 21:07:23'),
-(25, 1, 'phase-analysis', 'Phase Analysis (Phase 1)', 'John Doe', '2026-01-08 21:07:30'),
-(26, 1, 'labor-analysis', 'Labor Cost Analysis', 'John Doe', '2026-01-08 21:07:34'),
-(27, 1, 'expense-log', 'Expense Log', 'John Doe', '2026-01-08 21:07:38'),
-(28, 1, 'cash-flow', 'Cash Flow (Monthly)', 'John Doe', '2026-01-08 21:07:40'),
-(29, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-09 13:41:30'),
-(30, 1, 'budget-summary', 'Budget Summary', 'John Doe', '2026-01-09 13:41:31');
+(31, 1, 'budget-summary', ' - Davao', 'John Doe', '2026-01-10 08:41:02'),
+(32, 1, 'budget-summary', 'Budget Summary Report - Davao', 'John Doe', '2026-01-10 08:42:15'),
+(33, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:39'),
+(34, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:39'),
+(35, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:41'),
+(36, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:42'),
+(37, 1, 'budget', 'Budget Summary', 'Admin', '2026-01-10 18:22:59'),
+(38, 1, 'inventory', 'Inventory Status', 'Admin', '2026-01-10 18:24:04'),
+(39, 1, 'budget', 'Budget Summary', 'Admin', '2026-01-10 18:25:57'),
+(40, 1, 'inventory', 'Inventory Status Report', 'Admin', '2026-01-10 19:03:38'),
+(41, 1, 'purchase', 'Purchase Orders Report', 'Admin', '2026-01-10 19:03:44'),
+(42, 1, 'purchase', 'Purchase Orders Report', 'Admin', '2026-01-10 23:26:14'),
+(43, 1, 'purchase', 'Purchase Orders Report', 'Admin', '2026-01-11 07:05:34');
 
 -- --------------------------------------------------------
 
@@ -151,6 +134,44 @@ INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `icmis_audit_logs`
+--
+
+CREATE TABLE `icmis_audit_logs` (
+  `log_id` int UNSIGNED NOT NULL,
+  `user_id` int DEFAULT NULL COMMENT 'Reference to icmis_users table',
+  `user_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'System' COMMENT 'Cached username for faster display',
+  `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Action type: CREATE, UPDATE, DELETE, LOGIN, LOGOUT, VIEW, EXPORT, APPROVE, REJECT',
+  `module` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Module name: Project, Budget, Procurement, Workforce, Auth, Reports',
+  `details` text COLLATE utf8mb4_unicode_ci COMMENT 'Human-readable description of the action',
+  `record_id` int DEFAULT NULL COMMENT 'ID of the affected record (project_id, po_id, employee_id, etc.)',
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Client IP address (supports IPv6)',
+  `user_agent` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Browser/client user agent string',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Timestamp when the action occurred'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Audit trail for tracking user actions across all ICMIS modules';
+
+--
+-- Dumping data for table `icmis_audit_logs`
+--
+
+INSERT INTO `icmis_audit_logs` (`log_id`, `user_id`, `user_name`, `action`, `module`, `details`, `record_id`, `ip_address`, `user_agent`, `created_at`) VALUES
+(1, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: Davaoasdfasdf (PRJ-2026-003)', 5, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-10 20:21:24'),
+(2, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Purchase Orders Report for Davao', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-10 23:26:14'),
+(3, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Purchase Orders Report for Davao', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:05:34'),
+(4, 30, 'John Doe', 'LOGIN', 'Auth', 'User logged in successfully', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:07:00'),
+(5, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: Villa Angela Clubhouseasdf (PRJ-2026-004)', 7, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:07:26'),
+(6, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: asdfasdf (PRJ-2026-005)', 8, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:10:46'),
+(7, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: asdfasdfasdfasdf (PRJ-2026-006)', 9, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:42'),
+(8, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project ID: 9', 9, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:47'),
+(9, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project ID: 8', 8, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:49'),
+(10, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project ID: 7', 7, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:51'),
+(11, 30, 'John Doe', 'UPDATE', 'Project', 'Updated project: Davaoasdfasdf (PRJ-2026-003)', 5, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 08:12:33'),
+(12, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project: Davaoasdfasdf (PRJ-2026-003)', 5, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 08:12:41'),
+(13, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project: Villa Angela Clubhouse (PRJ-2026-002)', 4, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 08:12:43');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `icmis_generated_reports`
 --
 
@@ -163,6 +184,16 @@ CREATE TABLE `icmis_generated_reports` (
   `generated_by` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `icmis_generated_reports`
+--
+
+INSERT INTO `icmis_generated_reports` (`id`, `report_name`, `category`, `project_id`, `project_name`, `generated_by`, `created_at`) VALUES
+(1, 'Inventory Status Report', 'inventory', 1, 'Davao', 'Admin', '2026-01-10 19:03:38'),
+(2, 'Purchase Orders Report', 'purchase', 1, 'Davao', 'Admin', '2026-01-10 19:03:44'),
+(3, 'Purchase Orders Report', 'purchase', 1, 'Davao', 'Admin', '2026-01-10 23:26:14'),
+(4, 'Purchase Orders Report', 'purchase', 1, 'Davao', 'Admin', '2026-01-11 07:05:34');
 
 -- --------------------------------------------------------
 
@@ -189,8 +220,7 @@ CREATE TABLE `icmis_projects` (
 --
 
 INSERT INTO `icmis_projects` (`project_id`, `project_code`, `project_name`, `description`, `location`, `status`, `start_date`, `end_date`, `completion_rate`, `project_manager_id`, `total_budget`) VALUES
-(1, 'PRJ-2026-001', 'Davao', 'Sample Construction Project', 'Davao City', 'Planning', '2026-01-07', '2027-01-07', 0.00, NULL, 50000000.00),
-(4, 'PRJ-2026-002', 'Villa Angela Clubhouse', 'asdf', 'asdf', 'Planning', '2026-01-09', '2028-02-09', 0.00, 12, 12000000.00);
+(1, 'PRJ-2026-001', 'Davao', 'Sample Construction Project', 'Davao City', 'Planning', '2026-01-07', '2027-01-07', 0.00, NULL, 50000000.00);
 
 -- --------------------------------------------------------
 
@@ -234,13 +264,6 @@ CREATE TABLE `icmis_tasks` (
   `status` enum('Not Started','In Progress','Completed','On Hold') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Not Started',
   `priority` enum('Low','Medium','High','Urgent') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Medium'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `icmis_tasks`
---
-
-INSERT INTO `icmis_tasks` (`task_id`, `project_id`, `phase_id`, `task_name`, `description`, `assigned_to_employee_id`, `start_date`, `due_date`, `status`, `priority`) VALUES
-(1, 1, 1, 'Make a Budget Proposal', 'Make a Budget Proposal', NULL, '2026-01-07', '2026-01-14', 'Not Started', 'High');
 
 -- --------------------------------------------------------
 
@@ -682,21 +705,7 @@ CREATE TABLE `workforce_generated_reports` (
 --
 
 INSERT INTO `workforce_generated_reports` (`report_id`, `project_id`, `report_type`, `report_name`, `generated_by`, `created_at`) VALUES
-(1, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:24:24'),
-(2, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:28:25'),
-(3, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:29:16'),
-(4, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:36:51'),
-(5, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:40:25'),
-(6, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:41:50'),
-(7, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:44:14'),
-(8, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:52:28'),
-(9, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:53:23'),
-(10, 1, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:53:58'),
-(11, 1, 'attendance-summary', 'Attendance Summary (Feb 2026)', 'John Doe', '2026-01-10 06:54:09'),
-(12, 1, 'assignment-report', 'Assignment Report', 'John Doe', '2026-01-10 06:54:13'),
-(13, 1, 'payroll-report', 'Payroll Report (Jan 2026)', 'John Doe', '2026-01-10 06:54:17'),
-(14, 1, 'workforce-analytics', 'Workforce Analytics', 'John Doe', '2026-01-10 06:54:41'),
-(15, 4, 'employee-directory', 'Employee Directory', 'John Doe', '2026-01-10 06:54:52');
+(16, 1, 'employee-directory', 'Employee Directory', 'System', '2026-01-10 18:22:33');
 
 -- --------------------------------------------------------
 
@@ -888,6 +897,17 @@ ALTER TABLE `budget_proposals`
   ADD KEY `fk_prop_creator` (`created_by`);
 
 --
+-- Indexes for table `icmis_audit_logs`
+--
+ALTER TABLE `icmis_audit_logs`
+  ADD PRIMARY KEY (`log_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_action` (`action`),
+  ADD KEY `idx_module` (`module`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_record_id` (`record_id`);
+
+--
 -- Indexes for table `icmis_generated_reports`
 --
 ALTER TABLE `icmis_generated_reports`
@@ -1059,7 +1079,7 @@ ALTER TABLE `budget_expenses`
 -- AUTO_INCREMENT for table `budget_generated_reports`
 --
 ALTER TABLE `budget_generated_reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
 -- AUTO_INCREMENT for table `budget_line_items`
@@ -1074,16 +1094,22 @@ ALTER TABLE `budget_proposals`
   MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
+-- AUTO_INCREMENT for table `icmis_audit_logs`
+--
+ALTER TABLE `icmis_audit_logs`
+  MODIFY `log_id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
 -- AUTO_INCREMENT for table `icmis_generated_reports`
 --
 ALTER TABLE `icmis_generated_reports`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `icmis_projects`
 --
 ALTER TABLE `icmis_projects`
-  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `icmis_project_phases`
@@ -1167,7 +1193,7 @@ ALTER TABLE `workforce_employee_groups`
 -- AUTO_INCREMENT for table `workforce_generated_reports`
 --
 ALTER TABLE `workforce_generated_reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `workforce_group_memberships`
@@ -1201,16 +1227,16 @@ ALTER TABLE `workforce_payroll_periods`
 -- Constraints for table `budget_expenses`
 --
 ALTER TABLE `budget_expenses`
-  ADD CONSTRAINT `fk_exp_creator` FOREIGN KEY (`created_by`) REFERENCES `icmis_users` (`user_id`),
-  ADD CONSTRAINT `fk_exp_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`),
-  ADD CONSTRAINT `fk_exp_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`),
-  ADD CONSTRAINT `fk_exp_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`);
+  ADD CONSTRAINT `fk_exp_creator` FOREIGN KEY (`created_by`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_exp_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_exp_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_exp_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `budget_generated_reports`
 --
 ALTER TABLE `budget_generated_reports`
-  ADD CONSTRAINT `fk_rep_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`);
+  ADD CONSTRAINT `fk_rep_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `budget_line_items`
@@ -1223,8 +1249,14 @@ ALTER TABLE `budget_line_items`
 --
 ALTER TABLE `budget_proposals`
   ADD CONSTRAINT `fk_prop_creator` FOREIGN KEY (`created_by`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_prop_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`),
-  ADD CONSTRAINT `fk_prop_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`);
+  ADD CONSTRAINT `fk_prop_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_prop_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `icmis_audit_logs`
+--
+ALTER TABLE `icmis_audit_logs`
+  ADD CONSTRAINT `fk_audit_log_user` FOREIGN KEY (`user_id`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Constraints for table `icmis_projects`
@@ -1257,10 +1289,10 @@ ALTER TABLE `procurement_inventory`
 -- Constraints for table `procurement_purchase_orders`
 --
 ALTER TABLE `procurement_purchase_orders`
-  ADD CONSTRAINT `fk_po_creator` FOREIGN KEY (`created_by_user_id`) REFERENCES `icmis_users` (`user_id`),
-  ADD CONSTRAINT `fk_po_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`),
-  ADD CONSTRAINT `fk_po_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`),
-  ADD CONSTRAINT `fk_po_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`);
+  ADD CONSTRAINT `fk_po_creator` FOREIGN KEY (`created_by_user_id`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_po_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_po_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_po_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `procurement_purchase_order_items`
@@ -1273,31 +1305,31 @@ ALTER TABLE `procurement_purchase_order_items`
 -- Constraints for table `procurement_stock_in`
 --
 ALTER TABLE `procurement_stock_in`
-  ADD CONSTRAINT `fk_stockin_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`),
-  ADD CONSTRAINT `fk_stockin_po` FOREIGN KEY (`po_id`) REFERENCES `procurement_purchase_orders` (`po_id`);
+  ADD CONSTRAINT `fk_stockin_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_stockin_po` FOREIGN KEY (`po_id`) REFERENCES `procurement_purchase_orders` (`po_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `procurement_stock_out`
 --
 ALTER TABLE `procurement_stock_out`
-  ADD CONSTRAINT `fk_stockout_emp` FOREIGN KEY (`issued_to_employee_id`) REFERENCES `workforce_employees` (`employee_id`),
-  ADD CONSTRAINT `fk_stockout_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`),
-  ADD CONSTRAINT `fk_stockout_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`);
+  ADD CONSTRAINT `fk_stockout_emp` FOREIGN KEY (`issued_to_employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_stockout_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_stockout_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `workforce_assignments`
 --
 ALTER TABLE `workforce_assignments`
-  ADD CONSTRAINT `fk_assign_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`),
-  ADD CONSTRAINT `fk_assign_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`),
-  ADD CONSTRAINT `fk_assign_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`);
+  ADD CONSTRAINT `fk_assign_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_assign_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_assign_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `workforce_attendance`
 --
 ALTER TABLE `workforce_attendance`
-  ADD CONSTRAINT `fk_att_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`),
-  ADD CONSTRAINT `fk_att_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`);
+  ADD CONSTRAINT `fk_att_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_att_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `workforce_employees`

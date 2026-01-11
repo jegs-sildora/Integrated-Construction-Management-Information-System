@@ -13,7 +13,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 <style type="text/css">
-    @theme {
+    :root {
         /* Custom Fonts */
         --font-sans: "Inter", "Montserrat", "Poppins", ui-sans-serif, system-ui;
 
@@ -45,6 +45,15 @@
         0% { opacity: 0; transform: translateY(-10px); }
         100% { opacity: 1; transform: translateY(0); }
     }
+
+    /* Utility fallbacks for projects not using a full Tailwind build
+       Provide minimal classes used across the app so animation/transition
+       utilities work even when utility generation is not available. */
+    .animate-fade-in { animation: var(--animate-fade-in); }
+    .transition-all { transition-property: all; transition-timing-function: ease; }
+    .duration-300 { transition-duration: 0.3s; }
+    .duration-200 { transition-duration: 0.2s; }
+    .duration-150 { transition-duration: 0.15s; }
 
     /* Global Scrollbar Utilities */
     .custom-scrollbar::-webkit-scrollbar { width: 5px; }

@@ -47,7 +47,7 @@ $selected_project_id = getProjectContext($conn);
     <?php include __DIR__ . '/../../includes/header.php'; ?>
     <?php include __DIR__ . '/../../includes/toast.php'; ?>
 
-    <main class="ml-56 mt-20 p-6">
+    <main class="ml-56 mt-20 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             
             <div class="flex flex-row items-end justify-between gap-4 mb-6">

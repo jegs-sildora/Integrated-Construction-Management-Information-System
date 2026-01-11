@@ -183,24 +183,46 @@ function handleEditTask(taskId) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                const task = data.task;
+                const task = data.task ?? data.record ?? null;
+                if (!task) {
+                    showToast('Task data not found', 'error');
+                    return;
+                }
                 document.getElementById('task_id').value = task.task_id;
                 populateProjectSelect(task.project_id);
                 populatePhaseSelect(task.project_id, task.phase_id);
                 populateAssigneeSelect(task.assigned_to_employee_id);
+                // Sync hidden datalist value and input display (if datalist exists)
+                try {
+                    const hiddenAssignee = document.getElementById('assigned_to_employee_id_hidden');
+                    const assigneeInput = document.getElementById('taskAssigneeInput');
+                    if (hiddenAssignee) hiddenAssignee.value = task.assigned_to_employee_id || '';
+                    if (assigneeInput && task.assigned_to_employee_id) {
+                        // Try to find employee in injected employeesData first
+                        const emp = (employeesData || []).find(e => String(e.employee_id) === String(task.assigned_to_employee_id));
+                        if (emp) {
+                            assigneeInput.value = `${emp.first_name} ${emp.last_name} (${emp.employee_code || ''})`;
+                        } else {
+                            // Fallback: leave input empty; the task modal's script will fetch and populate datalist and set input if hidden is present
+                        }
+                    }
+                } catch (e) { console.warn('Could not prefill assignee input', e); }
                 document.getElementById('task_name').value = task.task_name;
                 document.getElementById('task_description').value = task.description || '';
                 document.getElementById('task_start_date').value = task.start_date || '';
                 document.getElementById('task_due_date').value = task.due_date || '';
                 document.getElementById('task_priority').value = task.priority || 'Medium';
                 document.getElementById('task_status').value = task.status || 'Not Started';
-                
+
                 document.getElementById('taskModalTitle').textContent = 'Edit Task';
                 document.getElementById('taskModalBtnText').textContent = 'Save Changes';
                 document.getElementById('taskModal').style.display = 'flex';
             } else {
                 showToast(data.message || 'Error fetching task', 'error');
             }
+        }).catch(err => {
+            console.error('Fetch task error:', err);
+            showToast('Error fetching task: ' + (err.message || ''), 'error');
         });
 }
 

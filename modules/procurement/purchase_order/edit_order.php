@@ -114,7 +114,7 @@ if ($selected_proposal_id > 0) {
     ?>
     <?php include __DIR__ . '/../../../includes/toast.php'; ?>
 
-    <main class="ml-56 pt-20 p-6 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-20 p-6 min-h-screen transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto pt-6">
             
             <a href="../orders.php" class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors underline">

@@ -1,6 +1,24 @@
 const backendUrl = "api/projects.php";
-const employeesUrl = "api/employees.php";
+const employeesUrl = "../workforce/api/employees.php?action=list&status=Active";
 let projectToDelete = null;
+
+// Safely parse JSON responses — log raw text when parsing fails (helps debug HTML/PHP errors)
+async function parseJSONResponse(res) {
+    const ct = res.headers.get('content-type') || '';
+    const text = await res.text();
+    // If server declares JSON or the body looks like JSON, try to parse.
+    if (ct.includes('application/json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Invalid JSON response:', text);
+            throw new Error('Invalid JSON response from server');
+        }
+    }
+    // Otherwise log the non-JSON response for easier debugging (likely HTML error/redirect)
+    console.error('Non-JSON response received from', res.url, text);
+    throw new Error('Expected JSON response but received non-JSON content');
+}
 
 // ------------------ Dashboard Refresh (AJAX) ------------------
 // Fetches the current page HTML and updates Table & Stats in place.
@@ -137,24 +155,30 @@ document.getElementById('addProjectBtn')?.addEventListener('click', function() {
 
     // Get next project code
     fetch(backendUrl + '?get_next_id=1')
-        .then(res => res.json())
+        .then(parseJSONResponse)
         .then(data => {
             if (data.success) document.getElementById('project_code').value = data.project_code;
-        });
+        }).catch(err => console.error('Get next project code error:', err));
 
-    // Fetch active employees for manager select
+    // Fetch active employees for manager select (populate fallback select for older code)
     fetch(employeesUrl)
-        .then(res => res.json())
+        .then(parseJSONResponse)
         .then(data => {
             if (data.success) {
+                const employees = data.data || [];
                 const select = document.getElementById('managerSelect');
-                select.innerHTML = '<option value="">Select Project Manager</option>';
-                data.employees.forEach(emp => {
+                if (select) select.innerHTML = '<option value="">Select Project Manager</option>';
+                employees.forEach(emp => {
                     const fullName = emp.first_name + ' ' + emp.last_name;
-                    select.innerHTML += `<option value="${emp.employee_id}">${fullName} (${emp.employee_code})</option>`;
+                    if (select) {
+                        const opt = document.createElement('option');
+                        opt.value = emp.employee_id;
+                        opt.textContent = `${fullName} (${emp.employee_code})`;
+                        select.appendChild(opt);
+                    }
                 });
             }
-        });
+        }).catch(err => console.error('Fetch employees error:', err));
 
     document.getElementById('projectModal').style.display = 'flex';
 });
@@ -162,7 +186,7 @@ document.getElementById('addProjectBtn')?.addEventListener('click', function() {
 // ------------------ Edit Project Logic ------------------
 function handleEditProject(projectId) {
     fetch(backendUrl + '?fetch_id=' + projectId)
-        .then(res => res.json())
+        .then(parseJSONResponse)
         .then(data => {
             if (data.success) {
                 const project = data.project;
@@ -183,27 +207,61 @@ function handleEditProject(projectId) {
                     tbDisplay.value = raw ? raw.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
                 }
 
-                // Fetch employees and populate manager select
+                // Set hidden manager id (will be used by datalist script or fallback select)
+                const mgrHidden = document.getElementById('project_manager_id_hidden');
+                const mgrInput = document.getElementById('managerInput');
+                if (mgrHidden) mgrHidden.value = project.project_manager_id || '';
+
+                // Fetch employees and populate manager select/datalist, and select the saved manager
                 fetch(employeesUrl)
-                    .then(res => res.json())
+                    .then(parseJSONResponse)
                     .then(empData => {
                         if (empData.success) {
+                            const employees = empData.data || [];
                             const select = document.getElementById('managerSelect');
-                            select.innerHTML = '<option value="">Select Project Manager</option>';
-                            empData.employees.forEach(emp => {
+                            const managerList = document.getElementById('managerList');
+                            const managerMap = {};
+                            if (select) select.innerHTML = '<option value="">Select Project Manager</option>';
+                            if (managerList) managerList.innerHTML = '';
+
+                            employees.forEach(emp => {
                                 const fullName = emp.first_name + ' ' + emp.last_name;
-                                const selected = project.project_manager_id == emp.employee_id ? 'selected' : '';
-                                select.innerHTML += `<option value="${emp.employee_id}" ${selected}>${fullName} (${emp.employee_code})</option>`;
+                                const label = `${fullName} (${emp.employee_code || ''})`;
+                                // fallback select
+                                if (select) {
+                                    const opt = document.createElement('option');
+                                    opt.value = emp.employee_id;
+                                    opt.textContent = label;
+                                    if (project.project_manager_id == emp.employee_id) opt.selected = true;
+                                    select.appendChild(opt);
+                                }
+                                // datalist option
+                                if (managerList) {
+                                    const opt2 = document.createElement('option');
+                                    opt2.value = label;
+                                    managerList.appendChild(opt2);
+                                    managerMap[label] = emp.employee_id;
+                                }
+                                // if this is the saved manager, set input display
+                                if (project.project_manager_id == emp.employee_id && mgrInput) {
+                                    mgrInput.value = label;
+                                }
                             });
+
+                            // ensure hidden field is synced (if managerInput didn't set it)
+                            if (mgrHidden && mgrInput && mgrInput.value && managerMap[mgrInput.value]) {
+                                mgrHidden.value = managerMap[mgrInput.value];
+                            }
+
                             document.getElementById('projectModalTitle').textContent = 'Edit Project';
                             document.getElementById('projectModalBtnText').textContent = 'Save Changes';
                             document.getElementById('projectModal').style.display = 'flex';
                         }
-                    });
+                    }).catch(err => console.error('Fetch employees error (edit):', err));
             } else {
                 showToast(data.message || 'Error fetching project', 'error');
             }
-        });
+        }).catch(err => console.error('Fetch project error:', err));
 }
 
 // ------------------ Delete Project Logic ------------------
@@ -225,13 +283,12 @@ function confirmDelete() {
     formData.append('delete_id', projectToDelete);
 
     fetch(backendUrl, { method: 'POST', body: formData })
-        .then(res => res.json())
+        .then(parseJSONResponse)
         .then(data => {
             if (data.success) {
-                // AJAX Success
                 showToast(data.message || 'Project deleted successfully', 'success');
                 closeDeleteModal();
-                refreshDashboard(); // Update UI without reload
+                refreshDashboard();
             } else {
                 showToast(data.message || 'Error deleting project', 'error');
             }
@@ -271,13 +328,12 @@ document.getElementById('projectForm')?.addEventListener('submit', function(e) {
     const formData = new FormData(this);
 
     fetch(backendUrl, { method: 'POST', body: formData })
-        .then(res => res.json())
+        .then(parseJSONResponse)
         .then(data => {
             if (data.success) {
-                // AJAX Success
                 showToast(data.message || 'Project saved successfully', 'success');
                 closeProjectModal();
-                refreshDashboard(); // Update UI without reload
+                refreshDashboard();
             } else {
                 showToast(data.message || 'Error saving project', 'error');
             }

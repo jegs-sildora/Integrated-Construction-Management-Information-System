@@ -68,7 +68,7 @@ $notificationCount = 0;
 
   <!-- Toast included globally via header.php -->
 
-  <main class="ml-56 mt-20 p-6">
+  <main class="ml-56 mt-20 p-6 transition-all duration-300 animate-fade-in">
     <div class="max-w-7xl mx-auto">
       <!-- Back Link -->
       <a href="expenses.php" class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors underline">

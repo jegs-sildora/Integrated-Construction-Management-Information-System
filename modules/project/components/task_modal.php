@@ -14,6 +14,65 @@
                         <h3 id="taskModalTitle" class="text-2xl font-bold text-white">Add Task</h3>
                         <p class="text-slate-300 text-sm mt-1">Enter task details</p>
                     </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function(){ (function(){
+                const list = document.getElementById('taskAssigneeList');
+                const input = document.getElementById('taskAssigneeInput');
+                const hidden = document.getElementById('assigned_to_employee_id_hidden');
+                const fallback = document.getElementById('task_assignee');
+                const map = {}; // label -> id
+
+                async function fetchEmployees(){
+                    try{
+                        const res = await fetch('../workforce/api/employees.php?action=list&status=Active');
+                        let json;
+                        if (typeof parseJSONResponse === 'function') {
+                            json = await parseJSONResponse(res);
+                        } else {
+                            try { json = await res.json(); } catch(e) { console.error('Invalid JSON for employees', e); return; }
+                        }
+                        if (!json || !json.success) return;
+                        const employees = json.data || [];
+                        if (list) list.innerHTML = '';
+                        if (fallback) fallback.innerHTML = '<option value="">Unassigned</option>';
+                        employees.forEach(e => {
+                            const label = `${e.first_name} ${e.last_name} (${e.employee_code || ''}) | ${e.position || ''}`;
+                            if (list) {
+                                const opt = document.createElement('option');
+                                opt.value = label;
+                                list.appendChild(opt);
+                            }
+                            map[label] = e.employee_id;
+                            if (fallback) {
+                                const opt2 = document.createElement('option');
+                                opt2.value = e.employee_id;
+                                opt2.textContent = `${e.first_name} ${e.last_name} (${e.employee_code || ''})`;
+                                fallback.appendChild(opt2);
+                            }
+                        });
+
+                        // If hidden has value (edit), set input display
+                        if (hidden && hidden.value) {
+                            const match = Object.keys(map).find(k => map[k] == hidden.value);
+                            if (match && input) input.value = match;
+                        }
+                    }catch(err){
+                        console.error('Failed to load employees for task assignee', err);
+                    }
+                }
+
+                if (input && list) {
+                    fetchEmployees();
+                    input.addEventListener('input', function(){
+                        const val = input.value;
+                        if (map[val]) hidden.value = map[val]; else hidden.value = '';
+                    });
+                }
+
+                const form = document.getElementById('taskForm');
+                if (form) form.addEventListener('reset', function(){ if (hidden) hidden.value = ''; if (input) input.value = ''; });
+            })(); });
+        </script>
                 </div>
                 <button id="closeTaskModal" type="button" class="text-slate-300 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,10 +139,14 @@
                     
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Assign To</label>
-                        <select name="assigned_to_employee_id" id="task_assignee"
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
-                            <option value="">Unassigned</option>
-                        </select>
+                        <input list="taskAssigneeList" id="taskAssigneeInput" name="task_assignee_display"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all"
+                               placeholder="Assign to employee (Full Name (code) | Job Title)">
+                        <datalist id="taskAssigneeList"></datalist>
+                        <!-- Hidden value submitted to server -->
+                        <input type="hidden" name="assigned_to_employee_id" id="assigned_to_employee_id_hidden" value="">
+                        <!-- Compatibility fallback: keep a hidden select for scripts expecting #task_assignee -->
+                        <select id="task_assignee" name="_task_assignee_fallback" style="display:none"><option value="">Unassigned</option></select>
                     </div>
                 </div>
 

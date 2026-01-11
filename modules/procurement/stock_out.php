@@ -69,9 +69,105 @@ if ($project_id > 0) {
     <?php include '../../includes/header.php'; ?>
     <?php include '../../includes/toast.php'; ?>
 
+
+      <div id="issueStockModal" class="hidden fixed inset-0 bg-black/60 z-60 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all scale-100">
+          <div class="p-5 rounded-t-2xl flex justify-between items-center bg-red-700 border-b border-red-800">
+            <h2 class="text-lg font-bold text-white">Issue Stock</h2>
+            <button onclick="closeIssueModal()" class="text-white/80 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+          </div>
+          <form id="issueStockForm" class="p-6 space-y-5">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase">Select Item</label>
+              <select id="stock_itemID" name="stock_itemID" required class="w-full p-2.5 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-red-200 outline-none transition-all">
+                <option value="" disabled selected>Loading Inventory...</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="flex flex-col gap-1.5">
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase">Quantity</label>
+                  <button type="button" id="stock_max_btn" class="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded disabled:opacity-50" aria-label="Use maximum available">MAX</button>
+                </div>
+                <input type="number" id="stock_quantity" name="stock_quantity" required min="0.01" step="0.01" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all">
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase">Available</label>
+                <input type="text" id="stock_available_qty" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase">Unit</label>
+                <input type="text" id="stock_unit" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
+              </div>
+            </div>
+            <p id="stock_quantity_error" class="text-sm text-red-600 font-bold text-center" aria-live="polite"></p>
+            <?php
+              // Fetch employees whose job title is 'Warehouseman'
+              $warehousemen = [];
+              $wm_sql = "SELECT we.employee_id, we.employee_code, we.first_name, we.last_name FROM workforce_employees we JOIN workforce_job_titles wjt ON we.job_title_id = wjt.job_title_id WHERE wjt.title_name = 'Warehouseman' AND COALESCE(we.status, 'Active') = 'Active' ORDER BY we.first_name, we.last_name";
+              if ($wm_stmt = $conn->prepare($wm_sql)) {
+                $wm_stmt->execute();
+                $wm_res = $wm_stmt->get_result();
+                while ($wm_row = $wm_res->fetch_assoc()) {
+                  $warehousemen[] = $wm_row;
+                }
+                $wm_stmt->close();
+              }
+            ?>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase">Issued To (Person/Area)</label>
+              <input type="text" id="stock_issuedTo" name="stock_issuedTo" list="warehouseman_list" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all" placeholder="Enter employee name...">
+
+              <datalist id="warehouseman_list">
+                <?php if (!empty($warehousemen)): ?>
+                  <?php foreach ($warehousemen as $wm): ?>
+                        <?php $display = '(' . htmlspecialchars($wm['employee_code']) . ') - ' . htmlspecialchars(trim($wm['first_name'] . ' ' . $wm['last_name'])); ?>
+                        <option value="<?= $display ?>"><?= $display ?></option>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </datalist>
+
+              <input type="hidden" id="stock_issuedTo_id" name="stock_issuedTo_id" value="">
+
+              <?php
+                // Build a name -> id map for client-side lookup
+                $warehousemen_map = [];
+                foreach ($warehousemen as $wm) {
+                  $code = isset($wm['employee_code']) ? $wm['employee_code'] : '';
+                  $full = trim($wm['first_name'] . ' ' . $wm['last_name']);
+                  if ($code !== '') {
+                    $display = '(' . $code . ') - ' . $full;
+                    $warehousemen_map[$display] = [
+                      'id' => (int)$wm['employee_id'],
+                      'code' => $code
+                    ];
+                  }
+                }
+              ?>
+              <script>
+                window.warehousemenMap = <?= json_encode($warehousemen_map, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?> || {};
+              </script>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase">Notes (Optional)</label>
+              <textarea id="stock_notes" name="stock_notes" rows="2" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all"></textarea>
+            </div>
+                        
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button type="button" class="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-800 transition-colors" onclick="closeIssueModal()">Cancel</button>
+              <button type="submit" class="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all transform hover:-translate-y-0.5">Confirm Issuance</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <script src="js/stockout.js"></script>
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300 animate-fade-in">
         
         <?php if ($project_id == 0): ?>
             <div class="flex flex-col items-center justify-center h-[calc(100vh-140px)]">
@@ -175,101 +271,7 @@ if ($project_id > 0) {
                 </div>
             </div>
 
-            <div id="issueStockModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
-                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all scale-100">
-                    <div class="p-5 rounded-t-2xl flex justify-between items-center bg-red-700 border-b border-red-800">
-                        <h2 class="text-lg font-bold text-white">Issue Stock</h2>
-                        <button onclick="closeIssueModal()" class="text-white/80 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
-                    </div>
-                    <form id="issueStockForm" class="p-6 space-y-5">
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-bold text-slate-500 uppercase">Select Item</label>
-                            <select id="stock_itemID" name="stock_itemID" required class="w-full p-2.5 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-red-200 outline-none transition-all">
-                                <option value="" disabled selected>Loading Inventory...</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div class="flex flex-col gap-1.5">
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs font-bold text-slate-500 uppercase">Quantity</label>
-                                    <button type="button" id="stock_max_btn" class="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded disabled:opacity-50" aria-label="Use maximum available">MAX</button>
-                                </div>
-                                <input type="number" id="stock_quantity" name="stock_quantity" required min="0.01" step="0.01" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all">
-                            </div>
-
-                            <div class="flex flex-col gap-1.5">
-                                <label class="text-xs font-bold text-slate-500 uppercase">Available</label>
-                                <input type="text" id="stock_available_qty" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
-                            </div>
-
-                            <div class="flex flex-col gap-1.5">
-                                <label class="text-xs font-bold text-slate-500 uppercase">Unit</label>
-                                <input type="text" id="stock_unit" readonly class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
-                            </div>
-                        </div>
-                        <p id="stock_quantity_error" class="text-sm text-red-600 font-bold text-center" aria-live="polite"></p>
-                        <?php
-                            // Fetch employees whose job title is 'Warehouseman'
-                            $warehousemen = [];
-                            $wm_sql = "SELECT we.employee_id, we.employee_code, we.first_name, we.last_name FROM workforce_employees we JOIN workforce_job_titles wjt ON we.job_title_id = wjt.job_title_id WHERE wjt.title_name = 'Warehouseman' AND COALESCE(we.status, 'Active') = 'Active' ORDER BY we.first_name, we.last_name";
-                            if ($wm_stmt = $conn->prepare($wm_sql)) {
-                                $wm_stmt->execute();
-                                $wm_res = $wm_stmt->get_result();
-                                while ($wm_row = $wm_res->fetch_assoc()) {
-                                    $warehousemen[] = $wm_row;
-                                }
-                                $wm_stmt->close();
-                            }
-                        ?>
-
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-bold text-slate-500 uppercase">Issued To (Person/Area)</label>
-                            <input type="text" id="stock_issuedTo" name="stock_issuedTo" list="warehouseman_list" required class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all" placeholder="Enter employee name...">
-
-                            <datalist id="warehouseman_list">
-                                <?php if (!empty($warehousemen)): ?>
-                                    <?php foreach ($warehousemen as $wm): ?>
-                                                <?php $display = '(' . htmlspecialchars($wm['employee_code']) . ') - ' . htmlspecialchars(trim($wm['first_name'] . ' ' . $wm['last_name'])); ?>
-                                                <option value="<?= $display ?>"><?= $display ?></option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </datalist>
-
-                            <input type="hidden" id="stock_issuedTo_id" name="stock_issuedTo_id" value="">
-
-                            <?php
-                                // Build a name -> id map for client-side lookup
-                                $warehousemen_map = [];
-                                foreach ($warehousemen as $wm) {
-                                    $code = isset($wm['employee_code']) ? $wm['employee_code'] : '';
-                                    $full = trim($wm['first_name'] . ' ' . $wm['last_name']);
-                                    if ($code !== '') {
-                                        $display = '(' . $code . ') - ' . $full;
-                                        $warehousemen_map[$display] = [
-                                            'id' => (int)$wm['employee_id'],
-                                            'code' => $code
-                                        ];
-                                    }
-                                }
-                            ?>
-                            <script>
-                                window.warehousemenMap = <?= json_encode($warehousemen_map, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?> || {};
-                            </script>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-bold text-slate-500 uppercase">Notes (Optional)</label>
-                            <textarea id="stock_notes" name="stock_notes" rows="2" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-200 outline-none transition-all"></textarea>
-                        </div>
-                        
-                        <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                            <button type="button" class="px-5 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-800 transition-colors" onclick="closeIssueModal()">Cancel</button>
-                            <button type="submit" class="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all transform hover:-translate-y-0.5">Confirm Issuance</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <script src="js/stockout.js"></script>
+            <!-- Issue Stock modal moved below </main> to avoid stacking/context issues -->
         <?php endif; ?>
     </main>
 </body>

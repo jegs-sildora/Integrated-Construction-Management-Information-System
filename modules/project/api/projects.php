@@ -22,7 +22,21 @@ try {
     // -------------------- DELETE PROJECT --------------------
     if (isset($_POST['delete_id'])) {
         $project_id = intval($_POST['delete_id']);
-        
+        // Fetch project details for descriptive logging before deletion
+        $projName = '';
+        $projCode = '';
+        $stmtGet = $conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ? LIMIT 1");
+        if ($stmtGet) {
+            $stmtGet->bind_param("i", $project_id);
+            $stmtGet->execute();
+            $resGet = $stmtGet->get_result();
+            if ($resGet && $rowGet = $resGet->fetch_assoc()) {
+                $projName = $rowGet['project_name'] ?? '';
+                $projCode = $rowGet['project_code'] ?? '';
+            }
+            $stmtGet->close();
+        }
+
         // Delete related records first
         // Tasks and phases (phases have ON DELETE CASCADE for tasks, but ensure both cleared)
         $conn->query("DELETE FROM icmis_tasks WHERE project_id = $project_id");
@@ -47,12 +61,30 @@ try {
         // Log project deletion to audit trail
         if ($stmt->affected_rows > 0) {
             Logger::init($conn);
-            Logger::delete('Project', "Deleted project ID: $project_id", $project_id);
+            // Prefer descriptive message including project name and code when available
+            if ($projName || $projCode) {
+                $label = trim(($projName ? $projName : '') . ($projCode ? " ($projCode)" : ''));
+                Logger::delete('Project', "Deleted project: $label", $project_id);
+            } else {
+                Logger::delete('Project', "Deleted project ID: $project_id", $project_id);
+            }
+        }
+
+        // Prepare descriptive message for client
+        $deleted = $stmt->affected_rows > 0;
+        if ($deleted) {
+            $label = trim(($projName ? $projName : '') . ($projCode ? " ($projCode)" : ''));
+            $msg = $label ? "Deleted project: $label" : 'Project deleted successfully';
+        } else {
+            $msg = 'Project not found';
+            $label = null;
         }
 
         echo json_encode([
-            'success' => $stmt->affected_rows > 0,
-            'message' => $stmt->affected_rows > 0 ? 'Project deleted successfully' : 'Project not found'
+            'success' => $deleted,
+            'message' => $msg,
+            'project_id' => $deleted ? $project_id : null,
+            'project_label' => $label
         ]);
         $stmt->close();
         exit;

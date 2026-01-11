@@ -41,8 +41,16 @@ class Logger {
      * @return mysqli|null
      */
     private static function getConnection(): ?mysqli {
-        if (self::$conn !== null && self::$conn->ping()) {
-            return self::$conn;
+        if (self::$conn !== null) {
+            // Avoid calling mysqli::ping() on PHP 8.4+ where it's deprecated
+            if (version_compare(PHP_VERSION, '8.4.0', '<')) {
+                if (self::$conn->ping()) {
+                    return self::$conn;
+                }
+            } else {
+                // Assume existing connection is usable on newer PHP versions
+                return self::$conn;
+            }
         }
         
         // Try to create a new connection using config constants

@@ -249,7 +249,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-6">
+    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
@@ -445,8 +445,9 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                     </div>
                 </div>
             </div> 
-
-            <div id="deleteModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        </div>
+    </main>
+    <div id="deleteModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
                 <div class="flex items-center justify-center min-h-screen px-4">
                     <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeDeleteModal()"></div>
                     
@@ -512,16 +513,6 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                     </div>
                 </div>
             </div>
-
-            <div id="content-groups" class="tab-content hidden">
-                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Employee Groups</h3>
-                    <p class="text-gray-500">Coming Soon</p>
-                 </div>
-            </div>
-
-        </div>
-    </main>
 
     <?php include __DIR__ . '/components/employee_modal.php'; ?>
 

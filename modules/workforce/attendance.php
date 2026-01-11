@@ -169,7 +169,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
 <body class="bg-gray-50 text-gray-900">
     <?php include __DIR__ . '/../../includes/sidebar.php'; include __DIR__ . '/../../includes/toast.php'; include __DIR__ . '/../../includes/header.php'; ?>
     
-    <main class="ml-56 mt-16 p-6">
+    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
                 <button onclick="switchView('individual')" id="btn-individual" class="tab-btn active px-6 py-3 text-sm font-semibold border-b-2 transition-colors">Individual Attendance</button>
@@ -210,7 +210,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
             </div>
 
             <div id="view-individual">
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[400px]">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                         <h3 class="font-semibold text-gray-700">All Employees List</h3>
                         <div class="flex items-center gap-4">

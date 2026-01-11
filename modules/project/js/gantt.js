@@ -2,7 +2,7 @@
 
 let gantt = null;
 let ganttData = [];
-let currentViewMode = 'Month';
+let currentViewMode = 'Week';
 
 // ------------------ Data Parsing ------------------
 function parseGanttData() {

@@ -87,7 +87,7 @@ while ($row = $projectsResult->fetch_assoc()) {
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-6">
+    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
@@ -133,7 +133,7 @@ while ($row = $projectsResult->fetch_assoc()) {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                <span class="font-medium">Add Phase</span>
+                <span class="font-bold">Add Phase</span>
             </button>
         </div>
 

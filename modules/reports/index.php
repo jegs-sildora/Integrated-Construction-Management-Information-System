@@ -159,7 +159,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         'generated_by' => $userName
     ]); ?>
 
-    <main class="ml-56 mt-20 p-6 transition-all duration-300">
+    <main class="ml-56 mt-20 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
 
             <!-- Page Header -->

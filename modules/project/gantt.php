@@ -259,7 +259,7 @@ $ganttDataJson = json_encode($ganttData);
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-6">
+    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-full mx-auto">
             
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
@@ -298,10 +298,10 @@ $ganttDataJson = json_encode($ganttData);
                         <button onclick="changeViewMode('Day')" class="view-mode-btn px-3 py-1.5 text-sm font-medium text-gray-600 rounded-md hover:bg-white transition-colors">
                             Day
                         </button>
-                        <button onclick="changeViewMode('Week')" class="view-mode-btn px-3 py-1.5 text-sm font-medium text-gray-600 rounded-md hover:bg-white transition-colors">
+                        <button onclick="changeViewMode('Week')" class="view-mode-btn active px-3 py-1.5 text-sm font-medium text-gray-600 rounded-md hover:bg-white transition-colors">
                             Week
                         </button>
-                        <button onclick="changeViewMode('Month')" class="view-mode-btn active px-3 py-1.5 text-sm font-medium text-gray-600 rounded-md hover:bg-white transition-colors">
+                        <button onclick="changeViewMode('Month')" class="view-mode-btn px-3 py-1.5 text-sm font-medium text-gray-600 rounded-md hover:bg-white transition-colors">
                             Month
                         </button>
                     </div>

@@ -44,7 +44,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Project Name <span class="text-red-500">*</span></label>
-                            <input type="text" name="project_name" id="project_name" required
+                            <input type="text" name="project_name" id="project_name" required autocomplete="off"
                                    placeholder="Enter project name"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
                         </div>
@@ -101,10 +101,13 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Project Manager</label>
-                            <select name="project_manager_id" id="managerSelect"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all">
-                                <option value="">Select Project Manager</option>
-                            </select>
+                               <input list="managerList" id="managerInput" name="manager_display"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] transition-all"
+                                   placeholder="Select Project Manager">
+                            <datalist id="managerList"></datalist>
+                               <input type="hidden" name="project_manager_id" id="project_manager_id_hidden" value="">
+                               <!-- Compatibility: some existing scripts expect a select#managerSelect; keep a hidden select populated for them -->
+                               <select id="managerSelect" name="_manager_select_fallback" style="display:none"></select>
                         </div>
                     </div>
                 </div>
@@ -185,6 +188,69 @@
                 form.addEventListener('reset', function(){
                     hidden.value = '';
                     display.value = '';
+                    const mgrHidden = document.getElementById('project_manager_id_hidden');
+                    const mgrInput = document.getElementById('managerInput');
+                    if (mgrHidden) mgrHidden.value = '';
+                    if (mgrInput) mgrInput.value = '';
+                });
+            }
+        })();
+    </script>
+    <script>
+        (function(){
+            // Populate project manager datalist with employees having job_title_id = 1
+            const managerList = document.getElementById('managerList');
+            const managerInput = document.getElementById('managerInput');
+            const managerHidden = document.getElementById('project_manager_id_hidden');
+            const managerMap = {}; // value -> id
+
+            async function fetchManagers(){
+                try{
+                    const res = await fetch('../workforce/api/employees.php?action=list&status=Active');
+                    const json = await res.json();
+                    if (!json.success) return;
+                    const employees = json.data || [];
+                    // filter by job_title_id == 1
+                    const managers = employees.filter(e => parseInt(e.job_title_id) === 1);
+                    managerList.innerHTML = '';
+                    // also populate fallback select if present
+                    const fallbackSelect = document.getElementById('managerSelect');
+                    if (fallbackSelect) fallbackSelect.innerHTML = '<option value="">Select Project Manager</option>';
+                    managers.forEach(e => {
+                        const label = `${e.first_name} ${e.last_name} (${e.employee_code || ''})`;
+                        const option = document.createElement('option');
+                        option.value = label;
+                        managerList.appendChild(option);
+                        managerMap[label] = e.employee_id;
+                        if (fallbackSelect) {
+                            const opt = document.createElement('option');
+                            opt.value = e.employee_id;
+                            opt.textContent = `${e.first_name} ${e.last_name} (${e.employee_code || ''})`;
+                            // do not select here; edit flow will handle selecting
+                            fallbackSelect.appendChild(opt);
+                        }
+                    });
+                    // If hidden has a value (edit state), set input display
+                    if (managerHidden && managerHidden.value) {
+                        // try to find corresponding name
+                        const match = Object.keys(managerMap).find(k => managerMap[k] == managerHidden.value);
+                        if (match) managerInput.value = match;
+                    }
+                }catch(err){
+                    console.error('Failed to load managers', err);
+                }
+            }
+
+            if (managerList && managerInput) {
+                fetchManagers();
+
+                managerInput.addEventListener('input', function(){
+                    const val = managerInput.value;
+                    if (managerMap[val]) {
+                        managerHidden.value = managerMap[val];
+                    } else {
+                        managerHidden.value = '';
+                    }
                 });
             }
         })();

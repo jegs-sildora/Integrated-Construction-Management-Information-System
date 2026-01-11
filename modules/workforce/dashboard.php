@@ -1,8 +1,10 @@
 <?php
-// ============================================================
-// ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
-// ============================================================
+/**
+ * Workforce Dashboard
+ * Location: /modules/workforce/dashboard.php
+ */
 
+// 1. Connection & Context
 include __DIR__ . '/project_context.php';
 $conn = getWorkforceConnection();
 
@@ -13,142 +15,70 @@ $selected_project_id = getProjectContext($conn);
 $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
 $result_projects = $conn->query($sql_projects);
 $projects = [];
-
 if ($result_projects && $result_projects->num_rows > 0) {
     while ($row = $result_projects->fetch_assoc()) {
         $projects[] = $row;
     }
 }
 
-// Build breadcrumb navigation with dropdown
-$current_page = basename($_SERVER['PHP_SELF']);
-$breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
-$breadcrumbHTML .= '<div class="relative inline-block">';
-$breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
-
-foreach ($projects as $proj) {
-    $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
-}
-
-$breadcrumbHTML .= '</select>';
-$breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-$breadcrumbHTML .= '</div>';
-$breadcrumbHTML .= '</div>';
-
-// Set Header Variables
-$pageSection = "Labor & Workforce";
-$pageTitle = "Workforce Dashboard";
-$pageSubTitle = $breadcrumbHTML;
-
-// Get stats for dashboard
+// 2. Fetch Dashboard Statistics
 $stats = [
     'total_employees' => 0,
     'active_employees' => 0,
-    'inactive_employees' => 0,
     'on_leave' => 0,
-    'attendance_today' => 0,
-    'present_today' => 0,
-    'absent_today' => 0,
-    'total_assignments' => 0,
-    'active_assignments' => 0
+    'attendance_rate' => 0,
+    'inactive_employees' => 0
 ];
 
-// Total Employees
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees");
-if ($result) {
-    $stats['total_employees'] = $result->fetch_assoc()['total'];
-}
+// Determine project filter clause
+$project_filter = ($selected_project_id > 0) ? "AND wa.project_id = $selected_project_id" : "";
 
-// Active Employees
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Active'");
-if ($result) {
-    $stats['active_employees'] = $result->fetch_assoc()['total'];
-}
-
-// Inactive Employees (includes Terminated)
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status IN ('Inactive', 'Terminated')");
-if ($result) {
-    $stats['inactive_employees'] = $result->fetch_assoc()['total'];
-}
-
-// On Leave - check attendance for On Leave status since workforce_employees doesn't have 'On Leave'
-// workforce_employees.status ENUM: 'Active','Inactive','Terminated'
-// workforce_attendance.status ENUM: 'Present','Absent','Late','On Leave'
-$result = $conn->query("SELECT COUNT(DISTINCT employee_id) as total FROM workforce_attendance 
-    WHERE attendance_date = CURDATE() AND status = 'On Leave'");
-if ($result) {
-    $stats['on_leave'] = $result->fetch_assoc()['total'];
-}
-
-// Attendance Today
-$today = date('Y-m-d');
-$result = $conn->query("SELECT 
-    COUNT(*) as total,
-    SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,
-    SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent
-    FROM workforce_attendance WHERE attendance_date = '$today'");
-if ($result) {
-    $row = $result->fetch_assoc();
-    $stats['attendance_today'] = $row['total'] ?: 0;
-    $stats['present_today'] = $row['present'] ?: 0;
-    $stats['absent_today'] = $row['absent'] ?: 0;
-}
-
-// Attendance rate
-$attendance_rate = $stats['total_employees'] > 0 
-    ? round(($stats['present_today'] / $stats['total_employees']) * 100) 
-    : 0;
-
-// Active Assignments
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_assignments WHERE status = 'Active'");
-if ($result) {
-    $stats['active_assignments'] = $result->fetch_assoc()['total'];
-}
-
-// Total Assignments
-$result = $conn->query("SELECT COUNT(*) as total FROM workforce_assignments");
-if ($result) {
-    $stats['total_assignments'] = $result->fetch_assoc()['total'];
-}
-
-// Workforce utilization
-$utilization_rate = $stats['total_employees'] > 0 
-    ? round(($stats['active_assignments'] / $stats['total_employees']) * 100) 
-    : 0;
-
-// Project status counts
-$project_stats = ['planning' => 0, 'active' => 0, 'completed' => 0, 'on_hold' => 0];
-$result = $conn->query("SELECT status, COUNT(*) as cnt FROM icmis_projects GROUP BY status");
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $status = strtolower($row['status']);
-        if ($status === 'planning') $project_stats['planning'] = $row['cnt'];
-        elseif ($status === 'active' || $status === 'in progress') $project_stats['active'] = $row['cnt'];
-        elseif ($status === 'completed') $project_stats['completed'] = $row['cnt'];
-        elseif ($status === 'on hold') $project_stats['on_hold'] = $row['cnt'];
-    }
-}
-
-// Attendance trend (last 7 days)
-$attendance_trend = [];
-for ($i = 6; $i >= 0; $i--) {
-    $date = date('Y-m-d', strtotime("-$i days"));
-    $result = $conn->query("SELECT 
+// A. Employee Counts
+$sql_emp = "
+    SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present
-        FROM workforce_attendance WHERE attendance_date = '$date'");
-    if ($result) {
-        $row = $result->fetch_assoc();
-        $total = $row['total'] ?: 1;
-        $present = $row['present'] ?: 0;
-        $attendance_trend[] = round(($present / $total) * 100);
-    } else {
-        $attendance_trend[] = 0;
-    }
+        SUM(CASE WHEN e.status = 'Active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN e.status = 'On Leave' THEN 1 ELSE 0 END) as on_leave,
+        SUM(CASE WHEN e.status = 'Terminated' OR e.status = 'Resigned' THEN 1 ELSE 0 END) as inactive
+    FROM workforce_employees e
+    LEFT JOIN workforce_assignments wa ON e.employee_id = wa.employee_id
+    WHERE 1=1 $project_filter
+";
+$res_emp = $conn->query($sql_emp);
+if ($row = $res_emp->fetch_assoc()) {
+    $stats['total_employees'] = $row['total'];
+    $stats['active_employees'] = $row['active'];
+    $stats['on_leave'] = $row['on_leave'];
+    $stats['inactive_employees'] = $row['inactive'];
 }
 
-$userName = $_SESSION['user_name'] ?? "Admin";
+// B. Attendance Rate (Today)
+$today = date('Y-m-d');
+$active_count = $stats['active_employees'] > 0 ? $stats['active_employees'] : 1; // Prevent div by zero
+
+$sql_att = "
+    SELECT COUNT(DISTINCT employee_id) as present 
+    FROM workforce_attendance 
+    WHERE attendance_date = '$today' AND status = 'Present' 
+    " . ($selected_project_id > 0 ? "AND project_id = $selected_project_id" : "");
+    
+$res_att = $conn->query($sql_att);
+$present_count = ($res_att->fetch_assoc())['present'] ?? 0;
+$stats['attendance_rate'] = round(($present_count / $active_count) * 100, 1);
+
+// C. Recent Activity Logs
+$logs = [];
+$log_sql = "
+    SELECT al.action, al.details, al.created_at, u.full_name as username
+    FROM icmis_audit_logs al
+    LEFT JOIN icmis_users u ON al.user_id = u.user_id
+    WHERE al.module = 'WORKFORCE'
+    ORDER BY al.created_at DESC LIMIT 5
+";
+$log_res = $conn->query($log_sql);
+if ($log_res) {
+    while($r = $log_res->fetch_assoc()) $logs[] = $r;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -161,148 +91,208 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <style>
-        * { font-family: 'Inter', sans-serif; }
-    </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
     <?php 
         include __DIR__ . '/../../includes/sidebar.php';
         include __DIR__ . '/../../includes/toast.php';
-        include __DIR__ . '/../../includes/header.php'; 
+        include __DIR__ . '/../../includes/header.php';
     ?>
 
-    <main class="ml-56 mt-22 p-6">
-        <div class="max-w-7xl mx-auto">
+    <main class="ml-56 mt-16 p-8 transition-all duration-300 animate-fade-in">
+        <div class="max-w-[90rem] mx-auto">
             
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-4 gap-6 mb-8">
-                <!-- Total Employees -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight text-gray-900">Workforce Overview</h1>
+                    <p class="text-sm text-gray-500 mt-1">Real-time metrics and manpower management.</p>
+                </div>
+
+                <div class="bg-white p-1.5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-2">
+                    <span class="pl-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Project:</span>
+                    <select id="projectSelector" 
+                            onchange="window.location.href='dashboard.php?project_id=' + this.value" 
+                            class="bg-gray-50 border-0 text-gray-700 text-sm font-bold rounded-lg focus:ring-2 focus:ring-[#e9922c] block p-2 pr-8 cursor-pointer min-w-[200px]">
+                        <option value="0">All Projects (Global View)</option>
+                        <?php foreach($projects as $p): ?>
+                            <option value="<?= $p['project_id'] ?>" <?= $selected_project_id == $p['project_id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['project_code'] . ' - ' . $p['project_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                            <i data-lucide="users" class="w-5 h-5"></i>
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Total Employees</p>
-                            <h3 class="text-2xl font-bold text-gray-900"><?php echo number_format($stats['total_employees']); ?></h3>
-                            <p class="text-xs text-gray-400">Active: <?php echo $stats['active_employees']; ?> | Leave: <?php echo $stats['on_leave']; ?></p>
+                        <span class="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                            <i data-lucide="trending-up" class="w-3 h-3 mr-1"></i> Active
+                        </span>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Personnel</p>
+                        <h3 class="text-3xl font-black text-gray-900"><?= number_format($stats['total_employees'] ?? 0) ?></h3>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-[#e9922c] to-[#d97706] p-6 rounded-xl shadow-lg text-white relative overflow-hidden">
+                    <div class="absolute right-0 top-0 opacity-10 transform translate-x-2 -translate-y-2">
+                        <i data-lucide="hard-hat" class="w-24 h-24"></i>
+                    </div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                            <i data-lucide="activity" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-1 relative z-10">
+                        <p class="text-sm font-bold text-white/80 uppercase tracking-wide">Currently Active</p>
+                        <h3 class="text-3xl font-black text-white"><?= number_format($stats['active_employees'] ?? 0) ?></h3>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                            <i data-lucide="calendar-check" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-xs font-medium text-gray-400"><?= date('M d') ?></span>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Attendance Rate</p>
+                        <div class="flex items-baseline gap-2">
+                            <h3 class="text-3xl font-black text-gray-900"><?= $stats['attendance_rate'] ?>%</h3>
+                            <span class="text-sm text-gray-400">Present</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Workforce Utilization -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="target" class="w-6 h-6 text-purple-600"></i>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-[#e9922c]">
+                            <i data-lucide="clock" class="w-5 h-5"></i>
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Workforce Utilization</p>
-                            <h3 class="text-2xl font-bold text-gray-900"><?php echo $utilization_rate; ?>%</h3>
-                            <p class="text-xs text-gray-400">Assigned: <?php echo $stats['active_assignments']; ?> workers</p>
-                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">On Leave / Absent</p>
+                        <h3 class="text-3xl font-black text-gray-900"><?= number_format($stats['on_leave'] ?? 0) ?></h3>
                     </div>
                 </div>
 
-                <!-- Attendance Today -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="calendar-check" class="w-6 h-6 text-green-600"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Attendance Today</p>
-                            <h3 class="text-2xl font-bold text-gray-900"><?php echo $attendance_rate; ?>%</h3>
-                            <p class="text-xs text-gray-400">Present: <?php echo $stats['present_today']; ?> | Absent: <?php echo $stats['absent_today']; ?></p>
-                        </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-gray-900 flex items-center gap-2">
+                            <i data-lucide="bar-chart-2" class="w-5 h-5 text-gray-400"></i> Personnel Status Distribution
+                        </h3>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="workforceStatusChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Active Assignments -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="clipboard-list" class="w-6 h-6 text-orange-600"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Active Assignments</p>
-                            <h3 class="text-2xl font-bold text-gray-900"><?php echo number_format($stats['active_assignments']); ?></h3>
-                            <p class="text-xs text-gray-400">Total: <?php echo $stats['total_assignments']; ?> assignments</p>
-                        </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+                    <h3 class="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <i data-lucide="zap" class="w-5 h-5 text-[#e9922c]"></i> Quick Actions
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 gap-3 flex-1">
+                        <a href="employees.php?action=add" class="flex items-center p-3 rounded-lg border border-gray-100 hover:border-[#e9922c] hover:bg-orange-50 transition-all group">
+                            <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-[#e9922c] group-hover:text-white transition-colors">
+                                <i data-lucide="user-plus" class="w-5 h-5"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h4 class="text-sm font-bold text-gray-900">Add Employee</h4>
+                                <p class="text-xs text-gray-500">Register new personnel</p>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 ml-auto group-hover:text-[#e9922c]"></i>
+                        </a>
+
+                        <a href="attendance.php" class="flex items-center p-3 rounded-lg border border-gray-100 hover:border-[#e9922c] hover:bg-orange-50 transition-all group">
+                            <div class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-[#e9922c] group-hover:text-white transition-colors">
+                                <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h4 class="text-sm font-bold text-gray-900">Log Attendance</h4>
+                                <p class="text-xs text-gray-500">Daily time tracking</p>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 ml-auto group-hover:text-[#e9922c]"></i>
+                        </a>
+
+                        <a href="payroll.php" class="flex items-center p-3 rounded-lg border border-gray-100 hover:border-[#e9922c] hover:bg-orange-50 transition-all group">
+                            <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-[#e9922c] group-hover:text-white transition-colors">
+                                <i data-lucide="banknote" class="w-5 h-5"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h4 class="text-sm font-bold text-gray-900">Process Payroll</h4>
+                                <p class="text-xs text-gray-500">Generate computations</p>
+                            </div>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 ml-auto group-hover:text-[#e9922c]"></i>
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Charts Row -->
-            <div class="grid grid-cols-3 gap-6 mb-8">
-                <!-- Attendance Trend -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Attendance Trend (7 Days)</h3>
-                    <div class="h-64">
-                        <canvas id="attendanceChart"></canvas>
-                    </div>
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 class="font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="history" class="w-4 h-4 text-gray-400"></i> Recent Workforce Activity
+                    </h3>
                 </div>
-
-                <!-- Project Status -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Project Status</h3>
-                    <div class="h-64 flex items-center justify-center">
-                        <canvas id="projectChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Employee Status -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Employee Status</h3>
-                    <div class="h-64 flex items-center justify-center">
-                        <canvas id="employeeChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Activity -->
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                <h3 class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">Recent Assignments</h3>
+                
                 <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="bg-gray-50 border-b border-gray-200">
-                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Employee</th>
-                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Project</th>
-                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Role</th>
-                                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 uppercase">Status</th>
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-white text-xs uppercase text-gray-500 font-bold border-b border-gray-100">
+                            <tr>
+                                <th class="px-6 py-3">Action</th>
+                                <th class="px-6 py-3">User</th>
+                                <th class="px-6 py-3">Details</th>
+                                <th class="px-6 py-3 text-right">Time</th>
                             </tr>
                         </thead>
-                        <tbody id="recentAssignments">
-                            <?php
-                            $sql = "SELECT wa.*, we.first_name, we.last_name, p.project_name
-                                    FROM workforce_assignments wa
-                                    LEFT JOIN workforce_employees we ON wa.employee_id = we.employee_id
-                                    LEFT JOIN icmis_projects p ON wa.project_id = p.project_id
-                                    ORDER BY wa.assignment_id DESC
-                                    LIMIT 5";
-                            $result = $conn->query($sql);
-                            if ($result && $result->num_rows > 0) {
-                                while ($row = $result->fetch_assoc()) {
-                                    $statusClass = match(strtolower($row['status'])) {
-                                        'active' => 'bg-green-100 text-green-700',
-                                        'completed' => 'bg-blue-100 text-blue-700',
-                                        'cancelled' => 'bg-red-100 text-red-700',
-                                        default => 'bg-gray-100 text-gray-700'
-                                    };
-                                    echo '<tr class="border-b border-gray-100">';
-                                    echo '<td class="py-3">' . htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) . '</td>';
-                                    echo '<td class="py-3">' . htmlspecialchars($row['project_name'] ?? 'N/A') . '</td>';
-                                    echo '<td class="py-3">' . htmlspecialchars($row['role'] ?? 'N/A') . '</td>';
-                                    echo '<td class="py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ' . $statusClass . '">' . htmlspecialchars($row['status']) . '</span></td>';
-                                    echo '</tr>';
-                                }
-                            } else {
-                                echo '<tr><td colspan="4" class="py-4 text-center text-gray-500">No recent assignments</td></tr>';
-                            }
-                            ?>
+                        <tbody class="divide-y divide-gray-50 text-sm">
+                            <?php if (count($logs) > 0): ?>
+                                <?php foreach($logs as $log): 
+                                    $actionClass = 'bg-gray-100 text-gray-600';
+                                    if(strpos($log['action'], 'CREATE') !== false) $actionClass = 'bg-green-50 text-green-700 border-green-100';
+                                    if(strpos($log['action'], 'UPDATE') !== false) $actionClass = 'bg-blue-50 text-blue-700 border-blue-100';
+                                    if(strpos($log['action'], 'DELETE') !== false) $actionClass = 'bg-red-50 text-red-700 border-red-100';
+                                ?>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-3">
+                                        <span class="px-2 py-1 rounded text-[10px] font-bold border <?= $actionClass ?>">
+                                            <?= htmlspecialchars($log['action']) ?>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-3 font-medium text-gray-900">
+                                        <?= htmlspecialchars($log['username'] ?? 'System') ?>
+                                    </td>
+                                    <td class="px-6 py-3 text-gray-500 font-mono text-xs truncate max-w-xs">
+                                        <?= htmlspecialchars(mb_strimwidth($log['details'], 0, 50, "...")) ?>
+                                    </td>
+                                    <td class="px-6 py-3 text-right text-gray-400 text-xs">
+                                        <?= date('M d, H:i', strtotime($log['created_at'])) ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="4" class="px-6 py-12 text-center text-gray-400">
+                                        <div class="flex flex-col items-center justify-center gap-2">
+                                            <i data-lucide="inbox" class="w-8 h-8 text-gray-200"></i>
+                                            <p>No recent activity found.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -312,79 +302,51 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     </main>
 
     <script>
-        // Initialize Lucide icons
+        // Init Icons
         lucide.createIcons();
 
-        // Attendance Trend Chart
-        new Chart(document.getElementById('attendanceChart'), {
-            type: 'line',
+        // Init Chart
+        const ctx = document.getElementById('workforceStatusChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
             data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                labels: ['Active', 'On Leave', 'Inactive'],
                 datasets: [{
-                    label: 'Attendance %',
-                    data: <?php echo json_encode($attendance_trend); ?>,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.3,
-                    fill: true,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#fff'
+                    label: 'Personnel Count',
+                    data: [
+                        <?= $stats['active_employees'] ?>, 
+                        <?= $stats['on_leave'] ?>, 
+                        <?= $stats['inactive_employees'] ?>
+                    ],
+                    backgroundColor: [
+                        '#e9922c', // Active (Brand Orange)
+                        '#3b82f6', // Leave (Blue)
+                        '#9ca3af'  // Inactive (Gray)
+                    ],
+                    borderRadius: 6,
+                    barThickness: 40
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1f2937',
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
                 scales: {
-                    y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }
+                    y: {
+                        beginAtZero: true,
+                        grid: { borderDash: [2, 4], color: '#f3f4f6' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
                 }
-            }
-        });
-
-        // Project Status Chart
-        new Chart(document.getElementById('projectChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Planning', 'In Progress', 'Completed', 'On Hold'],
-                datasets: [{
-                    data: [
-                        <?php echo $project_stats['planning']; ?>,
-                        <?php echo $project_stats['active']; ?>,
-                        <?php echo $project_stats['completed']; ?>,
-                        <?php echo $project_stats['on_hold']; ?>
-                    ],
-                    backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%',
-                plugins: { legend: { position: 'bottom' } }
-            }
-        });
-
-        // Employee Status Chart
-        new Chart(document.getElementById('employeeChart'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Active', 'Inactive', 'On Leave'],
-                datasets: [{
-                    data: [
-                        <?php echo $stats['active_employees']; ?>,
-                        <?php echo $stats['inactive_employees']; ?>,
-                        <?php echo $stats['on_leave']; ?>
-                    ],
-                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '70%',
-                plugins: { legend: { position: 'bottom' } }
             }
         });
     </script>

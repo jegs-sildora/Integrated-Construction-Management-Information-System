@@ -104,9 +104,9 @@ $recent_projects = $conn->query($sql_recent);
     $show_project_selector = false;
     include __DIR__ . '/includes/header.php'; ?>
 
-    <main class="ml-56 mt-16 p-8 min-h-screen transition-all duration-300">
+    <main class="ml-56 mt-16 p-8 min-h-screen transition-all duration-300 animate-fade-in">
         
-        <header class="flex justify-between items-center mb-8 animate-fade-in">
+        <div class="flex justify-between items-center mb-8 animate-fade-in">
             <div>
                 <h1 class="text-3xl font-black text-navy-dark tracking-tight">System Overview</h1>
                 <p class="text-slate-500 mt-1 font-medium">
@@ -119,7 +119,7 @@ $recent_projects = $conn->query($sql_recent);
                     <?php echo date('F j, Y'); ?>
                 </span>
             </div>
-        </header>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fade-in">
             
@@ -183,7 +183,7 @@ $recent_projects = $conn->query($sql_recent);
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 animate-slide-in">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                 <div class="mb-4">
                     <h2 class="text-lg font-bold text-navy-dark">Financial Health Overview</h2>

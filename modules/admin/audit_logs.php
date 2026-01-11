@@ -19,7 +19,7 @@ if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
 $conn->set_charset("utf8mb4");
 
 // Pagination & Filtering
-$per_page = 20;
+$per_page = 10;
 $page = max(1, intval($_GET['page'] ?? 1));
 $offset = ($page - 1) * $per_page;
 
@@ -106,7 +106,7 @@ $result = $stmt->get_result();
     <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
     <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-    <main class="ml-56 mt-20 p-8 transition-all duration-300">
+    <main class="ml-56 mt-18 p-8 transition-all duration-300 animate-fade-in">
         <div class="max-w-[90rem] mx-auto">
             
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -114,15 +114,12 @@ $result = $stmt->get_result();
                     <h1 class="text-2xl font-black text-gray-900 tracking-tight">System Audit Logs</h1>
                     <p class="text-sm text-gray-500 mt-1">
                         Monitoring system integrity and user activity.
-                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                        <span id="auditTotalRecords" class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                             <?= number_format($total_rows) ?> Records
                         </span>
                     </p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="window.location.href='audit_logs.php'" class="px-4 py-2 bg-white border border-gray-300 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm">
-                        <i data-lucide="rotate-ccw" class="w-4 h-4 inline mr-1"></i> Reset
-                    </button>
                     <button onclick="exportLogs()" class="px-4 py-2 bg-[#e9922c] text-white rounded-lg text-sm font-bold hover:bg-[#d17f1f] shadow-sm transition-colors flex items-center gap-2">
                         <i data-lucide="download" class="w-4 h-4"></i> Export CSV
                     </button>
@@ -130,7 +127,7 @@ $result = $stmt->get_result();
             </div>
 
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
-                <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                <form id="filterForm" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
@@ -169,17 +166,17 @@ $result = $stmt->get_result();
                             <input type="text" name="user" value="<?= htmlspecialchars($filter_user) ?>" placeholder="Search user..." class="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#e9922c] focus:border-[#e9922c] pl-10 p-2.5">
                         </div>
                     </div>
-
-                    <div>
-                        <button type="submit" class="w-full px-4 py-2.5 bg-gray-800 text-white rounded-lg text-sm font-bold hover:bg-gray-900 transition-colors shadow-sm">
-                            Apply Filters
-                        </button>
-                    </div>
                 </form>
             </div>
 
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div class="overflow-x-auto min-h-[400px]">
+                <div id="auditTableContainer" class="overflow-x-auto relative">
+                    <div id="auditLoading" class="hidden absolute inset-0 flex items-center justify-center bg-white/60 z-10">
+                        <svg class="animate-spin h-8 w-8 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                        </svg>
+                    </div>
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
@@ -188,7 +185,6 @@ $result = $stmt->get_result();
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Module</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Action</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
-                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right w-32">IP Address</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 bg-white">
@@ -205,7 +201,7 @@ $result = $stmt->get_result();
                                     $details_raw = $row['details'];
                                     $details_short = mb_strimwidth($details_raw, 0, 60, "...");
                                 ?>
-                                <tr class="hover:bg-slate-50/50 transition-colors">
+                                <tr class="hover:bg-slate-50/50 transition-colors" role="button" tabindex="0" style="cursor:pointer;" onclick="viewPayload(this)" onkeydown="if(event.key==='Enter') viewPayload(this)" data-payload="<?= htmlspecialchars($details_raw) ?>">
                                     
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <p class="text-sm font-medium text-gray-900"><?= date('M j, Y', strtotime($row['created_at'])) ?></p>
@@ -237,25 +233,13 @@ $result = $stmt->get_result();
                                     </td>
 
                                     <td class="px-6 py-4">
-                                        <div class="flex items-center justify-between group">
-                                            <span class="text-sm text-gray-600 font-mono truncate max-w-[200px]"><?= htmlspecialchars($details_short) ?></span>
-                                            <button onclick="viewPayload(this)" 
-                                                    data-payload="<?= htmlspecialchars($details_raw) ?>"
-                                                    class="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-orange-50 text-gray-400 hover:text-[#e9922c] rounded-md" 
-                                                    title="View Full Payload">
-                                                <i data-lucide="eye" class="w-4 h-4"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-
-                                    <td class="px-6 py-4 text-right">
-                                        <span class="text-xs font-mono text-gray-500"><?= htmlspecialchars($row['ip_address']) ?></span>
+                                        <span class="text-sm text-gray-600 font-mono truncate max-w-[200px]"><?= htmlspecialchars($details_short) ?></span>
                                     </td>
                                 </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center">
+                                    <td colspan="5" class="px-6 py-12 text-center">
                                         <div class="flex flex-col items-center justify-center">
                                             <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                                 <i data-lucide="search-x" class="w-6 h-6 text-gray-400"></i>
@@ -271,20 +255,22 @@ $result = $stmt->get_result();
                 </div>
 
                 <?php if ($total_pages > 1): ?>
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <div id="auditPagination" class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
                     <p class="text-sm text-gray-500">
                         Showing page <span class="font-bold text-gray-900"><?= $page ?></span> of <span class="font-bold text-gray-900"><?= $total_pages ?></span>
                     </p>
                     <div class="flex gap-2">
                         <?php if ($page > 1): ?>
-                            <a href="?page=<?= $page-1 ?>&<?= http_build_query(array_diff_key($_GET, ['page'=>''])) ?>" class="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 text-gray-700">Previous</a>
+                            <a href="?page=<?= $page-1 ?>&<?= http_build_query(array_diff_key($_GET, ['page'=>''])) ?>" class="ajax-page-link px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 text-gray-700">Previous</a>
                         <?php endif; ?>
                         
                         <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?= $page+1 ?>&<?= http_build_query(array_diff_key($_GET, ['page'=>''])) ?>" class="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 text-gray-700">Next</a>
+                            <a href="?page=<?= $page+1 ?>&<?= http_build_query(array_diff_key($_GET, ['page'=>''])) ?>" class="ajax-page-link px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 text-gray-700">Next</a>
                         <?php endif; ?>
                     </div>
                 </div>
+                <?php else: ?>
+                <div id="auditPagination"></div>
                 <?php endif; ?>
             </div>
 
@@ -321,66 +307,6 @@ $result = $stmt->get_result();
         </div>
     </div>
 
-    <script>
-        // Init Icons
-        lucide.createIcons();
-
-        // Modal Logic
-        function viewPayload(btn) {
-            const raw = btn.getAttribute('data-payload');
-            const container = document.getElementById('jsonContainer');
-            
-            try {
-                // Attempt to pretty print JSON
-                const obj = JSON.parse(raw);
-                container.innerHTML = syntaxHighlight(JSON.stringify(obj, null, 2));
-            } catch (e) {
-                // Fallback for plain text strings
-                container.textContent = raw;
-            }
-
-            const modal = document.getElementById('payloadModal');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.querySelector('.modal-content').classList.add('modal-open');
-            }, 10);
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('payloadModal');
-            const content = modal.querySelector('.modal-content');
-            content.classList.remove('modal-open');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 200);
-        }
-
-        // Export Function
-        function exportLogs() {
-            const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('export', 'csv');
-            window.open(currentUrl.toString(), '_blank');
-        }
-
-        // JSON Syntax Highlighter Helper
-        function syntaxHighlight(json) {
-            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-                var cls = 'json-number';
-                if (/^"/.test(match)) {
-                    if (/:$/.test(match)) {
-                        cls = 'json-key';
-                    } else {
-                        cls = 'json-string';
-                    }
-                } else if (/true|false/.test(match)) {
-                    cls = 'json-boolean text-blue-400';
-                } else if (/null/.test(match)) {
-                    cls = 'json-null text-red-400';
-                }
-                return '<span class="' + cls + '">' + match + '</span>';
-            });
-        }
-    </script>
+    <script src="js/audit_logs.js"></script>
 </body>
 </html>

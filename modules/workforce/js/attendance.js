@@ -152,26 +152,26 @@ window.handleStatusChange = function(select) {
 
 // --- Bulk Marking Helpers ---
 
-function applyPresentToRows(rows) {
+function applyPresentToRows(rows, options = { showToast: true }) {
     let count = 0;
     rows.forEach(row => {
         const select = row.querySelector('select[name="status"]');
-        if (select.value === '') {
+        if (select && select.value === '') {
             select.value = 'Present';
             handleStatusChange(select);
             saveToLocal(select); // Save status
-            
+
             // Save auto-filled times
             const timeIn = row.querySelector('input[name="time_in"]');
             const timeOut = row.querySelector('input[name="time_out"]');
-            saveToLocal(timeIn);
-            saveToLocal(timeOut);
-            
+            if (timeIn) saveToLocal(timeIn);
+            if (timeOut) saveToLocal(timeOut);
+
             count++;
         }
     });
-    
-    if (count > 0 && typeof showToast === 'function') {
+
+    if (count > 0 && options.showToast && typeof showToast === 'function') {
         showToast(`${count} employees marked as Present`, 'info');
     }
 }
@@ -180,7 +180,7 @@ window.markAllPresent = function(context = 'individual') {
     // Immediately apply to visible rows for instant UI feedback
     const selector = context === 'individual' ? '#view-individual .attendance-row' : '.attendance-row';
     const rows = document.querySelectorAll(selector);
-    applyPresentToRows(rows);
+    applyPresentToRows(rows, { showToast: false });
 
     // For 'individual' context we want to mark ALL employees (not just the current page)
         if (context === 'individual') {

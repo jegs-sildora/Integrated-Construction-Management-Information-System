@@ -45,7 +45,7 @@ if ($selected_project_id && $selected_project_id > 0) {
     <?php include __DIR__ . '/../../includes/toast.php'; ?>
     <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-    <main class="ml-56 mt-20 p-6 transition-all duration-300">
+    <main class="ml-56 mt-20 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-[90rem] mx-auto">
             
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print border-b border-gray-200 pb-4">
@@ -309,14 +309,14 @@ if ($selected_project_id && $selected_project_id > 0) {
                     <i data-lucide="lock" class="w-7 h-7 text-[#e9922c]"></i>
                 </div>
 
-                <h3 class="text-xl font-black text-gray-900 tracking-tight">Finalize Payroll?</h3>
-                <p class="text-sm text-gray-600 mt-2">
+                <h3 class="text-2xl font-black text-gray-900 tracking-tight">Finalize Payroll?</h3>
+                <p class="text-md text-gray-600 mt-2">
                     You are about to post the payroll for <span id="lockPeriodLabel" class="font-bold text-gray-900">---</span>.
                 </p>
 
                 <div class="mt-4 mb-6 bg-red-50 border border-red-100 rounded-lg p-3 text-left flex items-start gap-3">
                     <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"></i>
-                    <div class="text-xs text-red-800">
+                    <div class="text-md text-red-800">
                         <span class="font-bold block mb-0.5">This action cannot be undone.</span>
                         Once finalized, all attendance records, rates, and deductions for this period will be permanently locked.
                     </div>

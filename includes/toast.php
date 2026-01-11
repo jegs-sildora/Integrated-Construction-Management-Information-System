@@ -114,10 +114,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const pending = sessionStorage.getItem('pendingToast');
         if (pending) {
             try {
-                const { message, type } = JSON.parse(pending);
-                sessionStorage.removeItem('pendingToast');
-                // Small delay to ensure smooth entrance after layout paints
-                setTimeout(() => showToast(message, type), 100);
+                const parsed = JSON.parse(pending);
+                const message = parsed.message;
+                const type = parsed.type;
+                const target = parsed.target || null;
+                // If a target is specified, only show when the current pathname matches (endsWith allows filename-only targets)
+                const path = window.location.pathname || '';
+                if (!target || path.endsWith(target) || path === target) {
+                    sessionStorage.removeItem('pendingToast');
+                    // Small delay to ensure smooth entrance after layout paints
+                    setTimeout(() => showToast(message, type), 100);
+                }
+                // otherwise leave pendingToast in storage for the target page to consume
             } catch (e) {}
         }
     });

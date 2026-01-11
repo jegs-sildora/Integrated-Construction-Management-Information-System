@@ -65,7 +65,7 @@ if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
     
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300 animate-fade-in">
         
         <?php echo renderPrintHeader('Inventory Masterlist', [
             'project_name' => $project_name,

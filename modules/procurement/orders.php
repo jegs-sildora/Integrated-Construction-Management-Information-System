@@ -92,7 +92,7 @@ if ($project_id > 0) {
 
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300 animate-fade-in">
         <div class="content-wrapper space-y-6">
             
             <div class="flex justify-between items-end bg-white p-6 rounded-xl shadow-sm border border-slate-100">

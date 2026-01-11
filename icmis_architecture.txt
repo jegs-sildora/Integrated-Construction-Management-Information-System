@@ -1,73 +1,179 @@
 /icmis
 │
 ├── /config                     # Global Configuration
-│   ├── config.php              # Base URL, Root Path, Error Reporting
+│   ├── config.php              # Base URL, Root Path, Error Reporting, Session Init
 │   └── database.php            # Database Connection ($conn)
 │
 ├── /core                       # Core System Logic (The "Brain")
-│   ├── Auth.php                # Login check, Session start, Permission checks
-│   ├── Context.php             # Project/Phase Context logic (from project_context.php)
-│   └── Router.php              # (Optional) For handling clean URLs
+│   ├── Context.php             # Project/Phase Context logic (session-based state)
+│   └── Logger.php              # Centralized Audit Trail System (logs to icmis_audit_logs)
 │
 ├── /includes                   # Shared UI Components (Views)
-│   ├── header.php              # Top Navigation Bar & Global Toast Logic
-│   ├── sidebar.php             # Side Navigation Menu
-│   ├── footer.php              # Closing </body> tags, global scripts
-│   └── toast.php               # Toast Notification Component
+│   ├── header.php              # Top Navigation Bar, Project Selector, User Info
+│   ├── sidebar.php             # Side Navigation Menu with Module Links
+│   ├── toast.php               # Toast Notification Component (success/error/warning)
+│   ├── head_assets.php         # Legacy asset loader (CSS, JS, Fonts)
+│   ├── head_assetsv2.php       # Modern asset loader with Tailwind v4, animations
+│   └── report_print_layout.php # Print-optimized report wrapper
 │
 ├── /assets                     # Static Public Assets
-│   ├── /css
-│   │   ├── output.css          # Tailwind/Compiled CSS
-│   │   └── style.css           # Custom Overrides
-│   ├── /js
-│   │   ├── app.js              # Global JS functions
-│   │   └── charts.js           # Chart.js configs
-│   └── /images                 # Logos, Favicons
+│   └── /images
+│       ├── nobg_logo.png       # System logo
+│       └── /favicon            # Favicon files and webmanifest
 │
 ├── /modules                    # THE SUBSYSTEMS (Business Logic)
 │   │
-│   ├── /auth                   # Authentication Module
-│   │   ├── login.php           # Login Page
-│   │   ├── register.php        # Sign Up Page
-│   │   └── /api                # Auth Actions
-│   │       ├── login_process.php
-│   │       └── logout.php
+│   ├── /admin                  # System Administration Module
+│   │   ├── audit_logs.php      # Audit Trail Viewer (filterable, AJAX pagination)
+│   │   ├── icmis_audit_logs.sql # Audit table schema
+│   │   └── /js
+│   │       └── audit_logs.js   # Client-side audit log interactions
 │   │
-│   ├── /budget                 # Budgeting & Cost Control Module
-│   │   ├── dashboard.php       # Budget Dashboard
-│   │   ├── proposals.php       # Budget Proposals List
-│   │   ├── create_proposal.php # Create Form
-│   │   ├── expenses.php        # Expense Tracker
-│   │   ├── add_expense.php     # Add Expense Form
-│   │   ├── reports.php         # Financial Reports Page
-│   │   └── /api                # Backend Processors
-│   │       ├── export_pdf.php
-│   │       └── delete_expense.php
+│   ├── /auth                   # Authentication Module
+│   │   └── /api
+│   │       ├── login_process.php   # Login handler with Logger integration
+│   │       ├── logout.php          # Session destruction
+│   │       └── signup_process.php  # User registration
+│   │
+│   ├── /project                # Project Management Module
+│   │   ├── projects.php        # Project CRUD with statistics dashboard
+│   │   ├── phases.php          # Phase management per project
+│   │   ├── tasks.php           # Task assignment and tracking
+│   │   ├── gantt.php           # Frappe Gantt chart visualization
+│   │   ├── /api
+│   │   │   ├── projects.php    # Project CRUD API (with cascade delete logging)
+│   │   │   ├── phases.php      # Phase CRUD API
+│   │   │   ├── tasks.php       # Task CRUD API
+│   │   │   ├── employees.php   # Employee lookup for assignments
+│   │   │   └── update_task_status.php
+│   │   ├── /components
+│   │   │   └── project_modal.php
+│   │   └── /js
+│   │       ├── projects.js     # Project interactions (safe JSON parsing)
+│   │       ├── phases.js
+│   │       ├── tasks.js
+│   │       └── gantt.js        # Gantt chart config (default: Week view)
+│   │
+│   ├── /budget                 # Budget & Cost Control Module
+│   │   ├── dashboard.php       # Budget overview with phase cards
+│   │   ├── proposals.php       # Budget proposal list
+│   │   ├── expenses.php        # Expense tracker by phase
+│   │   ├── payroll_expenses.php # Payroll-linked expenses
+│   │   ├── reports.php         # Financial reports
+│   │   ├── edit_expense.php    # Expense edit form
+│   │   ├── save_expense.php    # Expense save handler
+│   │   ├── generate_report.php # Report generation
+│   │   ├── download_phase_pdf.php # Phase budget PDF export
+│   │   ├── project_context.php # Budget module context helper
+│   │   ├── /budget_proposal
+│   │   │   ├── create_proposal.php
+│   │   │   ├── edit_proposal.php
+│   │   │   ├── save_proposal.php
+│   │   │   ├── update_proposal.php
+│   │   │   ├── delete_proposal.php
+│   │   │   ├── get_proposal_details.php
+│   │   │   ├── get_project_phases.php
+│   │   │   └── download_proposal_pdf.php
+│   │   ├── /budget_expenses
+│   │   │   ├── export_pdf.php
+│   │   │   ├── get_expense_details.php
+│   │   │   ├── get_payroll_expense_details.php
+│   │   │   ├── get_phase_budget_proposals.php
+│   │   │   └── get_phase_expenses.php
+│   │   ├── /components
+│   │   │   ├── expense_modals.php
+│   │   │   └── proposal_modal.php
+│   │   ├── /css
+│   │   │   ├── input.css
+│   │   │   └── output.css
+│   │   └── /js
+│   │       ├── dashboard.js
+│   │       ├── expenses.js
+│   │       ├── payroll_expenses.js
+│   │       └── proposals.js
 │   │
 │   ├── /procurement            # Procurement & Inventory Module
-│   │   ├── ihpnventory.php       # Inventory Masterlist
-│   │   ├── purchase_orders.php # PO Management
-│   │   ├── stock_in.php        # Stock In Entry
-│   │   ├── stock_out.php       # Stock Out Entry
-│   │   ├── suppliers.php       # Supplier Management
-│   │   └── /api                # Procurement Actions
-│   │       └── process_po.p
+│   │   ├── inventory.php       # Inventory masterlist
+│   │   ├── orders.php          # Purchase order management
+│   │   ├── stock_in.php        # Stock receiving (from approved POs)
+│   │   ├── stock_out.php       # Stock issuance
+│   │   ├── suppliers.php       # Supplier registry (AJAX pagination)
+│   │   ├── project_context.php # Procurement module context helper
+│   │   ├── icmis_procurement_inventory_db.sql
+│   │   ├── /purchase_order
+│   │   │   ├── create_order.php
+│   │   │   ├── edit_order.php
+│   │   │   └── delete_modal_partial.php
+│   │   ├── /php
+│   │   │   ├── fetch_suppliers.php   # Paginated supplier fetch
+│   │   │   ├── save_supplier.php
+│   │   │   ├── update_supplier.php
+│   │   │   ├── delete_supplier.php
+│   │   │   ├── get_supplier.php
+│   │   │   ├── fetch_orders.php
+│   │   │   ├── save_order.php
+│   │   │   ├── update_order.php
+│   │   │   ├── delete_order.php
+│   │   │   ├── get_order_details.php
+│   │   │   ├── get_approved_pos.php
+│   │   │   ├── get_po_items.php
+│   │   │   ├── fetch_inventory.php
+│   │   │   ├── fetch_inventory_dropdown.php
+│   │   │   ├── get_inventory_items.php
+│   │   │   ├── get_next_id.php
+│   │   │   ├── fetch_stockin.php
+│   │   │   ├── save_stockin.php
+│   │   │   ├── update_stockin.php
+│   │   │   ├── fetch_stockout.php
+│   │   │   ├── save_stockout.php
+│   │   │   ├── save_stock_issue.php
+│   │   │   └── generate_report.php
+│   │   ├── /css
+│   │   │   └── style.css
+│   │   └── /js
+│   │       ├── inventory.js
+│   │       ├── orders.js
+│   │       ├── stockin.js
+│   │       ├── stockout.js
+│   │       └── suppliers.js    # Includes pagination rendering
 │   │
-│   ├── /labor                  # Labor & Workforce Module
-│   │   ├── dashboard.php       # Labor Dashboard
-│   │   ├── employees.php       # Employee List
-│   │   ├── attendance.php      # Daily Attendance
-│   │   ├── assignments.php     # Site Assignments
-│   │   ├── payroll.php         # Payroll Processing
-│   │   ├── reports.php         # Labor Reports
-│   │   └── /api                # Labor Actions
-│   │       └── process_payroll.php
+│   ├── /workforce              # Labor & Workforce Module
+│   │   ├── dashboard.php       # Workforce overview with charts
+│   │   ├── employees.php       # Employee registry
+│   │   ├── employee_profile.php # Individual employee details
+│   │   ├── employee_groups.php # Team/group management
+│   │   ├── group_details.php   # Group member listing
+│   │   ├── attendance.php      # Daily attendance tracking
+│   │   ├── assignments.php     # Project/phase assignments
+│   │   ├── payroll.php         # Payroll processing
+│   │   ├── reports.php         # Workforce reports
+│   │   ├── project_context.php # Workforce module context helper
+│   │   ├── /api
+│   │   │   ├── employees.php
+│   │   │   ├── save_employee.php
+│   │   │   ├── employee_groups.php
+│   │   │   ├── assignments.php
+│   │   │   ├── attendance.php
+│   │   │   ├── payroll.php
+│   │   │   ├── reports.php
+│   │   │   ├── print_report.php
+│   │   │   ├── get_form_options.php
+│   │   │   ├── get_project_phases.php
+│   │   │   └── job_titles_include.php
+│   │   ├── /components
+│   │   │   └── (modal partials)
+│   │   └── /js
+│   │       └── (module scripts)
 │   │
-│   └── /projects               # Project Management Module
-│       ├── list.php            # Project List (was projects.php)
-│       ├── create.php          # New Project
-│       └── view.php            # Project Details
+│   └── /reports                # Centralized Reports Module
+│       ├── index.php           # Multi-module report hub
+│       ├── print_report.php    # Print-optimized report renderer
+│       ├── icmis_reports.sql   # Reports table schema
+│       └── /api
+│           └── (report generators)
 │
-├── index.php                   # Entry Point (Router: Redirects to Login or Dashboard)
-├── dashboard.php               # Main System Dashboard (Landing page after login)
-└── admin.php                   # System Administrator Settings
+├── index.php                   # Entry Point (Login Page)
+├── dashboard.php               # Main System Dashboard (post-login landing)
+├── icmis_db.sql                # Complete Database Schema with FK cascades
+├── ICMIS.md                    # System Documentation
+└── icmis_architecture.txt      # This File

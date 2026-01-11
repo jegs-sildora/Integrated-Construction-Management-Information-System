@@ -73,7 +73,7 @@ if ($result && $result->num_rows > 0) {
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-6">
+    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
@@ -122,7 +122,7 @@ if ($result && $result->num_rows > 0) {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                <span class="font-medium">Add Project</span>
+                <span class="font-bold">Add Project</span>
             </button>
         </div>
 
@@ -361,7 +361,7 @@ if ($result && $result->num_rows > 0) {
 
             <div class="p-8">
                 <p class="text-gray-700 text-lg font-medium mb-2">Are you sure you want to delete this project?</p>
-                <p class="text-gray-500 text-sm mb-6">This will also delete all phases and tasks associated with this project.</p>
+                <p class="text-gray-500 text-sm mb-6">This will permanently delete all phases, tasks, budget proposals, expenses, purchase orders, inventory, workforce assignments, and attendance records associated with this project.</p>
                 
                 <div class="bg-red-50 border-2 border-red-200 rounded-xl p-5">
                     <div class="flex items-start gap-4">

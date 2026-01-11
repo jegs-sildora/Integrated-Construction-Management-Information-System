@@ -55,8 +55,8 @@
             </div>
 
             <form id="employeeForm" class="flex flex-col flex-1 overflow-hidden bg-gray-50/50">
-                <input type="hidden" id="form_action" name="action" value="create"> 
-                <input type="hidden" id="employee_id" name="employee_id">
+                <input type="hidden" id="form_action" name="action" value="create" autocomplete="off"> 
+                <input type="hidden" id="employee_id" name="employee_id" autocomplete="off">
                 
                 <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
                     
@@ -69,15 +69,15 @@
                         <div class="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5">
                             <div class="md:col-span-4">
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">First Name <span class="text-red-500">*</span></label>
-                                <input type="text" id="first_name" name="first_name" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 placeholder-gray-400" placeholder="e.g. Juan">
+                                <input type="text" id="first_name" name="first_name" required  autocomplete="off" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 placeholder-gray-400" placeholder="e.g. Juan">
                             </div>
                             <div class="md:col-span-4">
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Last Name <span class="text-red-500">*</span></label>
-                                <input type="text" id="last_name" name="last_name" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 placeholder-gray-400" placeholder="e.g. Dela Cruz">
+                                <input type="text" id="last_name" name="last_name" required autocomplete="off" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 placeholder-gray-400" placeholder="e.g. Dela Cruz">
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Suffix</label>
-                                <input type="text" id="suffix" name="suffix" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Jr.">
+                                <input type="text" id="suffix" name="suffix" autocomplete="off" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Jr.">
                             </div>
                              <div class="md:col-span-2">
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Gender</label>
@@ -94,18 +94,18 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Birthday</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="calendar" class="w-4 h-4"></i></span>
-                                    <input type="date" id="birthday" name="birthday" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700">
+                                    <input type="date" id="birthday" name="birthday" autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Age</label>
-                                <input type="number" id="age" name="age" readonly class="w-full px-4 py-3 bg-gray-100 border-transparent rounded-xl text-gray-500 font-bold text-center" placeholder="--">
+                                <input type="number" id="age" name="age" readonly autocomplete="off" class="w-full px-4 py-3 bg-gray-100 border-transparent rounded-xl text-gray-500 font-bold text-center" placeholder="--">
                             </div>
                             <div class="relative">
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="mail" class="w-4 h-4"></i></span>
-                                    <input type="email" id="email" name="email" readonly class="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl text-gray-500 text-sm font-medium focus:ring-0" placeholder="Auto-generated...">
+                                    <input type="email" id="email" name="email" readonly autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl text-gray-500 text-sm font-medium focus:ring-0" placeholder="Auto-generated...">
                                 </div>
                             </div>
                         </div>
@@ -115,7 +115,7 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Phone Number</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="smartphone" class="w-4 h-4"></i></span>
-                                    <input type="tel" id="phone" name="phone" value="+63 " class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 tracking-wide">
+                                    <input type="tel" id="phone" name="phone" value="+63 " autocomplete="off" maxlength="14" data-max-digits="10" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 tracking-wide">
                                 </div>
                             </div>
                             <div>
@@ -139,7 +139,7 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Position / Job Title</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="hard-hat" class="w-4 h-4"></i></span>
-                                    <input type="text" id="position" name="position" list="jobTitlesList" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-bold text-gray-700" placeholder="Search title...">
+                                    <input type="text" id="position" name="position" list="jobTitlesList" autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-bold text-gray-700" placeholder="Search title...">
                                 </div>
                                 <datalist id="jobTitlesList">
                                     <?php if(!empty($job_titles)): ?>
@@ -153,7 +153,7 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Department</label>
                                 <div class="relative">
                                      <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="building-2" class="w-4 h-4"></i></span>
-                                    <input type="text" id="department" name="department" readonly class="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl text-gray-600 font-medium" placeholder="Auto-filled">
+                                    <input type="text" id="department" name="department" readonly autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl text-gray-600 font-medium" placeholder="Auto-filled">
                                 </div>
                             </div>
                         </div>
@@ -191,16 +191,16 @@
                                 <label class="block text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Daily Rate (₱)</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-orange-400 font-bold">₱</span>
-                                    <input type="text" id="daily_rate_display" inputmode="decimal" placeholder="0.00" class="w-full pl-10 pr-4 py-3 bg-white border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-300/40 focus:border-orange-400 outline-none transition-all font-bold text-gray-800 text-lg">
-                                    <input type="hidden" id="daily_rate" name="daily_rate">
+                                    <input type="text" id="daily_rate_display" inputmode="decimal" autocomplete="off" placeholder="0.00" class="w-full pl-10 pr-4 py-3 bg-white border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-300/40 focus:border-orange-400 outline-none transition-all font-bold text-gray-800 text-lg">
+                                    <input type="hidden" id="daily_rate" name="daily_rate" autocomplete="off">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-orange-800 uppercase tracking-wider mb-2">Monthly Salary (₱)</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-orange-400 font-bold">₱</span>
-                                    <input type="text" id="monthly_salary_display" inputmode="decimal" placeholder="0.00" class="w-full pl-10 pr-4 py-3 bg-white border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-300/40 focus:border-orange-400 outline-none transition-all font-bold text-gray-800 text-lg">
-                                    <input type="hidden" id="monthly_salary" name="monthly_salary">
+                                    <input type="text" id="monthly_salary_display" inputmode="decimal" autocomplete="off" placeholder="0.00" class="w-full pl-10 pr-4 py-3 bg-white border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-300/40 focus:border-orange-400 outline-none transition-all font-bold text-gray-800 text-lg">
+                                    <input type="hidden" id="monthly_salary" name="monthly_salary" autocomplete="off">
                                 </div>
                             </div>
                         </div>
@@ -217,7 +217,7 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Bank Name</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="landmark" class="w-4 h-4"></i></span>
-                                    <input type="text" id="bank_name" name="bank_name" list="bankNamesList" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Select or type bank name">
+                                    <input type="text" id="bank_name" name="bank_name" list="bankNamesList" autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Select or type bank name">
                                     <datalist id="bankNamesList">
                                         <option value="BDO Unibank"></option>
                                         <option value="Bank of the Philippine Islands (BPI)"></option>
@@ -240,7 +240,7 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Bank Account No.</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="credit-card" class="w-4 h-4"></i></span>
-                                    <input type="text" id="bank_account" name="bank_account" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 font-mono" placeholder="0000 0000 0000">
+                                    <input type="tel" id="bank_account" name="bank_account" autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 font-mono" placeholder="0000 0000 0000">
                                 </div>
                             </div>
                         </div>
@@ -250,14 +250,14 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Emergency Contact</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="heart-pulse" class="w-4 h-4"></i></span>
-                                    <input type="text" id="emergency_contact_name" name="emergency_contact_name" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Name of relative">
+                                    <input type="text" id="emergency_contact_name" name="emergency_contact_name" autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Name of relative">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Emergency Phone</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="phone-call" class="w-4 h-4"></i></span>
-                                    <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" value="+63 " class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700">
+                                    <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" autocomplete="off" value="+63 " maxlength="14" data-max-digits="10" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700">
                                 </div>
                             </div>
                         </div>
@@ -267,12 +267,12 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Date Hired</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="calendar-check" class="w-4 h-4"></i></span>
-                                    <input type="date" id="hire_date" name="hire_date" value="<?php echo date('Y-m-d'); ?>" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700">
+                                    <input type="date" id="hire_date" name="hire_date" autocomplete="off" value="<?php echo date('Y-m-d'); ?>" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700">
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Admin Notes</label>
-                                <input type="text" id="notes" name="notes" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Internal remarks...">
+                                <input type="text" id="notes" name="notes" autocomplete="off" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700" placeholder="Internal remarks...">
                             </div>
                         </div>
                     </div>

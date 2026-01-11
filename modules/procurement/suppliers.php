@@ -44,7 +44,7 @@ if (!isset($_SESSION['user_id'])) {
     <?php include '../../includes/sidebar.php'; ?>
     <?php include '../../includes/header.php'; ?>
 
-    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300 animate-fade-in">
         
         <div class="content-wrapper space-y-6">
             <div class="flex justify-between items-end bg-white p-6 rounded-xl shadow-sm border border-slate-100">
@@ -74,6 +74,7 @@ if (!isset($_SESSION['user_id'])) {
                         <tbody id="suppliers-table-body" class="divide-y divide-slate-100">
                             </tbody>
                     </table>
+                    <div id="suppliersPagination" class="px-4 py-2"></div>
                 </div>
             </div>
         </div>

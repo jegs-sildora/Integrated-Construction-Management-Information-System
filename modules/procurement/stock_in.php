@@ -71,7 +71,7 @@ if ($project_id > 0) {
 
     <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
 
-    <main class="ml-56 pt-24 min-h-screen transition-all duration-300">
+    <main class="ml-56 pt-24 min-h-screen transition-all duration-300 animate-fade-in">
         
         <?php if ($project_id == 0): ?>
             <div class="flex flex-col items-center justify-center h-[calc(100vh-140px)]">
@@ -172,8 +172,12 @@ if ($project_id > 0) {
                 </div>
             </div>
 
-            <!-- Edit Stock Modal -->
-            <div id="stockEditModal" class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+            
+
+        <?php endif; ?>
+    </main>
+            <!-- Edit Stock Modal (moved here so backdrop covers header/sidebar) -->
+            <div id="stockEditModal" class="fixed inset-0 z-60 hidden bg-black/60 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
                 <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100 m-4">
                     <div class="bg-blue-600 px-6 py-4 border-b flex justify-between items-center">
                         <h2 class="text-lg font-bold text-white">Edit Received Item</h2>
@@ -205,7 +209,7 @@ if ($project_id > 0) {
                 </div>
             </div>
 
-            <div id="stockModal" class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+            <div id="stockModal" class="fixed inset-0 z-60 hidden bg-black/60 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
                 <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden transform transition-all scale-100 m-4">
                     
                     <div class="bg-blue-600 px-6 py-4 border-b border-slate-700 flex justify-between items-center">
@@ -251,8 +255,5 @@ if ($project_id > 0) {
             </div>
             
             <script src="js/stockin.js"></script>
-
-        <?php endif; ?>
-    </main>
 </body>
 </html>

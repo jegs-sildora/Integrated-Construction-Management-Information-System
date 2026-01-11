@@ -1,9 +1,11 @@
 // Externalized script for edit_proposal.php
 (function() {
     // AJAX Toast Function
-    function showToastAjax(message, type = 'success', persist = false) {
+    function showToastAjax(message, type = 'success', persist = false, target = null) {
         if (persist) {
-            sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
+            const payload = { message, type };
+            if (target) payload.target = target;
+            sessionStorage.setItem('pendingToast', JSON.stringify(payload));
             return;
         }
         fetch('/icmis/includes/toast.php', {
@@ -301,9 +303,10 @@
         })
         .then(res => res.json())
         .then(result => {
-            if (result.success) {
-                showToastAjax(result.message || 'Proposal updated successfully!', 'success', true);
-                setTimeout(() => window.location.href = '../proposals.php', 1000);
+                if (result.success) {
+                // Persist toast for the proposals list page only
+                showToastAjax(result.message || 'Proposal updated successfully!', 'success', true, 'proposals.php');
+                setTimeout(() => window.location.href = '../proposals.php', 500);
             } else {
                 showToastAjax('Error: ' + result.message, 'error');
             }

@@ -107,7 +107,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-8">
+    <main class="ml-56 mt-16 p-8 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
 
             <?php if (!$group): ?>
