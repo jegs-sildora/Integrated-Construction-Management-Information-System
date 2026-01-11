@@ -12,6 +12,7 @@ const Payroll = {
         meta: {},
         issues: []
     },
+    currentPayslipIndex: null,
     period: 1,
     config: {
         sss: { ee_rate: 0.045, max_msc: 30000, min_msc: 4000 },
@@ -211,6 +212,31 @@ const Payroll = {
                     `;
                 });
 
+                // Add per-employee print buttons if employee_id exists
+                // Re-render rows with action button to the right
+                const rows = employees.map(emp => {
+                    const canPrint = emp.employee_id || emp.id || emp.emp_id;
+                    const empId = emp.employee_id || emp.id || emp.emp_id || '';
+                    return `
+                        <tr class="border-b border-gray-50 hover:bg-gray-50">
+                            <td class="px-6 py-3">
+                                <p class="font-bold text-gray-900 text-xs">${emp.fullname}</p>
+                                <p class="text-[10px] text-gray-500 font-mono">${emp.code}</p>
+                            </td>
+                            <td class="px-4 py-3 text-center text-xs text-gray-600">${emp.days_worked}</td>
+                            <td class="px-4 py-3 text-center text-xs ${emp.ot_hours > 0 ? 'text-[#e9922c] font-bold' : 'text-gray-300'}">${emp.ot_hours > 0 ? emp.ot_hours : '-'}</td>
+                            <td class="px-4 py-3 text-right text-xs font-mono text-gray-500">₱${this.formatMoney(emp.daily_rate)}</td>
+                            <td class="px-6 py-3 text-right font-mono text-xs font-medium text-blue-800">₱${this.formatMoney(emp.gross_pay)}</td>
+                            <td class="px-6 py-3 text-right font-mono text-xs text-red-600">(${this.formatMoney(emp.deductions)})</td>
+                            <td class="px-6 py-3 text-right font-mono text-sm font-bold text-[#e9922c]">₱${this.formatMoney(emp.net_pay)}</td>
+                            <td class="px-4 py-3 text-center w-20">
+                                ${canPrint ? `<button onclick="window.open('download_payslip_pdf.php?period_id=${periodId}&employee_id=${empId}','_blank')" class=\"text-gray-400 hover:text-[#e9922c] p-2 rounded-full hover:bg-white transition-all\" title=\"Print Payslip\"><i data-lucide=\"printer\" class=\"w-4 h-4\"></i></button>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                tbody.innerHTML = rows;
+
                 // Update Footer Totals
                 document.getElementById('histTotalGross').innerText = '₱' + this.formatMoney(totals.gross);
                 document.getElementById('histTotalDed').innerText = '-₱' + this.formatMoney(totals.deductions);
@@ -262,6 +288,7 @@ const Payroll = {
     openPayslip(index) {
         const emp = this.state.data[index];
         if(!emp) return;
+        this.currentPayslipIndex = index;
         this.setTxt('psName', emp.fullname);
         this.setTxt('psId', emp.code);
         this.setTxt('psPeriod', this.state.meta.period_label || '-');
@@ -283,6 +310,57 @@ const Payroll = {
         document.getElementById('payslipModal').classList.remove('hidden');
         setTimeout(() => document.querySelector('#payslipModal .modal-content').classList.add('modal-open'), 10);
     },
+
+        printPayslip() {
+                const idx = this.currentPayslipIndex;
+                if (idx === null || typeof idx === 'undefined') return alert('No payslip selected for printing.');
+                const emp = this.state.data[idx];
+                if(!emp) return alert('Employee data missing.');
+
+                const projectEl = document.getElementById('projectSelector');
+                const projectName = projectEl && projectEl.options.length > 0 ? projectEl.options[projectEl.selectedIndex].text : ('Project ID: ' + this.state.projectId);
+                const period = this.state.meta.period_label || '-';
+                const dateGen = new Date().toLocaleString();
+
+                // Build single-row payload congruent with exportPDF
+                const payload = {
+                    projectName,
+                    period,
+                    dateGen,
+                    totals: {
+                        gross: emp.gross_pay || 0,
+                        deductions: emp.deductions || 0,
+                        net: emp.net_pay || 0,
+                        count: 1
+                    },
+                    data: [
+                        {
+                            code: emp.code || '',
+                            fullname: emp.fullname || '',
+                            days_worked: emp.days_worked || '-',
+                            ot_hours: emp.ot_hours || '-',
+                            daily_rate: emp.daily_rate || emp.basic_pay || 0,
+                            gross_pay: emp.gross_pay || 0,
+                            deductions: emp.deductions || 0,
+                            net_pay: emp.net_pay || 0
+                        }
+                    ]
+                };
+
+                // Submit as POST to server printable endpoint and open in new tab
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'download_payslip_pdf.php';
+                form.target = '_blank';
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'payload';
+                input.value = JSON.stringify(payload);
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+                form.remove();
+        },
 
     closePayslip() {
         const m = document.getElementById('payslipModal');
@@ -352,19 +430,131 @@ const Payroll = {
     
     // Keeping PDF Export logic ... (omitted for brevity, same as previous version)
     exportPDF() {
-        if (!this.state.data || this.state.data.length === 0) return alert('No data to export.');
-        const projectEl = document.getElementById('projectSelector');
-        const projectName = projectEl && projectEl.options.length > 0 ? projectEl.options[projectEl.selectedIndex].text : 'Project ID: ' + this.state.projectId;
-        const period = this.state.meta.period_label || 'Unknown Period';
-        const dateGen = new Date().toLocaleString();
-        const totals = this.state.totals || { gross: 0, deductions: 0, net: 0, count: 0 };
-        const status = this.state.meta.is_locked ? 'LOCKED / POSTED' : 'DRAFT PREVIEW';
-        const statusColor = this.state.meta.is_locked ? 'text-green-700 bg-green-50 border-green-200' : 'text-gray-700 bg-gray-50 border-gray-200';
-        let tableRows = '';
-        this.state.data.forEach(emp => {
-            tableRows += `<tr><td class="px-4 py-2 text-sm border border-slate-200 text-slate-800 font-bold">${emp.fullname} <br><span class="text-xs text-slate-400 font-normal">${emp.code}</span></td><td class="px-4 py-2 text-sm border border-slate-200 text-center text-slate-600">${emp.days_worked}</td><td class="px-4 py-2 text-sm border border-slate-200 text-center text-slate-600">${emp.ot_hours || '-'}</td><td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono text-slate-500">${this.formatMoney(emp.daily_rate)}</td><td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono text-blue-800">${this.formatMoney(emp.gross_pay)}</td><td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono text-red-600">(${this.formatMoney(emp.deductions)})</td><td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono font-bold text-slate-900 bg-orange-50">${this.formatMoney(emp.net_pay)}</td></tr>`;
-        });
-        const htmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Payroll Report</title><script src="https://cdn.tailwindcss.com"></script><style>@media print{@page{margin:0.5in;size:landscape;}}</style></head><body><div class="p-8"><h1 class="text-2xl font-bold">Payroll Report</h1><p class="mb-4">Period: ${period}</p><table class="w-full border-collapse"><thead><tr class="bg-gray-100"><th class="border p-2">Employee</th><th class="border p-2">Days</th><th class="border p-2">OT</th><th class="border p-2">Rate</th><th class="border p-2">Gross</th><th class="border p-2">Ded</th><th class="border p-2">Net</th></tr></thead><tbody>${tableRows}</tbody></table></div><script>setTimeout(()=>{window.print();window.close();},500);</script></body></html>`;
-        const win = window.open('', '_blank'); win.document.write(htmlContent); win.document.close();
+                if (!this.state.data || this.state.data.length === 0) return alert('No data to print.');
+                const projectEl = document.getElementById('projectSelector');
+                const projectName = projectEl && projectEl.options.length > 0 ? projectEl.options[projectEl.selectedIndex].text : 'Project ID: ' + this.state.projectId;
+                const period = this.state.meta.period_label || 'Unknown Period';
+                const dateGen = new Date().toLocaleString();
+                const totals = this.state.totals || { gross: 0, deductions: 0, net: 0, count: 0 };
+
+                let rows = '';
+                this.state.data.forEach(emp => {
+                        rows += `
+                                <tr>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-800 font-mono">${emp.code}</td>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-slate-800">${emp.fullname}</td>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-center">${emp.days_worked}</td>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-center">${emp.ot_hours || '-'}</td>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono">₱${this.formatMoney(emp.daily_rate)}</td>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono text-blue-800">₱${this.formatMoney(emp.gross_pay)}</td>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono text-red-600">₱${this.formatMoney(emp.deductions)}</td>
+                                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono font-bold text-[#e9922c]">₱${this.formatMoney(emp.net_pay)}</td>
+                                </tr>
+                        `;
+                });
+
+                const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payroll Report - ${projectName}</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; padding: 40px; }
+        .report-container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px; }
+        @media print { @page { margin: 0.5in; size: auto; } body { background-color: white !important; color: black !important; padding: 0 !important; -webkit-print-color-adjust: exact; } .report-container { box-shadow: none !important; padding: 0 !important; width: 100% !important; max-width: none !important; } .no-print { display: none !important; } table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; } thead tr { background-color: #f3f4f6 !important; } thead th { border: 1px solid #9ca3af !important; padding: 8px !important; color: black !important; font-weight: bold !important; text-transform: uppercase !important; } tbody td { border: 1px solid #e5e7eb !important; padding: 8px !important; color: black !important; } .print-footer { margin-top: 50px !important; page-break-inside: avoid; } }
+        .print-logo { height: 80px; width: auto; margin: 0 auto 10px auto; display: block; }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="text-center border-b-2 border-slate-800 pb-6 mb-8">
+            <img src="../../assets/images/nobg_logo.png" alt="ICMIS Logo" class="print-logo">
+            <h1 style="font-size:20px;margin:6px 0;font-weight:800;text-transform:uppercase;">Payroll Report</h1>
+            <p style="margin:0;color:#6b7280;">Integrated Construction Management Information System</p>
+            <p style="margin:2px 0;color:#9ca3af;font-size:12px;">Generated on: ${dateGen}</p>
+        </div>
+
+        <div style="display:flex;gap:40px;margin-bottom:24px;font-size:14px;">
+            <div style="flex:1;">
+                <table style="width:100%;">
+                    <tr><td style="font-weight:700;color:#6b7280;padding:4px;width:140px;">Project:</td><td style="font-weight:700;color:#111827;padding:4px;">${projectName}</td></tr>
+                    <tr><td style="font-weight:700;color:#6b7280;padding:4px;">Period:</td><td style="color:#111827;padding:4px;">${period}</td></tr>
+                </table>
+            </div>
+            <div style="flex:1;">
+                <table style="width:100%;">
+                    <tr><td style="font-weight:700;color:#6b7280;padding:4px;width:140px;">Employees:</td><td style="color:#374151;padding:4px;">${totals.count || this.state.data.length}</td></tr>
+                    <tr><td style="font-weight:700;color:#6b7280;padding:4px;">Total Net Pay:</td><td style="color:#374151;padding:4px;font-family:monospace;">₱${this.formatMoney(totals.net)}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:18px;">
+            <thead style="background:#f3f4f6;text-align:left;">
+                <tr>
+                    <th style="padding:8px;border:1px solid #e5e7eb;width:12%;">Code</th>
+                    <th style="padding:8px;border:1px solid #e5e7eb;width:34%;">Employee</th>
+                    <th style="padding:8px;border:1px solid #e5e7eb;width:8%;text-align:center;">Days</th>
+                    <th style="padding:8px;border:1px solid #e5e7eb;width:8%;text-align:center;">OT</th>
+                    <th style="padding:8px;border:1px solid #e5e7eb;width:12%;text-align:right;">Rate</th>
+                    <th style="padding:8px;border:1px solid #e5e7eb;width:12%;text-align:right;">Gross</th>
+                    <th style="padding:8px;border:1px solid #e5e7eb;width:12%;text-align:right;">Net</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="padding:12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;">Grand Totals</td>
+                    <td style="padding:12px;border:1px solid #e5e7eb;text-align:right;font-family:monospace;">-</td>
+                    <td style="padding:12px;border:1px solid #e5e7eb;text-align:right;font-family:monospace;">₱${this.formatMoney(totals.gross)}</td>
+                    <td style="padding:12px;border:1px solid #e5e7eb;text-align:right;font-weight:800;color:#e9922c;font-family:monospace;">₱${this.formatMoney(totals.net)}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="print-footer" style="margin-top:32px;display:flex;gap:40px;">
+            <div style="flex:1;text-align:center;">
+                <p style="font-size:11px;font-weight:700;color:#6b7280;">Prepared By:</p>
+                <div style="border-bottom:1px solid #111827;width:60%;margin:18px auto 8px auto;height:10px;"></div>
+                <p style="font-weight:700;">System Generated</p>
+            </div>
+            <div style="flex:1;text-align:center;">
+                <p style="font-size:11px;font-weight:700;color:#6b7280;">Verified By:</p>
+                <div style="border-bottom:1px solid #111827;width:60%;margin:18px auto 8px auto;height:10px;"></div>
+                <p style="font-weight:700;">Project Engineer</p>
+            </div>
+            <div style="flex:1;text-align:center;">
+                <p style="font-size:11px;font-weight:700;color:#6b7280;">Approved By:</p>
+                <div style="border-bottom:1px solid #111827;width:60%;margin:18px auto 8px auto;height:10px;"></div>
+                <p style="font-weight:700;">Project Manager</p>
+            </div>
+        </div>
+
+        <div class="no-print" style="margin-top:20px;text-align:center;">
+            <p style="color:#6b7280;font-size:13px;margin-bottom:8px;">If printing does not start automatically, use the Print option in your browser.</p>
+            <button onclick="window.print()" style="padding:8px 16px;background:#2563eb;color:#fff;border-radius:8px;border:none;">Print Report</button>
+        </div>
+    </div>
+    <script>setTimeout(()=>{window.print();},500);</script>
+</body>
+</html>`;
+
+                // POST payload to server endpoint in a new tab to render printable HTML server-side
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'download_payroll_pdf.php';
+                form.target = '_blank';
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                const payload = { projectName, period, dateGen, totals, data: this.state.data };
+                input.name = 'payload';
+                input.value = JSON.stringify(payload);
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+                form.remove();
     }
 };

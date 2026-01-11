@@ -25,8 +25,7 @@ if ($selected_project_id && $selected_project_id > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payroll | ICMIS</title>
     <?php include __DIR__ . '/../../includes/head_assetsv2.php'; ?>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- Removed jsPDF includes: using window print with HTML instead -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .modal-overlay { background-color: rgba(31,41,55,0.45); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
@@ -82,7 +81,7 @@ if ($selected_project_id && $selected_project_id > 0) {
                     <div class="flex items-center gap-3">
                         <button onclick="Payroll.loadData()" class="p-2 text-gray-500 hover:text-[#e9922c] hover:bg-orange-50 rounded-lg transition-colors"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
                         <div class="h-6 w-px bg-gray-200"></div>
-                        <button onclick="Payroll.exportPDF()" class="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"><i data-lucide="file-down" class="w-4 h-4"></i> Export</button>
+                        <button onclick="Payroll.exportPDF()" class="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"><i data-lucide="printer" class="w-4 h-4"></i> Print</button>
                         <button onclick="Payroll.openLockModal()" id="btnLockPayroll" disabled class="flex items-center gap-2 bg-[#e9922c] text-white px-5 py-2 rounded-lg hover:bg-[#d17f1f] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm font-bold text-sm">
                             <i data-lucide="lock" class="w-4 h-4"></i> <span id="btnLockText">Finalize Payroll</span>
                         </button>
@@ -259,7 +258,10 @@ if ($selected_project_id && $selected_project_id > 0) {
                         <div class="w-8 h-8 bg-[#e9922c] rounded flex items-center justify-center text-white font-bold">P</div>
                         <h3 class="text-lg font-bold text-white">PAYSLIP PREVIEW</h3>
                     </div>
-                    <button onclick="Payroll.closePayslip()" class="text-white hover:text-gray-300"><i data-lucide="x" class="w-6 h-6"></i></button>
+                    <div class="flex items-center gap-3">
+                        <button onclick="Payroll.printPayslip()" id="btnPrintPayslip" class="text-white hover:text-gray-300" title="Print Payslip"><i data-lucide="printer" class="w-5 h-5"></i></button>
+                        <button onclick="Payroll.closePayslip()" class="text-white hover:text-gray-300"><i data-lucide="x" class="w-6 h-6"></i></button>
+                    </div>
                 </div>
                 <div class="p-8">
                     <div class="flex justify-between border-b border-gray-100 pb-4 mb-4">

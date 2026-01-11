@@ -11,6 +11,16 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "index.php");
     exit();
 }
+
+// Prefer procurement project context if available
+if (file_exists(__DIR__ . '/project_context.php')) {
+    require_once __DIR__ . '/project_context.php';
+    $__proc_conn = getProcurementConnection();
+    $__ctx_project = getProjectContext($__proc_conn);
+    if ($__ctx_project && $__ctx_project > 0) {
+        $_SESSION['current_project_id'] = $__ctx_project;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

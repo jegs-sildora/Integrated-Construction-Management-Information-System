@@ -40,8 +40,12 @@ $sql_expenses = "SELECT SUM(amount) as total_spent FROM budget_expenses WHERE st
 $res_expenses = $conn->query($sql_expenses);
 $total_spent = $res_expenses->fetch_assoc()['total_spent'] ?? 0;
 
-// C. Workforce (Total Active Employees)
-$sql_staff = "SELECT COUNT(*) as total_staff FROM workforce_employees WHERE status = 'Active'";
+// C. Workforce (Active employees WITHOUT assignments)
+// Count employees marked Active that do not have any records in workforce_assignments
+$sql_staff = "SELECT COUNT(*) as total_staff
+    FROM workforce_employees e
+    LEFT JOIN workforce_assignments wa ON e.employee_id = wa.employee_id
+    WHERE e.status = 'Active' AND wa.employee_id IS NULL";
 $res_staff = $conn->query($sql_staff);
 $total_staff = $res_staff->fetch_assoc()['total_staff'] ?? 0;
 

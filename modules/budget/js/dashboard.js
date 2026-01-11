@@ -92,11 +92,11 @@
         if (currentPhaseData.utilization > 100) {
           spentCard.className = 'bg-red-50 border border-red-200 rounded-lg p-4 text-center receipt-spent-card';
           if (spentCard.querySelector('p:first-child')) spentCard.querySelector('p:first-child').className = 'text-xs text-red-600 font-medium mb-1';
-          if (spentCard.querySelector('p:nth-child(2)')) spentCard.querySelector('p:nth-child(2)').className = 'text-2xl font-bold text-red-700';
+          if (spentCard.querySelector('p:nth-child(2)')) spentCard.querySelector('p:nth-child(2)').className = 'text-2xl font-black text-red-700';
         } else {
           spentCard.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 text-center receipt-spent-card';
           if (spentCard.querySelector('p:first-child')) spentCard.querySelector('p:first-child').className = 'text-xs text-blue-600 font-medium mb-1';
-          if (spentCard.querySelector('p:nth-child(2)')) spentCard.querySelector('p:nth-child(2)').className = 'text-2xl font-bold text-blue-700';
+          if (spentCard.querySelector('p:nth-child(2)')) spentCard.querySelector('p:nth-child(2)').className = 'text-2xl font-black text-blue-700';
         }
       }
 
