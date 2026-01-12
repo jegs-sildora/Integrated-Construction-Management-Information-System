@@ -634,7 +634,8 @@ if ($tableExists && $tableExists->num_rows > 0) {
 // Also try the old table name
 $tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
 if ($tableExists && $tableExists->num_rows > 0) {
-    $stmt = $conn->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, ?, ?, NOW())");
+    // Ensure project_id of 0 is stored as NULL to satisfy FK (use NULLIF to convert 0->NULL)
+    $stmt = $conn->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, NULLIF(?,0), ?, NOW())");
     $category = explode('-', $report_type)[0];
     $stmt->bind_param("ssis", $category, $report_title, $project_id, $userName);
     $stmt->execute();

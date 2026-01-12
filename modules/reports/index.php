@@ -18,13 +18,19 @@ if ($conn->connect_error) {
 }
 $conn->set_charset("utf8mb4");
 
-// Get selected project from session/URL
+// Use centralized project context when available
 $selected_project_id = 0;
-if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
-    $selected_project_id = intval($_GET['project_id']);
-    $_SESSION['current_project_id'] = $selected_project_id;
-} elseif (isset($_SESSION['current_project_id'])) {
-    $selected_project_id = $_SESSION['current_project_id'];
+if (file_exists(__DIR__ . '/../budget/project_context.php')) {
+    include_once __DIR__ . '/../budget/project_context.php';
+    $selected_project_id = getProjectContext($conn);
+} else {
+    // Fallback to URL/session behavior if context helper missing
+    if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
+        $selected_project_id = intval($_GET['project_id']);
+        $_SESSION['current_project_id'] = $selected_project_id;
+    } elseif (isset($_SESSION['current_project_id'])) {
+        $selected_project_id = $_SESSION['current_project_id'];
+    }
 }
 
 // Fetch current project info (enhanced with status and more details)
@@ -60,15 +66,28 @@ if ($result_projects && $result_projects->num_rows > 0) {
     }
 }
 
-// Fetch recent generated reports (if table exists)
+// Fetch recent generated reports (if table exists) and respect current project context
 $recent_reports = [];
 $tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
 if ($tableExists && $tableExists->num_rows > 0) {
-    $report_sql = "SELECT report_id AS id, report_type AS category, report_name, project_id, generated_by, created_at FROM budget_generated_reports ORDER BY created_at DESC LIMIT 20";
-    $result = $conn->query($report_sql);
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $recent_reports[] = $row;
+    if ($selected_project_id) {
+        $stmt = $conn->prepare("SELECT r.report_id AS id, r.report_type AS category, r.report_name, r.project_id, COALESCE(p.project_name, 'All') AS project_name, r.generated_by, r.created_at FROM budget_generated_reports r LEFT JOIN icmis_projects p ON r.project_id = p.project_id WHERE r.project_id = ? ORDER BY r.created_at DESC LIMIT 20");
+        if ($stmt) {
+            $stmt->bind_param("i", $selected_project_id);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            while ($row = $res->fetch_assoc()) {
+                $recent_reports[] = $row;
+            }
+            $stmt->close();
+        }
+    } else {
+        $report_sql = "SELECT r.report_id AS id, r.report_type AS category, r.report_name, r.project_id, COALESCE(p.project_name, 'All') AS project_name, r.generated_by, r.created_at FROM budget_generated_reports r LEFT JOIN icmis_projects p ON r.project_id = p.project_id ORDER BY r.created_at DESC LIMIT 20";
+        $result = $conn->query($report_sql);
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $recent_reports[] = $row;
+            }
         }
     }
 }
@@ -172,7 +191,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         </p>
                     </div>
                     <div class="flex gap-3">
-                        <button onclick="printReport()" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                        <button onclick="printReport()" class="flex items-center gap-2 px-4 py-2 bg-[#e9922c] border border-gray-300 text-white rounded-lg hover:bg-[#d17f1f] transition-all font-bold">
                             <i data-lucide="printer" class="w-4 h-4"></i>
                             Print
                         </button>

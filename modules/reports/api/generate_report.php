@@ -434,7 +434,8 @@ try {
         $category = explode('-', $template)[0];
         $reportName = ucwords(str_replace('-', ' ', $template));
         
-        $stmt = $conn->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, ?, ?, NOW())");
+        // Convert project_id=0 into NULL so FK to icmis_projects is not violated
+        $stmt = $conn->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, NULLIF(?,0), ?, NOW())");
         $stmt->bind_param("ssis", $category, $reportName, $project_id, $userName);
         $stmt->execute();
         $stmt->close();

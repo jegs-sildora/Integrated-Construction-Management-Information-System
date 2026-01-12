@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 11, 2026 at 08:15 AM
+-- Generation Time: Jan 11, 2026 at 10:58 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -45,7 +45,7 @@ CREATE TABLE `budget_expenses` (
 --
 
 INSERT INTO `budget_expenses` (`expense_id`, `project_id`, `phase_id`, `supplier_id`, `category`, `description`, `amount`, `expense_date`, `status`, `created_by`) VALUES
-(8, 1, 1, 1, 'MATERIALS', 'PO-2026-0001 - Phase 1 Materials', 1344.00, '2026-01-10', 'APPROVED', NULL);
+(1, 2, 1, 5, 'MATERIALS', 'PO-2026-0001 - Phase 1 Materials', 14544.00, '2026-01-11', 'APPROVED', NULL);
 
 -- --------------------------------------------------------
 
@@ -67,19 +67,10 @@ CREATE TABLE `budget_generated_reports` (
 --
 
 INSERT INTO `budget_generated_reports` (`report_id`, `project_id`, `report_type`, `report_name`, `generated_by`, `created_at`) VALUES
-(31, 1, 'budget-summary', ' - Davao', 'John Doe', '2026-01-10 08:41:02'),
-(32, 1, 'budget-summary', 'Budget Summary Report - Davao', 'John Doe', '2026-01-10 08:42:15'),
-(33, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:39'),
-(34, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:39'),
-(35, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:41'),
-(36, 1, 'budget-summary', 'Budget Summary Report - Davao', 'System', '2026-01-10 18:19:42'),
-(37, 1, 'budget', 'Budget Summary', 'Admin', '2026-01-10 18:22:59'),
-(38, 1, 'inventory', 'Inventory Status', 'Admin', '2026-01-10 18:24:04'),
-(39, 1, 'budget', 'Budget Summary', 'Admin', '2026-01-10 18:25:57'),
-(40, 1, 'inventory', 'Inventory Status Report', 'Admin', '2026-01-10 19:03:38'),
-(41, 1, 'purchase', 'Purchase Orders Report', 'Admin', '2026-01-10 19:03:44'),
-(42, 1, 'purchase', 'Purchase Orders Report', 'Admin', '2026-01-10 23:26:14'),
-(43, 1, 'purchase', 'Purchase Orders Report', 'Admin', '2026-01-11 07:05:34');
+(1, 2, 'budget', 'Budget Summary Report', 'John Doe', '2026-01-11 11:51:11'),
+(2, 2, 'employee', 'Employee Roster', 'John Doe', '2026-01-11 11:51:19'),
+(3, 2, 'budget', 'Budget Summary Report', 'Admin', '2026-01-11 12:24:42'),
+(4, 2, 'employee', 'Employee Roster', 'Admin', '2026-01-11 12:24:43');
 
 -- --------------------------------------------------------
 
@@ -103,7 +94,10 @@ CREATE TABLE `budget_line_items` (
 --
 
 INSERT INTO `budget_line_items` (`line_item_id`, `proposal_id`, `category`, `item_name`, `quantity`, `unit_cost`, `duration`, `subtotal`) VALUES
-(2, 1, 'MATERIAL', 'Tie Wire #16 (kg)', 112.00, 12.00, 1.00, 1344.00);
+(89, 1, 'MATERIAL', 'Coco Lumber (bd.ft)', 12.00, 1212.00, 1.00, 14544.00),
+(90, 1, 'MATERIAL', 'Marine Plywood (1/4\")', 12.00, 1212.00, 1.00, 14544.00),
+(91, 1, 'LABOR', 'General Foreman', 12.00, 4000.00, 1.00, 48000.00),
+(92, 1, 'EQUIPMENT', 'Angle Grinder (4\")', 5.00, 1212.00, 1.00, 6060.00);
 
 -- --------------------------------------------------------
 
@@ -129,7 +123,7 @@ CREATE TABLE `budget_proposals` (
 --
 
 INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`, `title`, `description`, `total_amount`, `status`, `created_by`, `created_at`) VALUES
-(1, 1, 1, 'BP-2026-0001', 'Phase 1: Mobilization — Budget Proposal', 'asd', 1344.00, 'APPROVED', 30, '2026-01-08 05:36:48');
+(1, 2, 1, 'BP-2026-0001', 'Phase 1: Mobilization — Budget Proposal', 'descriptionasdfasdfasdf', 83148.00, 'APPROVED', 1, '2026-01-11 10:08:15');
 
 -- --------------------------------------------------------
 
@@ -140,13 +134,13 @@ INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`,
 CREATE TABLE `icmis_audit_logs` (
   `log_id` int UNSIGNED NOT NULL,
   `user_id` int DEFAULT NULL COMMENT 'Reference to icmis_users table',
-  `user_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'System' COMMENT 'Cached username for faster display',
-  `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Action type: CREATE, UPDATE, DELETE, LOGIN, LOGOUT, VIEW, EXPORT, APPROVE, REJECT',
-  `module` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Module name: Project, Budget, Procurement, Workforce, Auth, Reports',
-  `details` text COLLATE utf8mb4_unicode_ci COMMENT 'Human-readable description of the action',
+  `user_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'System' COMMENT 'Cached username for faster display',
+  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Action type: CREATE, UPDATE, DELETE, LOGIN, LOGOUT, VIEW, EXPORT, APPROVE, REJECT',
+  `module` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Module name: Project, Budget, Procurement, Workforce, Auth, Reports',
+  `details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Human-readable description of the action',
   `record_id` int DEFAULT NULL COMMENT 'ID of the affected record (project_id, po_id, employee_id, etc.)',
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Client IP address (supports IPv6)',
-  `user_agent` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Browser/client user agent string',
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Client IP address (supports IPv6)',
+  `user_agent` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Browser/client user agent string',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Timestamp when the action occurred'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Audit trail for tracking user actions across all ICMIS modules';
 
@@ -155,19 +149,26 @@ CREATE TABLE `icmis_audit_logs` (
 --
 
 INSERT INTO `icmis_audit_logs` (`log_id`, `user_id`, `user_name`, `action`, `module`, `details`, `record_id`, `ip_address`, `user_agent`, `created_at`) VALUES
-(1, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: Davaoasdfasdf (PRJ-2026-003)', 5, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-10 20:21:24'),
-(2, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Purchase Orders Report for Davao', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-10 23:26:14'),
-(3, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Purchase Orders Report for Davao', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:05:34'),
-(4, 30, 'John Doe', 'LOGIN', 'Auth', 'User logged in successfully', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:07:00'),
-(5, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: Villa Angela Clubhouseasdf (PRJ-2026-004)', 7, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:07:26'),
-(6, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: asdfasdf (PRJ-2026-005)', 8, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:10:46'),
-(7, 30, 'John Doe', 'CREATE', 'Project', 'Created new project: asdfasdfasdfasdf (PRJ-2026-006)', 9, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:42'),
-(8, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project ID: 9', 9, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:47'),
-(9, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project ID: 8', 8, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:49'),
-(10, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project ID: 7', 7, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 07:11:51'),
-(11, 30, 'John Doe', 'UPDATE', 'Project', 'Updated project: Davaoasdfasdf (PRJ-2026-003)', 5, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 08:12:33'),
-(12, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project: Davaoasdfasdf (PRJ-2026-003)', 5, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 08:12:41'),
-(13, 30, 'John Doe', 'DELETE', 'Project', 'Deleted project: Villa Angela Clubhouse (PRJ-2026-002)', 4, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 08:12:43');
+(17, 1, 'John Doe', 'CREATE', 'Project', 'Created new project: Davao City (PRJ-2026-001)', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 09:49:29'),
+(18, 1, 'John Doe', 'CREATE', 'Budget', 'Submitted budget proposal: Phase 1: Mobilization — Budget Proposal (BP-2026-0001) - ₱83,148.00', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:08:15'),
+(19, 1, 'John Doe', 'CREATE', 'Procurement', 'Purchase Order Created: PO-2026-0001 - Phase 1 Materials (₱14,544.00)', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:17:37'),
+(20, 1, 'John Doe', 'UPDATE', 'Procurement', 'Purchase Order Updated: Phase 1 Materials - Status: APPROVED (₱14,544.00)', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:17:45'),
+(21, 1, 'John Doe', 'CREATE', 'Procurement', 'Stock Received for PO #1 - Items processed successfully', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:25:37'),
+(22, 1, 'John Doe', 'CREATE', 'Procurement', 'Stock Issued: 5 units to Employee #19', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:41:10'),
+(23, 1, 'John Doe', 'CREATE', 'Workforce', 'Employee Created: asdfasdf asdfasdf (EMP-2026-051)', 51, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:32:16'),
+(24, 1, 'John Doe', 'CREATE', 'Workforce', 'Payroll Locked: Period Jan 01-15, 2026 for Project #2 (4 employees processed)', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:47:45'),
+(25, 1, 'John Doe', 'EXPORT', 'Reports', 'Generated Report: Budget Summary Report for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:51:11'),
+(26, 1, 'John Doe', 'EXPORT', 'Reports', 'Generated Report: Employee Roster for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:51:19'),
+(27, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Budget Summary Report for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:24:42'),
+(28, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Employee Roster for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:24:43'),
+(29, 1, 'John Doe', 'LOGIN', 'Auth', 'User logged in successfully', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:24:50'),
+(30, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:55:11'),
+(31, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:57:57'),
+(32, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:58:03'),
+(33, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payslip printed for Ryan Agoncillo', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:03:45'),
+(34, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payslip printed for Ryan Agoncillo', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:07:36'),
+(35, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:07:50'),
+(36, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:29:59');
 
 -- --------------------------------------------------------
 
@@ -177,11 +178,11 @@ INSERT INTO `icmis_audit_logs` (`log_id`, `user_id`, `user_name`, `action`, `mod
 
 CREATE TABLE `icmis_generated_reports` (
   `id` int NOT NULL,
-  `report_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'budget, procurement, project, workforce',
+  `report_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'budget, procurement, project, workforce',
   `project_id` int DEFAULT NULL,
-  `project_name` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `generated_by` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `project_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `generated_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -190,10 +191,10 @@ CREATE TABLE `icmis_generated_reports` (
 --
 
 INSERT INTO `icmis_generated_reports` (`id`, `report_name`, `category`, `project_id`, `project_name`, `generated_by`, `created_at`) VALUES
-(1, 'Inventory Status Report', 'inventory', 1, 'Davao', 'Admin', '2026-01-10 19:03:38'),
-(2, 'Purchase Orders Report', 'purchase', 1, 'Davao', 'Admin', '2026-01-10 19:03:44'),
-(3, 'Purchase Orders Report', 'purchase', 1, 'Davao', 'Admin', '2026-01-10 23:26:14'),
-(4, 'Purchase Orders Report', 'purchase', 1, 'Davao', 'Admin', '2026-01-11 07:05:34');
+(1, 'Budget Summary Report', 'budget', 2, 'Davao City', 'John Doe', '2026-01-11 11:51:11'),
+(2, 'Employee Roster', 'employee', 2, 'Davao City', 'John Doe', '2026-01-11 11:51:19'),
+(3, 'Budget Summary Report', 'budget', 2, 'Davao City', 'Admin', '2026-01-11 12:24:42'),
+(4, 'Employee Roster', 'employee', 2, 'Davao City', 'Admin', '2026-01-11 12:24:43');
 
 -- --------------------------------------------------------
 
@@ -220,7 +221,7 @@ CREATE TABLE `icmis_projects` (
 --
 
 INSERT INTO `icmis_projects` (`project_id`, `project_code`, `project_name`, `description`, `location`, `status`, `start_date`, `end_date`, `completion_rate`, `project_manager_id`, `total_budget`) VALUES
-(1, 'PRJ-2026-001', 'Davao', 'Sample Construction Project', 'Davao City', 'Planning', '2026-01-07', '2027-01-07', 0.00, NULL, 50000000.00);
+(2, 'PRJ-2026-001', 'Davao City', 'Sample Description', 'Davao City', 'Planning', '2026-01-11', '2027-01-11', 0.00, 1, 1000000.00);
 
 -- --------------------------------------------------------
 
@@ -244,7 +245,7 @@ CREATE TABLE `icmis_project_phases` (
 --
 
 INSERT INTO `icmis_project_phases` (`phase_id`, `project_id`, `phase_name`, `description`, `start_date`, `end_date`, `duration`, `status`) VALUES
-(1, 1, 'Phase 1: Mobilization', 'Phase 1', '2026-01-07', '2026-03-07', 59, 'Not Started');
+(1, 2, 'Phase 1: Mobilization', 'Sample Description', '2026-01-11', '2026-03-11', 59, 'Not Started');
 
 -- --------------------------------------------------------
 
@@ -264,6 +265,13 @@ CREATE TABLE `icmis_tasks` (
   `status` enum('Not Started','In Progress','Completed','On Hold') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Not Started',
   `priority` enum('Low','Medium','High','Urgent') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Medium'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `icmis_tasks`
+--
+
+INSERT INTO `icmis_tasks` (`task_id`, `project_id`, `phase_id`, `task_name`, `description`, `assigned_to_employee_id`, `start_date`, `due_date`, `status`, `priority`) VALUES
+(1, 2, 1, 'Name', 'Description', 11, '2026-01-11', '2026-01-18', 'Not Started', 'High');
 
 -- --------------------------------------------------------
 
@@ -286,36 +294,7 @@ CREATE TABLE `icmis_users` (
 --
 
 INSERT INTO `icmis_users` (`user_id`, `full_name`, `email`, `password`, `role`, `avatar`, `created_at`) VALUES
-(1, 'System Admin', 'admin@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(2, 'Marco Villar', 'marco.v@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(3, 'Diana Lim', 'diana.l@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(4, 'Rico Morales', 'rico.m@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(5, 'Carla Sandoval', 'carla.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Manager', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(6, 'Gina Reyes', 'gina.r@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Budget_Officer', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(7, 'Paulo Santos', 'paulo.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Procurement_Officer', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(8, 'Luis Ortega', 'luis.o@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(9, 'Tess Garcia', 'tess.g@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(10, 'Jun Abad', 'jun.a@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(11, 'Bert Torres', 'bert.t@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(12, 'Ricardo Dalisay', 'ricardo.d@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(13, 'Efren Bata', 'efren.b@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(14, 'Joel Cruz', 'joel.c@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(15, 'Mark Go', 'mark.g@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(16, 'Romy Diaz', 'romy.d@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(17, 'Dante Alip', 'dante.a@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(18, 'Steve Paz', 'steve.p@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(19, 'Ryan Yap', 'ryan.y@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(20, 'Mario Pineda', 'mario.p@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(21, 'Luigi Pineda', 'luigi.p@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(22, 'Ken Sy', 'ken.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(23, 'Manny Wood', 'manny.w@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(24, 'Jack Solis', 'jack.s@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(25, 'Peter Vega', 'peter.v@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(26, 'Tyler Tan', 'tyler.t@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(27, 'Jose Glas', 'jose.g@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(28, 'Boyet Labos', 'boyet.l@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(29, 'Juan Dela Cruz', 'juan.d@icmis.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff', 'default_avatar.jpg', '2026-01-07 20:40:04'),
-(30, 'John Doe', 'john.doe@icmis.com', '$2y$12$pl4NIXnb43GJgd88tKaBweOT56kgORWvZ7qnU3bhAO0ZzUH0/rY/q', 'Admin', NULL, '2026-01-07 23:52:33');
+(1, 'John Doe', 'john.doe@icmis.com', '$2y$12$KeXhSnPmzmtTCSCKc7X/JOlS1eJZdQlZpnAX5unfumJqn44cfRmvS', 'Admin', NULL, '2026-01-11 08:27:44');
 
 -- --------------------------------------------------------
 
@@ -340,7 +319,7 @@ CREATE TABLE `procurement_inventory` (
 --
 
 INSERT INTO `procurement_inventory` (`item_id`, `item_name`, `category`, `quantity`, `unit`, `project_id`, `phase_id`, `unit_cost`, `last_updated`) VALUES
-(4, 'Tie Wire #16 (kg)', 'General', 0.00, 'pcs', 1, 1, 12.00, '2026-01-10 03:41:25');
+(1, 'Coco Lumber (bd.ft)', 'General', 7.00, 'pcs', 2, 1, 1212.00, '2026-01-11 10:41:10');
 
 -- --------------------------------------------------------
 
@@ -366,7 +345,7 @@ CREATE TABLE `procurement_purchase_orders` (
 --
 
 INSERT INTO `procurement_purchase_orders` (`po_id`, `po_reference`, `project_id`, `phase_id`, `supplier_id`, `order_title`, `order_date`, `total_amount`, `status`, `created_by_user_id`) VALUES
-(6, 'PO-2026-0001', 1, 1, 1, 'Phase 1 Materials', '2026-01-10', 1344.00, 'COMPLETED', 30);
+(1, 'PO-2026-0001', 2, 1, 5, 'Phase 1 Materials', '2026-01-11', 14544.00, 'COMPLETED', 1);
 
 -- --------------------------------------------------------
 
@@ -389,7 +368,7 @@ CREATE TABLE `procurement_purchase_order_items` (
 --
 
 INSERT INTO `procurement_purchase_order_items` (`po_item_id`, `po_id`, `inventory_item_id`, `item_name`, `quantity`, `unit_cost`, `total_cost`) VALUES
-(15, 6, NULL, 'Tie Wire #16 (kg)', 112.00, 12.00, 1344.00);
+(2, 1, NULL, 'Coco Lumber (bd.ft)', 12.00, 1212.00, 14544.00);
 
 -- --------------------------------------------------------
 
@@ -412,7 +391,7 @@ CREATE TABLE `procurement_stock_in` (
 --
 
 INSERT INTO `procurement_stock_in` (`stock_in_id`, `po_id`, `item_id`, `quantity_received`, `unit_cost`, `total_cost`, `date_received`) VALUES
-(8, 6, 4, 112, 12.00, 1344.00, '2026-01-10');
+(1, 1, 1, 12, 1212.00, 14544.00, '2026-01-11');
 
 -- --------------------------------------------------------
 
@@ -434,7 +413,7 @@ CREATE TABLE `procurement_stock_out` (
 --
 
 INSERT INTO `procurement_stock_out` (`stock_out_id`, `item_id`, `quantity`, `issued_to_employee_id`, `project_id`, `date_issued`) VALUES
-(2, 4, 112, 110, NULL, '2026-01-10');
+(1, 1, 5, 19, NULL, '2026-01-11');
 
 -- --------------------------------------------------------
 
@@ -492,16 +471,10 @@ CREATE TABLE `workforce_assignments` (
 --
 
 INSERT INTO `workforce_assignments` (`assignment_id`, `employee_id`, `project_id`, `phase_id`, `role`, `task_description`, `start_date`, `end_date`, `status`) VALUES
-(1, 101, 1, 1, 'Project Manager', 'Overall supervision of Phase 1 mobilization and structural works.', '2026-01-05', '2026-06-30', 'Active'),
-(2, 102, 1, 1, 'Site Engineer', 'Supervise daily structural integrity and compliance with blueprints.', '2026-01-05', '2026-06-30', 'Active'),
-(3, 103, 1, 1, 'General Foreman', 'Manage workforce schedules and daily site deliverables.', '2026-01-05', '2026-06-30', 'Active'),
-(4, 104, 1, 1, 'Master Mason', 'Lead masonry works for perimeter fencing and foundation.', '2026-01-07', '2026-04-15', 'Active'),
-(5, 105, 1, 1, 'Mason', 'Concrete mixing and hollow block laying for Phase 1.', '2026-01-07', '2026-04-15', 'Active'),
-(6, 106, 1, 1, 'Construction Helper', 'Hauling materials and assisting masonry team.', '2026-01-07', '2026-04-15', 'Active'),
-(7, 107, 1, 1, 'Timekeeper', 'Record daily attendance and monitor work hours.', '2026-01-05', '2026-12-31', 'Active'),
-(8, 108, 1, 1, 'Safety Officer', 'Implement site safety protocols and conduct daily toolbox meetings.', '2026-01-05', '2026-12-31', 'Active'),
-(9, 109, 1, 1, 'Welder', 'Fabrication of steel reinforcement bars and temporary gates.', '2026-01-10', '2026-03-30', 'Active'),
-(10, 110, 1, 1, 'Lead Electrician', 'Installation of temporary power supply for construction equipment.', '2026-01-10', '2026-03-30', 'Active');
+(1, 40, 2, NULL, 'Pipe Fitter', NULL, '2026-01-11', '2026-01-13', 'Active'),
+(2, 34, 2, 1, 'Master Electrician', NULL, '2026-01-11', '2026-02-11', 'Active'),
+(3, 16, 2, 1, 'Quantity Surveyor', NULL, '2026-01-11', '2026-02-11', 'Active'),
+(4, 46, 2, 1, 'Rough Carpenter', NULL, '2026-01-11', '2026-02-11', 'Active');
 
 -- --------------------------------------------------------
 
@@ -525,86 +498,57 @@ CREATE TABLE `workforce_attendance` (
 --
 
 INSERT INTO `workforce_attendance` (`attendance_id`, `employee_id`, `project_id`, `attendance_date`, `time_in`, `time_out`, `status`, `remarks`) VALUES
-(1, 101, 1, '2026-01-02', '07:45:00', '17:00:00', 'Present', 'Site Inspection'),
-(2, 101, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(3, 101, 1, '2026-01-05', '07:30:00', '18:00:00', 'Present', 'Manpower Meeting (1hr OT)'),
-(4, 101, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(5, 101, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(6, 101, 1, '2026-01-08', '08:15:00', '17:15:00', 'Late', 'Traffic'),
-(7, 101, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(8, 102, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(9, 102, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(10, 102, 1, '2026-01-05', '07:55:00', '17:00:00', 'Present', 'Regular'),
-(11, 102, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(12, 102, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(13, 102, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(14, 102, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(15, 103, 1, '2026-01-02', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(16, 103, 1, '2026-01-03', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(17, 103, 1, '2026-01-05', '07:00:00', '18:00:00', 'Present', 'Heavy Pouring (2hr OT)'),
-(18, 103, 1, '2026-01-06', '07:30:00', '17:30:00', 'Present', '30min OT'),
-(19, 103, 1, '2026-01-07', '07:30:00', '17:30:00', 'Present', '30min OT'),
-(20, 103, 1, '2026-01-08', '07:30:00', '17:30:00', 'Present', '30min OT'),
-(21, 103, 1, '2026-01-09', '07:30:00', '17:00:00', 'Present', 'Regular'),
-(22, 104, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(23, 104, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(24, 104, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(25, 104, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(26, 104, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(27, 104, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(28, 104, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(29, 105, 1, '2026-01-02', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(30, 105, 1, '2026-01-03', '07:50:00', '17:00:00', 'Present', 'Regular'),
-(31, 105, 1, '2026-01-05', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(32, 105, 1, '2026-01-06', '07:55:00', '17:00:00', 'Present', 'Regular'),
-(33, 105, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(34, 105, 1, '2026-01-08', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(35, 105, 1, '2026-01-09', '07:45:00', '17:00:00', 'Present', 'Regular'),
-(36, 106, 1, '2026-01-02', '08:15:00', '17:00:00', 'Late', 'Overslept'),
-(37, 106, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(38, 106, 1, '2026-01-05', '08:30:00', '17:00:00', 'Late', 'Traffic'),
-(39, 106, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(40, 106, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(41, 106, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(42, 106, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(43, 107, 1, '2026-01-02', '07:15:00', '17:15:00', 'Present', 'Early In'),
-(44, 107, 1, '2026-01-03', '07:20:00', '17:00:00', 'Present', 'Early In'),
-(45, 107, 1, '2026-01-05', '07:10:00', '17:30:00', 'Present', 'Payroll Prep'),
-(46, 107, 1, '2026-01-06', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(47, 107, 1, '2026-01-07', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(48, 107, 1, '2026-01-08', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(49, 107, 1, '2026-01-09', '07:15:00', '17:15:00', 'Present', 'Regular'),
-(50, 108, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Safety Patrol'),
-(51, 108, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Toolbox Meeting'),
-(52, 108, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(53, 108, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(54, 108, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(55, 108, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(56, 108, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(57, 109, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Gate Fabrication'),
-(58, 109, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(59, 109, 1, '2026-01-05', '07:30:00', '17:00:00', 'Present', 'Early Start'),
-(60, 109, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(61, 109, 1, '2026-01-07', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
-(62, 109, 1, '2026-01-08', '08:00:00', '18:00:00', 'Present', 'Structural Welding (1hr OT)'),
-(63, 109, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(64, 110, 1, '2026-01-02', '08:00:00', '17:00:00', 'Present', 'Site Survey'),
-(65, 110, 1, '2026-01-03', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(66, 110, 1, '2026-01-05', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(67, 110, 1, '2026-01-06', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(68, 110, 1, '2026-01-07', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(69, 110, 1, '2026-01-08', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(70, 110, 1, '2026-01-09', '08:00:00', '17:00:00', 'Present', 'Regular'),
-(71, 101, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(72, 109, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(73, 107, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(74, 104, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(75, 102, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(76, 108, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(77, 110, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(78, 103, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(79, 105, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', ''),
-(80, 106, 1, '2026-01-10', '08:00:00', '17:00:00', 'Present', '');
+(1, 40, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(2, 34, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(3, 16, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(4, 46, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(5, 51, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(6, 39, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(7, 9, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(8, 38, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(9, 33, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(10, 1, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(11, 2, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(12, 3, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(13, 4, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(14, 5, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(15, 6, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(16, 7, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(17, 8, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(18, 10, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(19, 11, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(20, 12, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(21, 13, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(22, 14, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(23, 15, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(24, 17, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(25, 18, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(26, 19, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(27, 20, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(28, 21, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(29, 22, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(30, 23, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(31, 24, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(32, 25, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(33, 26, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(34, 27, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(35, 28, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(36, 29, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(37, 30, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(38, 31, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(39, 32, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(40, 35, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(41, 36, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(42, 37, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(43, 41, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(44, 42, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(45, 43, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(46, 44, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(47, 45, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(48, 47, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(49, 48, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(50, 49, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', ''),
+(51, 50, 2, '2026-01-11', '08:00:00', '17:00:00', 'Present', '');
 
 -- --------------------------------------------------------
 
@@ -644,16 +588,57 @@ CREATE TABLE `workforce_employees` (
 --
 
 INSERT INTO `workforce_employees` (`employee_id`, `employee_code`, `user_id`, `job_title_id`, `employment_type`, `payment_type`, `daily_rate`, `monthly_salary`, `bank_name`, `bank_account`, `emergency_contact_name`, `emergency_contact_phone`, `supervisor_id`, `notes`, `first_name`, `last_name`, `suffix`, `gender`, `birthday`, `email`, `phone`, `address`, `status`, `hire_date`) VALUES
-(101, 'EMP-2026-001', 1, 1, 'Regular', 'Monthly', 2500.00, 65000.00, 'BPI', '1010-2020-30', 'Elena Bautista', '0917-000-0001', 101, 'Project Lead', 'Ramon', 'Bautista', 'None', 'Male', '1980-05-15', 'ramon.b@icmis.com', '0917-111-2222', 'Block 5 Lot 2, Davao City', 'Active', '2025-12-01'),
-(102, 'EMP-2026-002', 2, 2, 'Regular', 'Monthly', 1800.00, 45000.00, 'BDO', '0011-2233-44', 'Mark Geran', '0917-000-0002', 101, 'License No. 54321', 'Sarah', 'Geran', 'None', 'Female', '1992-08-20', 'sarah.g@icmis.com', '0917-333-4444', 'Downtown Area, Davao City', 'Active', '2026-01-05'),
-(103, 'EMP-2026-003', 3, 11, 'Project-Based', 'Daily', 1200.00, 31200.00, 'Metrobank', '3333-4444-55', 'Juana Peñaflorida', '0918-000-0003', 101, 'Senior Foreman', 'Efren', 'Peñaflorida', 'Jr.', 'Male', '1975-11-30', 'efren.p@icmis.com', '0918-555-6666', 'Toril, Davao City', 'Active', '2026-01-07'),
-(104, 'EMP-2026-004', 4, 12, 'Contractual', 'Daily', 900.00, 23400.00, 'Landbank', '5555-6666-77', 'Lola Flora', '0919-000-0004', 101, 'Skill Lvl 3', 'Cardo', 'Dalisay', 'None', 'Male', '1985-01-10', 'cardo.d@icmis.com', '0919-777-8888', 'Matina, Davao City', 'Active', '2026-01-07'),
-(105, 'EMP-2026-005', 5, 13, 'Contractual', 'Daily', 750.00, 19500.00, 'Cash Card', 'CC-9988-77', 'Maria Penduko', '0920-000-0005', 101, 'Masonry A', 'Pedro', 'Penduko', 'None', 'Male', '1988-03-25', 'pedro.p@icmis.com', '0920-999-0000', 'Buhangin, Davao City', 'Active', '2026-01-08'),
-(106, 'EMP-2026-006', 6, 28, 'Contractual', 'Daily', 500.00, 13000.00, 'Cash Card', 'CC-1122-33', 'Nanay Tamad', '0921-000-0006', 101, 'General Labor', 'Juan', 'Tamad', 'None', 'Male', '1995-06-12', 'juan.t@icmis.com', '0921-123-4567', 'Agdao, Davao City', 'Active', '2026-01-08'),
-(107, 'EMP-2026-007', 7, 9, 'Regular', 'Daily', 800.00, 20800.00, 'BPI', '8888-9999-00', 'Padre Damaso', '0922-000-0007', 101, 'Admin Support', 'Maria', 'Clara', 'None', 'Female', '1993-02-14', 'maria.c@icmis.com', '0922-234-5678', 'Ecoland, Davao City', 'Active', '2026-01-05'),
-(108, 'EMP-2026-008', 8, 5, 'Regular', 'Monthly', 1500.00, 35000.00, 'BDO', '7777-8888-99', 'Elias Ibarra', '0923-000-0008', 101, 'COSH Certified', 'Crisostomo', 'Ibarra', 'None', 'Male', '1982-12-30', 'cris.i@icmis.com', '0923-345-6789', 'Lanang, Davao City', 'Active', '2026-01-05'),
-(109, 'EMP-2026-009', 9, 15, 'Contractual', 'Daily', 850.00, 22100.00, 'Metrobank', '2222-1111-00', 'Gregoria De Jesus', '0924-000-0009', 101, 'SMAW NCII', 'Andres', 'Bonifacio', 'None', 'Male', '1983-11-30', 'andres.b@icmis.com', '0924-456-7890', 'Panacan, Davao City', 'Active', '2026-01-10'),
-(110, 'EMP-2026-010', 10, 17, 'Project-Based', 'Daily', 1100.00, 28600.00, 'Landbank', '4444-5555-66', 'Ina Mabini', '0925-000-0010', 101, 'Lic. Master Electrician', 'Apolinario', 'Mabini', 'None', 'Male', '1984-07-23', 'pol.m@icmis.com', '0925-567-8901', 'Talomo, Davao City', 'Active', '2026-01-10');
+(1, 'EMP-2026-001', NULL, 1, 'Regular', 'Monthly', 2500.00, 65000.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Eduardo', 'Castillo', NULL, 'Male', NULL, 'eduardo.c@const.com', '0917-111-0001', 'Makati City', 'Active', '2023-01-10'),
+(2, 'EMP-2026-002', NULL, 1, 'Regular', 'Monthly', 2500.00, 65000.00, NULL, NULL, NULL, NULL, NULL, NULL, 'Theresa', 'Mendoza', NULL, 'Female', NULL, 'theresa.m@const.com', '0917-111-0002', 'Taguig City', 'Active', '2023-02-15'),
+(3, 'EMP-2026-003', NULL, 2, 'Regular', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 1, NULL, 'Marlon', 'Santos', NULL, 'Male', NULL, 'marlon.s@const.com', '0917-222-0003', 'Quezon City', 'Active', '2023-03-01'),
+(4, 'EMP-2026-004', NULL, 2, 'Regular', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 2, NULL, 'Jenny', 'Reyes', NULL, 'Female', NULL, 'jenny.r@const.com', '0917-222-0004', 'Pasig City', 'Active', '2023-03-05'),
+(5, 'EMP-2026-005', NULL, 3, 'Regular', 'Monthly', 2200.00, 57200.00, NULL, NULL, NULL, NULL, 1, NULL, 'Carlo', 'Dizon', NULL, 'Male', NULL, 'carlo.d@const.com', '0917-222-0005', 'Manila', 'Active', '2023-03-10'),
+(6, 'EMP-2026-006', NULL, 3, 'Regular', 'Monthly', 2200.00, 57200.00, NULL, NULL, NULL, NULL, 2, NULL, 'Grace', 'Lim', NULL, 'Female', NULL, 'grace.l@const.com', '0917-222-0006', 'San Juan', 'Active', '2023-03-12'),
+(7, 'EMP-2026-007', NULL, 4, 'Regular', 'Monthly', 2500.00, 65000.00, NULL, NULL, NULL, NULL, 1, NULL, 'Archie', 'Valdez', NULL, 'Male', NULL, 'archie.v@const.com', '0917-222-0007', 'Makati', 'Active', '2023-02-20'),
+(8, 'EMP-2026-008', NULL, 4, 'Regular', 'Monthly', 2500.00, 65000.00, NULL, NULL, NULL, NULL, 2, NULL, 'Melissa', 'Co', NULL, 'Female', NULL, 'melissa.c@const.com', '0917-222-0008', 'BGC', 'Active', '2023-02-25'),
+(9, 'EMP-2026-009', NULL, 5, 'Project-based', 'Monthly', 1500.00, 39000.00, NULL, NULL, NULL, NULL, 3, NULL, 'Ramon', 'Bautista', NULL, 'Male', NULL, 'ramon.b@const.com', '0917-333-0009', 'Marikina', 'Active', '2023-04-01'),
+(10, 'EMP-2026-010', NULL, 5, 'Project-based', 'Monthly', 1500.00, 39000.00, NULL, NULL, NULL, NULL, 4, NULL, 'Sarah', 'Geronimo', NULL, 'Female', NULL, 'sarah.g@const.com', '0917-333-0010', 'Cainta', 'Active', '2023-04-05'),
+(11, 'EMP-2026-011', NULL, 6, 'Regular', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 1, NULL, 'Ken', 'Go', NULL, 'Male', NULL, 'ken.g@const.com', '0917-444-0011', 'Manila', 'Active', '2023-01-20'),
+(12, 'EMP-2026-012', NULL, 6, 'Regular', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 1, NULL, 'Barbie', 'Imperial', NULL, 'Female', NULL, 'barbie.i@const.com', '0917-444-0012', 'QC', 'Active', '2023-01-22'),
+(13, 'EMP-2026-013', NULL, 7, 'Regular', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 1, NULL, 'Luis', 'Manzano', NULL, 'Male', NULL, 'luis.m@const.com', '0917-444-0013', 'Pasay', 'Active', '2023-02-01'),
+(14, 'EMP-2026-014', NULL, 7, 'Regular', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 2, NULL, 'Jessy', 'Mendiola', NULL, 'Female', NULL, 'jessy.m@const.com', '0917-444-0014', 'Pasay', 'Active', '2023-02-05'),
+(15, 'EMP-2026-015', NULL, 8, 'Project-based', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 3, NULL, 'John', 'Lloyd', NULL, 'Male', NULL, 'john.l@const.com', '0917-555-0015', 'Cebu', 'Active', '2023-03-15'),
+(16, 'EMP-2026-016', NULL, 8, 'Project-based', 'Monthly', 1800.00, 46800.00, NULL, NULL, NULL, NULL, 4, NULL, 'Bea', 'Alonzo', NULL, 'Female', NULL, 'bea.a@const.com', '0917-555-0016', 'Cebu', 'Active', '2023-03-18'),
+(17, 'EMP-2026-017', NULL, 9, 'Probationary', 'Daily', 800.00, 20800.00, NULL, NULL, NULL, NULL, 3, NULL, 'Vhong', 'Navarro', NULL, 'Male', NULL, 'vhong.n@const.com', '0917-666-0017', 'Cavite', 'Active', '2024-01-05'),
+(18, 'EMP-2026-018', NULL, 9, 'Probationary', 'Daily', 800.00, 20800.00, NULL, NULL, NULL, NULL, 4, NULL, 'Anne', 'Curtis', NULL, 'Female', NULL, 'anne.c@const.com', '0917-666-0018', 'Cavite', 'Active', '2024-01-08'),
+(19, 'EMP-2026-019', NULL, 10, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 3, NULL, 'Jhong', 'Hilario', NULL, 'Male', NULL, 'jhong.h@const.com', '0917-777-0019', 'Rizal', 'Active', '2024-01-10'),
+(20, 'EMP-2026-020', NULL, 10, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 4, NULL, 'Karylle', 'Tatlonghari', NULL, 'Female', NULL, 'karylle.t@const.com', '0917-777-0020', 'Rizal', 'Active', '2024-01-12'),
+(21, 'EMP-2026-021', NULL, 11, 'Project-based', 'Daily', 1200.00, 31200.00, NULL, NULL, NULL, NULL, 3, NULL, 'Binoe', 'Padilla', NULL, 'Male', NULL, NULL, '0919-888-0021', 'Tondo', 'Active', '2023-02-01'),
+(22, 'EMP-2026-022', NULL, 11, 'Project-based', 'Daily', 1200.00, 31200.00, NULL, NULL, NULL, NULL, 4, NULL, 'Coco', 'Martin', NULL, 'Male', NULL, NULL, '0919-888-0022', 'Quiapo', 'Active', '2023-02-05'),
+(23, 'EMP-2026-023', NULL, 12, 'Contractual', 'Daily', 900.00, 23400.00, NULL, NULL, NULL, NULL, 21, NULL, 'Lito', 'Lapid', NULL, 'Male', NULL, NULL, '0919-999-0023', 'Pampanga', 'Active', '2023-05-01'),
+(24, 'EMP-2026-024', NULL, 12, 'Contractual', 'Daily', 900.00, 23400.00, NULL, NULL, NULL, NULL, 22, NULL, 'Mark', 'Lapid', NULL, 'Male', NULL, NULL, '0919-999-0024', 'Pampanga', 'Active', '2023-05-02'),
+(25, 'EMP-2026-025', NULL, 13, 'Contractual', 'Daily', 750.00, 19500.00, NULL, NULL, NULL, NULL, 21, NULL, 'Joko', 'Diaz', NULL, 'Male', NULL, NULL, '0919-000-0025', 'Laguna', 'Active', '2023-06-01'),
+(26, 'EMP-2026-026', NULL, 13, 'Contractual', 'Daily', 750.00, 19500.00, NULL, NULL, NULL, NULL, 22, NULL, 'Kiko', 'Estrada', NULL, 'Male', NULL, NULL, '0919-000-0026', 'Laguna', 'Active', '2023-06-05'),
+(27, 'EMP-2026-027', NULL, 14, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 21, NULL, 'Monsour', 'Del Rosario', NULL, 'Male', NULL, NULL, '0919-000-0027', 'Batangas', 'Active', '2023-06-10'),
+(28, 'EMP-2026-028', NULL, 14, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 22, NULL, 'Richard', 'Gomez', NULL, 'Male', NULL, NULL, '0919-000-0028', 'Ormoc', 'Active', '2023-06-12'),
+(29, 'EMP-2026-029', NULL, 15, 'Contractual', 'Daily', 850.00, 22100.00, NULL, NULL, NULL, NULL, 21, NULL, 'Gardo', 'Versoza', NULL, 'Male', NULL, NULL, '0919-000-0029', 'Bulacan', 'Active', '2023-06-15'),
+(30, 'EMP-2026-030', NULL, 15, 'Contractual', 'Daily', 850.00, 22100.00, NULL, NULL, NULL, NULL, 22, NULL, 'Raymart', 'Santiago', NULL, 'Male', NULL, NULL, '0919-000-0030', 'Caloocan', 'Active', '2023-06-18'),
+(31, 'EMP-2026-031', NULL, 16, 'Contractual', 'Daily', 1000.00, 26000.00, NULL, NULL, NULL, NULL, 21, NULL, 'Benjie', 'Paras', NULL, 'Male', NULL, NULL, '0919-000-0031', 'Pasig', 'Active', '2023-07-01'),
+(32, 'EMP-2026-032', NULL, 16, 'Contractual', 'Daily', 1000.00, 26000.00, NULL, NULL, NULL, NULL, 22, NULL, 'Alvin', 'Patrimonio', NULL, 'Male', NULL, NULL, '0919-000-0032', 'Pasig', 'Active', '2023-07-05'),
+(33, 'EMP-2026-033', NULL, 17, 'Project-based', 'Daily', 1100.00, 28600.00, NULL, NULL, NULL, NULL, 3, NULL, 'Bitoy', 'Bunagan', NULL, 'Male', NULL, 'bitoy.b@gmail.com', '0919-111-0033', 'QC', 'Active', '2023-04-10'),
+(34, 'EMP-2026-034', NULL, 17, 'Project-based', 'Daily', 1100.00, 28600.00, NULL, NULL, NULL, NULL, 4, NULL, 'Ogie', 'Alcasid', NULL, 'Male', NULL, 'ogie.a@gmail.com', '0919-111-0034', 'QC', 'Active', '2023-04-12'),
+(35, 'EMP-2026-035', NULL, 18, 'Contractual', 'Daily', 800.00, 20800.00, NULL, NULL, NULL, NULL, 33, NULL, 'Teddy', 'Corpuz', NULL, 'Male', NULL, NULL, '0919-111-0035', 'QC', 'Active', '2023-04-15'),
+(36, 'EMP-2026-036', NULL, 18, 'Contractual', 'Daily', 800.00, 20800.00, NULL, NULL, NULL, NULL, 34, NULL, 'Jugs', 'Jugueta', NULL, 'Male', NULL, NULL, '0919-111-0036', 'QC', 'Active', '2023-04-18'),
+(37, 'EMP-2026-037', NULL, 19, 'Project-based', 'Daily', 1100.00, 28600.00, NULL, NULL, NULL, NULL, 3, NULL, 'Jose', 'Manalo', NULL, 'Male', NULL, NULL, '0919-222-0037', 'Bulacan', 'Active', '2023-05-01'),
+(38, 'EMP-2026-038', NULL, 19, 'Project-based', 'Daily', 1100.00, 28600.00, NULL, NULL, NULL, NULL, 4, NULL, 'Wally', 'Bayola', NULL, 'Male', NULL, NULL, '0919-222-0038', 'Bulacan', 'Active', '2023-05-05'),
+(39, 'EMP-2026-039', NULL, 20, 'Contractual', 'Daily', 750.00, 19500.00, NULL, NULL, NULL, NULL, 37, NULL, 'Paolo', 'Ballesteros', NULL, 'Male', NULL, NULL, '0919-222-0039', 'Antipolo', 'Active', '2023-05-10'),
+(40, 'EMP-2026-040', NULL, 20, 'Contractual', 'Daily', 750.00, 19500.00, NULL, NULL, NULL, NULL, 38, NULL, 'Ryan', 'Agoncillo', NULL, 'Male', NULL, NULL, '0919-222-0040', 'Alabang', 'Active', '2023-05-12'),
+(41, 'EMP-2026-041', NULL, 21, 'Contractual', 'Daily', 900.00, 23400.00, NULL, NULL, NULL, NULL, 3, NULL, 'Dingdong', 'Dantes', NULL, 'Male', NULL, NULL, '0919-333-0041', 'QC', 'Active', '2023-08-01'),
+(42, 'EMP-2026-042', NULL, 21, 'Contractual', 'Daily', 900.00, 23400.00, NULL, NULL, NULL, NULL, 4, NULL, 'Dennis', 'Trillo', NULL, 'Male', NULL, NULL, '0919-333-0042', 'QC', 'Active', '2023-08-05'),
+(43, 'EMP-2026-043', NULL, 22, 'Contractual', 'Daily', 900.00, 23400.00, NULL, NULL, NULL, NULL, 21, NULL, 'Derek', 'Ramsay', NULL, 'Male', NULL, NULL, '0919-444-0043', 'Alabang', 'Active', '2023-09-01'),
+(44, 'EMP-2026-044', NULL, 22, 'Contractual', 'Daily', 900.00, 23400.00, NULL, NULL, NULL, NULL, 22, NULL, 'Piolo', 'Pascual', NULL, 'Male', NULL, NULL, '0919-444-0044', 'Batangas', 'Active', '2023-09-05'),
+(45, 'EMP-2026-045', NULL, 23, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 21, NULL, 'Sam', 'Milby', NULL, 'Male', NULL, NULL, '0919-444-0045', 'Bulacan', 'Active', '2023-09-10'),
+(46, 'EMP-2026-046', NULL, 23, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 22, NULL, 'Gerald', 'Anderson', NULL, 'Male', NULL, NULL, '0919-444-0046', 'GenSan', 'Active', '2023-09-12'),
+(47, 'EMP-2026-047', NULL, 24, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 21, NULL, 'Enchong', 'Dee', NULL, 'Male', NULL, NULL, '0919-555-0047', 'Naga', 'Active', '2023-10-01'),
+(48, 'EMP-2026-048', NULL, 24, 'Contractual', 'Daily', 700.00, 18200.00, NULL, NULL, NULL, NULL, 22, NULL, 'Xian', 'Lim', NULL, 'Male', NULL, NULL, '0919-555-0048', 'Mandaluyong', 'Active', '2023-10-05'),
+(49, 'EMP-2026-049', NULL, 25, 'Contractual', 'Daily', 850.00, 22100.00, NULL, NULL, NULL, NULL, 21, NULL, 'Joshua', 'Garcia', NULL, 'Male', NULL, NULL, '0919-666-0049', 'Batangas', 'Active', '2023-11-01'),
+(50, 'EMP-2026-050', NULL, 25, 'Contractual', 'Daily', 850.00, 22100.00, NULL, NULL, NULL, NULL, 22, NULL, 'Daniel', 'Padilla', NULL, 'Male', NULL, NULL, '0919-666-0050', 'QC', 'Active', '2023-11-05'),
+(51, 'EMP-2026-051', NULL, 24, 'Full-time', 'Monthly', 700.00, 18200.00, 'Bank of the Philippine Islands (BPI)', '1231231231231', '123123123', '+63 1212121212', NULL, 'asdfasdfasd', 'asdfasdf', 'asdfasdf', '', 'Male', '2005-12-12', 'asdfasdf.asdfasdf@icmis.com', '+63 1212121212', '123sdas', 'Active', '2026-01-11');
 
 -- --------------------------------------------------------
 
@@ -674,16 +659,7 @@ CREATE TABLE `workforce_employee_groups` (
 --
 
 INSERT INTO `workforce_employee_groups` (`group_id`, `group_code`, `group_name`, `group_leader_id`, `description`) VALUES
-(1, 'GRP-2026-001', 'Civil Works Team Alpha', 103, 'Primary structural team responsible for foundation and column erection.'),
-(2, 'GRP-2026-002', 'Masonry Unit 1', 104, 'Specialized team for hollow block laying and wall plastering.'),
-(3, 'GRP-2026-003', 'Electrical Installation', 110, 'Responsible for all roughing-ins, wiring, and panel board termination.'),
-(4, 'GRP-2026-004', 'Site Safety Committee', 108, 'Oversight group for Occupational Safety and Health (OSH) compliance.'),
-(5, 'GRP-2026-005', 'Logistics and Support', 107, 'Handles material receiving, inventory monitoring, and timekeeping.'),
-(6, 'GRP-2026-006', 'Steel Fabrication', 109, 'Responsible for cutting, bending, and installing rebar reinforcements.'),
-(7, 'GRP-2026-007', 'Project Management', 101, 'Top-level supervision and stakeholder coordination team.'),
-(8, 'GRP-2026-008', 'Survey and Layout', 102, 'Ensures technical alignment and elevation accuracy based on blueprints.'),
-(9, 'GRP-2026-009', 'General Labor Force', 106, 'Support team for hauling, mixing, and site cleanliness maintenance.'),
-(10, 'GRP-2026-010', 'Emergency Response', 108, 'Special designated team for handling site accidents and first aid.');
+(1, 'GRP-2026-001', 'Test Team', 22, '');
 
 -- --------------------------------------------------------
 
@@ -699,13 +675,6 @@ CREATE TABLE `workforce_generated_reports` (
   `generated_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `workforce_generated_reports`
---
-
-INSERT INTO `workforce_generated_reports` (`report_id`, `project_id`, `report_type`, `report_name`, `generated_by`, `created_at`) VALUES
-(16, 1, 'employee-directory', 'Employee Directory', 'System', '2026-01-10 18:22:33');
 
 -- --------------------------------------------------------
 
@@ -726,21 +695,10 @@ CREATE TABLE `workforce_group_memberships` (
 --
 
 INSERT INTO `workforce_group_memberships` (`membership_id`, `employee_id`, `group_id`, `role_in_group`, `joined_date`) VALUES
-(1, 103, 1, 'Team Leader', '2026-01-07'),
-(2, 104, 1, 'Senior Technical Member', '2026-01-07'),
-(3, 104, 2, 'Team Leader', '2026-01-07'),
-(4, 105, 2, 'Mason', '2026-01-08'),
-(5, 106, 2, 'Assistant', '2026-01-08'),
-(6, 110, 3, 'Head Electrician', '2026-01-10'),
-(7, 108, 4, 'Safety Chairman', '2026-01-05'),
-(8, 107, 5, 'Logistics Coordinator', '2026-01-05'),
-(9, 109, 6, 'Fabrication Lead', '2026-01-10'),
-(10, 101, 7, 'Project Director', '2026-01-05'),
-(11, 102, 7, 'Technical Supervisor', '2026-01-05'),
-(12, 102, 8, 'Chief Surveyor', '2026-01-05'),
-(13, 106, 9, 'Head Laborer', '2026-01-08'),
-(14, 103, 10, 'First Aid Responder', '2026-01-07'),
-(15, 108, 10, 'Response Coordinator', '2026-01-05');
+(7, 40, 1, 'Pipe Fitter', '2026-01-11'),
+(8, 34, 1, 'Master Electrician', '2026-01-11'),
+(9, 16, 1, 'Quantity Surveyor', '2026-01-11'),
+(10, 46, 1, 'Rough Carpenter', '2026-01-11');
 
 -- --------------------------------------------------------
 
@@ -815,26 +773,10 @@ CREATE TABLE `workforce_payroll` (
 --
 
 INSERT INTO `workforce_payroll` (`payroll_id`, `employee_id`, `period_id`, `hours_worked`, `gross_pay`, `net_pay`, `status`) VALUES
-(11, 101, 9, 65.75, 33183.59, 30008.59, 'Processed'),
-(12, 102, 9, 64.08, 22521.63, 19846.63, 'Processed'),
-(13, 103, 9, 70.50, 10818.75, 9104.12, 'Processed'),
-(14, 104, 9, 64.00, 7200.00, 5992.00, 'Processed'),
-(15, 105, 9, 65.25, 6146.48, 5085.98, 'Processed'),
-(16, 106, 9, 63.25, 3953.13, 3241.56, 'Processed'),
-(17, 107, 9, 71.00, 7275.00, 6056.50, 'Processed'),
-(18, 108, 9, 64.00, 17500.00, 15075.00, 'Processed'),
-(19, 109, 9, 66.50, 7132.03, 5933.55, 'Processed'),
-(20, 110, 9, 64.00, 8800.00, 7368.00, 'Processed'),
-(21, 101, 10, 65.75, 33183.59, 30008.59, 'Processed'),
-(22, 102, 10, 64.08, 22521.63, 19846.63, 'Processed'),
-(23, 103, 10, 70.50, 10818.75, 9104.13, 'Processed'),
-(24, 104, 10, 64.00, 7200.00, 5992.00, 'Processed'),
-(25, 105, 10, 65.25, 6146.48, 5085.98, 'Processed'),
-(26, 106, 10, 63.25, 3953.13, 3241.56, 'Processed'),
-(27, 107, 10, 71.00, 7275.00, 6056.50, 'Processed'),
-(28, 108, 10, 64.00, 17500.00, 15075.00, 'Processed'),
-(29, 109, 10, 66.50, 7132.03, 5933.55, 'Processed'),
-(30, 110, 10, 64.00, 8800.00, 7368.00, 'Processed');
+(1, 40, 1, 8.00, 750.00, 615.00, 'Processed'),
+(2, 34, 1, 8.00, 1100.00, 902.00, 'Processed'),
+(3, 16, 1, 8.00, 23400.00, 20680.00, 'Processed'),
+(4, 46, 1, 8.00, 700.00, 574.00, 'Processed');
 
 -- --------------------------------------------------------
 
@@ -857,7 +799,7 @@ CREATE TABLE `workforce_payroll_periods` (
 --
 
 INSERT INTO `workforce_payroll_periods` (`period_id`, `start_date`, `end_date`, `pay_date`, `status`, `processed_by`, `created_at`) VALUES
-(10, '2026-01-01', '2026-01-15', '2026-01-10', 'Closed', NULL, '2026-01-10 04:26:51');
+(1, '2026-01-01', '2026-01-15', '2026-01-11', 'Closed', NULL, '2026-01-11 11:47:45');
 
 --
 -- Indexes for dumped tables
@@ -1073,31 +1015,31 @@ ALTER TABLE `workforce_payroll_periods`
 -- AUTO_INCREMENT for table `budget_expenses`
 --
 ALTER TABLE `budget_expenses`
-  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `budget_generated_reports`
 --
 ALTER TABLE `budget_generated_reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `budget_line_items`
 --
 ALTER TABLE `budget_line_items`
-  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=93;
 
 --
 -- AUTO_INCREMENT for table `budget_proposals`
 --
 ALTER TABLE `budget_proposals`
-  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `icmis_audit_logs`
 --
 ALTER TABLE `icmis_audit_logs`
-  MODIFY `log_id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `log_id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `icmis_generated_reports`
@@ -1109,13 +1051,13 @@ ALTER TABLE `icmis_generated_reports`
 -- AUTO_INCREMENT for table `icmis_projects`
 --
 ALTER TABLE `icmis_projects`
-  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `icmis_project_phases`
 --
 ALTER TABLE `icmis_project_phases`
-  MODIFY `phase_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `phase_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `icmis_tasks`
@@ -1127,37 +1069,37 @@ ALTER TABLE `icmis_tasks`
 -- AUTO_INCREMENT for table `icmis_users`
 --
 ALTER TABLE `icmis_users`
-  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `procurement_inventory`
 --
 ALTER TABLE `procurement_inventory`
-  MODIFY `item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_orders`
 --
 ALTER TABLE `procurement_purchase_orders`
-  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_order_items`
 --
 ALTER TABLE `procurement_purchase_order_items`
-  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_in`
 --
 ALTER TABLE `procurement_stock_in`
-  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_out`
 --
 ALTER TABLE `procurement_stock_out`
-  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `procurement_suppliers`
@@ -1169,37 +1111,37 @@ ALTER TABLE `procurement_suppliers`
 -- AUTO_INCREMENT for table `workforce_assignments`
 --
 ALTER TABLE `workforce_assignments`
-  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `workforce_attendance`
 --
 ALTER TABLE `workforce_attendance`
-  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
+  MODIFY `attendance_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT for table `workforce_employees`
 --
 ALTER TABLE `workforce_employees`
-  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
+  MODIFY `employee_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT for table `workforce_employee_groups`
 --
 ALTER TABLE `workforce_employee_groups`
-  MODIFY `group_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `group_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `workforce_generated_reports`
 --
 ALTER TABLE `workforce_generated_reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `workforce_group_memberships`
 --
 ALTER TABLE `workforce_group_memberships`
-  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `workforce_job_titles`
@@ -1211,13 +1153,13 @@ ALTER TABLE `workforce_job_titles`
 -- AUTO_INCREMENT for table `workforce_payroll`
 --
 ALTER TABLE `workforce_payroll`
-  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `workforce_payroll_periods`
 --
 ALTER TABLE `workforce_payroll_periods`
-  MODIFY `period_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `period_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- Constraints for dumped tables
@@ -1284,84 +1226,6 @@ ALTER TABLE `icmis_tasks`
 ALTER TABLE `procurement_inventory`
   ADD CONSTRAINT `fk_inv_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_inv_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `procurement_purchase_orders`
---
-ALTER TABLE `procurement_purchase_orders`
-  ADD CONSTRAINT `fk_po_creator` FOREIGN KEY (`created_by_user_id`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_po_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_po_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_po_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`) ON DELETE SET NULL;
-
---
--- Constraints for table `procurement_purchase_order_items`
---
-ALTER TABLE `procurement_purchase_order_items`
-  ADD CONSTRAINT `fk_po_item_header` FOREIGN KEY (`po_id`) REFERENCES `procurement_purchase_orders` (`po_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_po_item_inv` FOREIGN KEY (`inventory_item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE SET NULL;
-
---
--- Constraints for table `procurement_stock_in`
---
-ALTER TABLE `procurement_stock_in`
-  ADD CONSTRAINT `fk_stockin_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_stockin_po` FOREIGN KEY (`po_id`) REFERENCES `procurement_purchase_orders` (`po_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `procurement_stock_out`
---
-ALTER TABLE `procurement_stock_out`
-  ADD CONSTRAINT `fk_stockout_emp` FOREIGN KEY (`issued_to_employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_stockout_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_stockout_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `workforce_assignments`
---
-ALTER TABLE `workforce_assignments`
-  ADD CONSTRAINT `fk_assign_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_assign_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_assign_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `workforce_attendance`
---
-ALTER TABLE `workforce_attendance`
-  ADD CONSTRAINT `fk_att_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_att_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `workforce_employees`
---
-ALTER TABLE `workforce_employees`
-  ADD CONSTRAINT `fk_emp_job` FOREIGN KEY (`job_title_id`) REFERENCES `workforce_job_titles` (`job_title_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_emp_user` FOREIGN KEY (`user_id`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL;
-
---
--- Constraints for table `workforce_employee_groups`
---
-ALTER TABLE `workforce_employee_groups`
-  ADD CONSTRAINT `fk_group_leader` FOREIGN KEY (`group_leader_id`) REFERENCES `workforce_employees` (`employee_id`);
-
---
--- Constraints for table `workforce_generated_reports`
---
-ALTER TABLE `workforce_generated_reports`
-  ADD CONSTRAINT `fk_workforce_rep_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE SET NULL;
-
---
--- Constraints for table `workforce_group_memberships`
---
-ALTER TABLE `workforce_group_memberships`
-  ADD CONSTRAINT `fk_mem_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_mem_group` FOREIGN KEY (`group_id`) REFERENCES `workforce_employee_groups` (`group_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `workforce_payroll_periods`
---
-ALTER TABLE `workforce_payroll_periods`
-  ADD CONSTRAINT `fk_period_processor` FOREIGN KEY (`processed_by`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

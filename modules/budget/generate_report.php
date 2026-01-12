@@ -104,7 +104,7 @@ try {
         $generatedBy = $_SESSION['user_name'] ?? 'System';
 
         // Insert record (created_at uses NOW())
-        $ins = $db->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, ?, ?, NOW())");
+        $ins = $db->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, NULLIF(?,0), ?, NOW())");
         if ($ins) {
             $pid = isset($project['project_id']) ? intval($project['project_id']) : intval($project_id ?? 0);
             $ins->bind_param('ssis', $report_type, $reportName, $pid, $generatedBy);
