@@ -9,6 +9,9 @@ $employees = $conn->query("SELECT employee_id, first_name, last_name, employee_c
 $projects = $conn->query("SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC");
 $groups = $conn->query("SELECT group_id, group_name FROM workforce_employee_groups ORDER BY group_name ASC");
 
+$pageSection = "Labor & Workforce";
+$pageTitle = "Workforce Assignments";
+
 // Context
 $selected_project_id = getProjectContext($conn);
 ?>
@@ -17,7 +20,7 @@ $selected_project_id = getProjectContext($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assignments | ICMIS</title>
+    <title>Workforce Assignments | ICMIS</title>
     <?php include __DIR__ . '/../../includes/head_assetsv2.php'; ?>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>

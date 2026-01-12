@@ -17,6 +17,9 @@ if ($selected_project_id && $selected_project_id > 0) {
     if ($row = $sq->get_result()->fetch_assoc()) $selected_project_name = $row['project_name'];
     $sq->close();
 }
+
+$pageSection = "Labor & Workforce";
+$pageTitle = "Payroll Management";
 ?>
 <!DOCTYPE html>
 <html lang="en">

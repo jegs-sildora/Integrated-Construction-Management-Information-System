@@ -123,11 +123,11 @@ if (!isset($pageSection) || !isset($pageTitle)) {
         $pageSection = 'Budget';
         $pageTitle = 'Overview';
     } elseif (strpos($current_uri, '/workforce/') !== false) {
-        $pageSection = 'Workforce';
-        $pageTitle = 'Overview';
+        $pageSection = 'Labor & Workforce';
+        $pageTitle = 'Workforce Dashboard';
     } elseif (strpos($current_uri, '/project/') !== false) {
         $pageSection = 'Projects';
-        $pageTitle = 'Management';
+        $pageTitle = 'Overview';
     } elseif (strpos($current_uri, '/reports/') !== false) {
         $pageSection = 'Reports Center';
         $pageTitle = 'Overview';

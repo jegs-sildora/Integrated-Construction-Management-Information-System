@@ -84,6 +84,9 @@ if ($project_id > 0) {
 } else {
     $result_orders = false;
 }
+
+$pageSection = "Procurement & Inventory";
+$pageTitle = "Purchase Orders";
 ?>
 <!DOCTYPE html>
 <html lang="en">

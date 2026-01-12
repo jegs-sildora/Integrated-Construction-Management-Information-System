@@ -96,7 +96,7 @@ $statusColors = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Management - Kanban | ICMIS</title>
+    <title>Task Management | ICMIS</title>
     
     <?php include __DIR__ . '/../../includes/head_assets.php'; ?>
     
@@ -161,7 +161,7 @@ $statusColors = [
     
     <?php
         $pageTitle = "Task Management";
-        $pageSection = "Project Management";
+        $pageSection = "Project Operations";
         $pageSubTitle = '<span class="text-sm text-gray-500">Kanban board for task management</span>';
         include __DIR__ . '/../../includes/header.php'; 
     ?>

@@ -62,6 +62,9 @@ if ($project_id > 0) {
         }
     }
 }
+
+$pageSection = "Procurement & Inventory";
+$pageTitle = "Stock In Management";
 ?>
 <!DOCTYPE html>
 <html lang="en">

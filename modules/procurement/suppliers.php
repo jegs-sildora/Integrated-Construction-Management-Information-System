@@ -21,6 +21,9 @@ if (file_exists(__DIR__ . '/project_context.php')) {
         $_SESSION['current_project_id'] = $__ctx_project;
     }
 }
+
+$pageSection = "Procurement & Inventory";
+$pageTitle = "Supplier Management";
 ?>
 <!DOCTYPE html>
 <html lang="en">

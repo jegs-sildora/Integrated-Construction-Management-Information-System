@@ -38,7 +38,7 @@ if (session_status() === PHP_SESSION_NONE) {
         }
     </style>
 </head>
-<body class="bg-slate-100 h-screen flex items-center justify-center overflow-hidden text-slate-800 relative">
+<body class="bg-slate-100 h-screen flex items-center justify-center overflow-hidden text-slate-800 relative transition-all duration-300 animate-fade-in">
 
     <?php include __DIR__ . '/includes/toast.php'; ?>
 

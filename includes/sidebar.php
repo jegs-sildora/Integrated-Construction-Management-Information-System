@@ -114,7 +114,7 @@ $is_audit_logs = (strpos($current_uri, '/modules/logs/') !== false || strpos($cu
                     <svg class="w-3.5 h-3.5" style="stroke-width: 1.17;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
-                    <span class="<?php echo $is_projects ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Project Management</span>
+                    <span class="<?php echo $is_projects ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Project Operations</span>
                 </a>
             </li>
 
@@ -123,7 +123,7 @@ $is_audit_logs = (strpos($current_uri, '/modules/logs/') !== false || strpos($cu
                     <svg class="w-3.5 h-3.5" style="stroke-width: 1.17;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     </svg>
-                    <span class="font-semibold flex-1 text-left" style="font-size: 11.75px;">Budgeting & Cost Control</span>
+                    <span class="font-semibold flex-1 text-left" style="font-size: 11.75px;">Budget & Cost Control</span>
                     <svg class="w-3 h-3 transition-transform duration-200 <?php echo $is_budget ? 'rotate-180' : ''; ?>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>

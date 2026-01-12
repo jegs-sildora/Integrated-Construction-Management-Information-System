@@ -68,7 +68,7 @@ if ($result && $result->num_rows > 0) {
     <?php
         // Header Variables & Include
         $pageTitle = "Project Management";
-        $pageSection = "Project Management";
+        $pageSection = "Project Operations";
         $pageSubTitle = '<span class="text-sm text-gray-500">Manage all construction projects</span>';
         include __DIR__ . '/../../includes/header.php'; 
     ?>

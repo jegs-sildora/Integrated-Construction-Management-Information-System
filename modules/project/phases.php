@@ -82,7 +82,7 @@ while ($row = $projectsResult->fetch_assoc()) {
     
     <?php
         $pageTitle = "Phase Management";
-        $pageSection = "Project Management";
+        $pageSection = "Project Operations";
         $pageSubTitle = '<span class="text-sm text-gray-500">Define and manage project phases and milestones</span>';
         include __DIR__ . '/../../includes/header.php'; 
     ?>

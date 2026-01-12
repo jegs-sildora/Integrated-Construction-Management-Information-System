@@ -254,7 +254,7 @@ $ganttDataJson = json_encode($ganttData);
     
     <?php
         $pageTitle = "Gantt Chart";
-        $pageSection = "Project Management";
+        $pageSection = "Project Operations";
         $pageSubTitle = '<span class="text-sm text-gray-500">Visualize project timeline and task schedule</span>';
         include __DIR__ . '/../../includes/header.php'; 
     ?>

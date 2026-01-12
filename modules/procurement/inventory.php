@@ -51,6 +51,9 @@ if ($project_id > 0) {
 $sql_all = "SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC";
 $res_all = $conn->query($sql_all);
 if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
+
+$pageSection = "Procurement & Inventory";
+$pageTitle = "Inventory Masterlist";
 ?>
 <!DOCTYPE html>
 <html lang="en">

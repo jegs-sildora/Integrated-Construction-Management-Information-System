@@ -163,8 +163,6 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         $breadcrumbHTML .= '</div>';
         $breadcrumbHTML .= '</div>';
 
-        $pageTitle = "Reports Center";
-        $pageSection = "Reports & Analytics";
         $pageSubTitle = $breadcrumbHTML;
         include __DIR__ . '/../../includes/header.php';
         ?>
