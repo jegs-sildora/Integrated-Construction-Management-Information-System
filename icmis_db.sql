@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 11, 2026 at 10:58 PM
+-- Generation Time: Jan 13, 2026 at 07:30 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -20,6 +20,8 @@ SET time_zone = "+00:00";
 --
 -- Database: `icmis_db`
 --
+CREATE DATABASE IF NOT EXISTS `icmis_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+USE `icmis_db`;
 
 -- --------------------------------------------------------
 
@@ -40,13 +42,6 @@ CREATE TABLE `budget_expenses` (
   `created_by` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `budget_expenses`
---
-
-INSERT INTO `budget_expenses` (`expense_id`, `project_id`, `phase_id`, `supplier_id`, `category`, `description`, `amount`, `expense_date`, `status`, `created_by`) VALUES
-(1, 2, 1, 5, 'MATERIALS', 'PO-2026-0001 - Phase 1 Materials', 14544.00, '2026-01-11', 'APPROVED', NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -61,16 +56,6 @@ CREATE TABLE `budget_generated_reports` (
   `generated_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `budget_generated_reports`
---
-
-INSERT INTO `budget_generated_reports` (`report_id`, `project_id`, `report_type`, `report_name`, `generated_by`, `created_at`) VALUES
-(1, 2, 'budget', 'Budget Summary Report', 'John Doe', '2026-01-11 11:51:11'),
-(2, 2, 'employee', 'Employee Roster', 'John Doe', '2026-01-11 11:51:19'),
-(3, 2, 'budget', 'Budget Summary Report', 'Admin', '2026-01-11 12:24:42'),
-(4, 2, 'employee', 'Employee Roster', 'Admin', '2026-01-11 12:24:43');
 
 -- --------------------------------------------------------
 
@@ -88,16 +73,6 @@ CREATE TABLE `budget_line_items` (
   `duration` decimal(10,2) DEFAULT '1.00',
   `subtotal` decimal(15,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `budget_line_items`
---
-
-INSERT INTO `budget_line_items` (`line_item_id`, `proposal_id`, `category`, `item_name`, `quantity`, `unit_cost`, `duration`, `subtotal`) VALUES
-(89, 1, 'MATERIAL', 'Coco Lumber (bd.ft)', 12.00, 1212.00, 1.00, 14544.00),
-(90, 1, 'MATERIAL', 'Marine Plywood (1/4\")', 12.00, 1212.00, 1.00, 14544.00),
-(91, 1, 'LABOR', 'General Foreman', 12.00, 4000.00, 1.00, 48000.00),
-(92, 1, 'EQUIPMENT', 'Angle Grinder (4\")', 5.00, 1212.00, 1.00, 6060.00);
 
 -- --------------------------------------------------------
 
@@ -117,13 +92,6 @@ CREATE TABLE `budget_proposals` (
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `budget_proposals`
---
-
-INSERT INTO `budget_proposals` (`proposal_id`, `project_id`, `phase_id`, `code`, `title`, `description`, `total_amount`, `status`, `created_by`, `created_at`) VALUES
-(1, 2, 1, 'BP-2026-0001', 'Phase 1: Mobilization — Budget Proposal', 'descriptionasdfasdfasdf', 83148.00, 'APPROVED', 1, '2026-01-11 10:08:15');
 
 -- --------------------------------------------------------
 
@@ -149,26 +117,8 @@ CREATE TABLE `icmis_audit_logs` (
 --
 
 INSERT INTO `icmis_audit_logs` (`log_id`, `user_id`, `user_name`, `action`, `module`, `details`, `record_id`, `ip_address`, `user_agent`, `created_at`) VALUES
-(17, 1, 'John Doe', 'CREATE', 'Project', 'Created new project: Davao City (PRJ-2026-001)', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 09:49:29'),
-(18, 1, 'John Doe', 'CREATE', 'Budget', 'Submitted budget proposal: Phase 1: Mobilization — Budget Proposal (BP-2026-0001) - ₱83,148.00', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:08:15'),
-(19, 1, 'John Doe', 'CREATE', 'Procurement', 'Purchase Order Created: PO-2026-0001 - Phase 1 Materials (₱14,544.00)', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:17:37'),
-(20, 1, 'John Doe', 'UPDATE', 'Procurement', 'Purchase Order Updated: Phase 1 Materials - Status: APPROVED (₱14,544.00)', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:17:45'),
-(21, 1, 'John Doe', 'CREATE', 'Procurement', 'Stock Received for PO #1 - Items processed successfully', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:25:37'),
-(22, 1, 'John Doe', 'CREATE', 'Procurement', 'Stock Issued: 5 units to Employee #19', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 10:41:10'),
-(23, 1, 'John Doe', 'CREATE', 'Workforce', 'Employee Created: asdfasdf asdfasdf (EMP-2026-051)', 51, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:32:16'),
-(24, 1, 'John Doe', 'CREATE', 'Workforce', 'Payroll Locked: Period Jan 01-15, 2026 for Project #2 (4 employees processed)', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:47:45'),
-(25, 1, 'John Doe', 'EXPORT', 'Reports', 'Generated Report: Budget Summary Report for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:51:11'),
-(26, 1, 'John Doe', 'EXPORT', 'Reports', 'Generated Report: Employee Roster for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 11:51:19'),
-(27, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Budget Summary Report for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:24:42'),
-(28, NULL, 'System', 'EXPORT', 'Reports', 'Generated Report: Employee Roster for Davao City', 2, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:24:43'),
-(29, 1, 'John Doe', 'LOGIN', 'Auth', 'User logged in successfully', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:24:50'),
-(30, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:55:11'),
-(31, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:57:57'),
-(32, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 12:58:03'),
-(33, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payslip printed for Ryan Agoncillo', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:03:45'),
-(34, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payslip printed for Ryan Agoncillo', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:07:36'),
-(35, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:07:50'),
-(36, 1, 'John Doe', 'EXPORT', 'Workforce', 'Payroll report viewed/exported', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-11 13:29:59');
+(1, 1, 'John Doe', 'LOGIN', 'Auth', 'User logged in successfully', NULL, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-13 07:24:09'),
+(2, 1, 'John Doe', 'CREATE', 'Project', 'Created new project: Vista Verde Residential Complex (PRJ-2026-001)', 1, '0', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36', '2026-01-13 07:27:50');
 
 -- --------------------------------------------------------
 
@@ -185,16 +135,6 @@ CREATE TABLE `icmis_generated_reports` (
   `generated_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `icmis_generated_reports`
---
-
-INSERT INTO `icmis_generated_reports` (`id`, `report_name`, `category`, `project_id`, `project_name`, `generated_by`, `created_at`) VALUES
-(1, 'Budget Summary Report', 'budget', 2, 'Davao City', 'John Doe', '2026-01-11 11:51:11'),
-(2, 'Employee Roster', 'employee', 2, 'Davao City', 'John Doe', '2026-01-11 11:51:19'),
-(3, 'Budget Summary Report', 'budget', 2, 'Davao City', 'Admin', '2026-01-11 12:24:42'),
-(4, 'Employee Roster', 'employee', 2, 'Davao City', 'Admin', '2026-01-11 12:24:43');
 
 -- --------------------------------------------------------
 
@@ -221,7 +161,7 @@ CREATE TABLE `icmis_projects` (
 --
 
 INSERT INTO `icmis_projects` (`project_id`, `project_code`, `project_name`, `description`, `location`, `status`, `start_date`, `end_date`, `completion_rate`, `project_manager_id`, `total_budget`) VALUES
-(2, 'PRJ-2026-001', 'Davao City', 'Sample Description', 'Davao City', 'Planning', '2026-01-11', '2027-01-11', 0.00, 1, 1000000.00);
+(1, 'PRJ-2026-001', 'Vista Verde Residential Complex', 'Construction of a 3-storey residential building with 12 units, including parking and perimeter fencing.', 'Brgy. Estefania, Bacolod City', 'Planning', '2026-01-13', '2026-11-13', 0.00, 1, 10000000.00);
 
 -- --------------------------------------------------------
 
@@ -245,7 +185,7 @@ CREATE TABLE `icmis_project_phases` (
 --
 
 INSERT INTO `icmis_project_phases` (`phase_id`, `project_id`, `phase_name`, `description`, `start_date`, `end_date`, `duration`, `status`) VALUES
-(1, 2, 'Phase 1: Mobilization', 'Sample Description', '2026-01-11', '2026-03-11', 59, 'Not Started');
+(1, 1, 'Phase 1: Mobilization', 'Clearing, fencing, and temp facilities.', '2026-01-13', '2026-01-20', 7, 'Not Started');
 
 -- --------------------------------------------------------
 
@@ -271,7 +211,7 @@ CREATE TABLE `icmis_tasks` (
 --
 
 INSERT INTO `icmis_tasks` (`task_id`, `project_id`, `phase_id`, `task_name`, `description`, `assigned_to_employee_id`, `start_date`, `due_date`, `status`, `priority`) VALUES
-(1, 2, 1, 'Name', 'Description', 11, '2026-01-11', '2026-01-18', 'Not Started', 'High');
+(1, 1, 1, 'Prep', 'Clearing, fencing, and temp facilities.', 22, '2026-01-13', '2026-01-20', 'Not Started', 'High');
 
 -- --------------------------------------------------------
 
@@ -294,7 +234,7 @@ CREATE TABLE `icmis_users` (
 --
 
 INSERT INTO `icmis_users` (`user_id`, `full_name`, `email`, `password`, `role`, `avatar`, `created_at`) VALUES
-(1, 'John Doe', 'john.doe@icmis.com', '$2y$12$KeXhSnPmzmtTCSCKc7X/JOlS1eJZdQlZpnAX5unfumJqn44cfRmvS', 'Admin', NULL, '2026-01-11 08:27:44');
+(1, 'John Doe', 'john.doe@icmis.com', '$2y$12$OJh7QI0xBUojAMT1oFnNd.fktGOwvoNN8G1wftJVXxkS/4AtYy3Yy', 'Admin', NULL, '2026-01-13 07:24:05');
 
 -- --------------------------------------------------------
 
@@ -313,13 +253,6 @@ CREATE TABLE `procurement_inventory` (
   `unit_cost` decimal(15,2) DEFAULT '0.00',
   `last_updated` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `procurement_inventory`
---
-
-INSERT INTO `procurement_inventory` (`item_id`, `item_name`, `category`, `quantity`, `unit`, `project_id`, `phase_id`, `unit_cost`, `last_updated`) VALUES
-(1, 'Coco Lumber (bd.ft)', 'General', 7.00, 'pcs', 2, 1, 1212.00, '2026-01-11 10:41:10');
 
 -- --------------------------------------------------------
 
@@ -340,13 +273,6 @@ CREATE TABLE `procurement_purchase_orders` (
   `created_by_user_id` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `procurement_purchase_orders`
---
-
-INSERT INTO `procurement_purchase_orders` (`po_id`, `po_reference`, `project_id`, `phase_id`, `supplier_id`, `order_title`, `order_date`, `total_amount`, `status`, `created_by_user_id`) VALUES
-(1, 'PO-2026-0001', 2, 1, 5, 'Phase 1 Materials', '2026-01-11', 14544.00, 'COMPLETED', 1);
-
 -- --------------------------------------------------------
 
 --
@@ -362,13 +288,6 @@ CREATE TABLE `procurement_purchase_order_items` (
   `unit_cost` decimal(15,2) NOT NULL,
   `total_cost` decimal(15,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `procurement_purchase_order_items`
---
-
-INSERT INTO `procurement_purchase_order_items` (`po_item_id`, `po_id`, `inventory_item_id`, `item_name`, `quantity`, `unit_cost`, `total_cost`) VALUES
-(2, 1, NULL, 'Coco Lumber (bd.ft)', 12.00, 1212.00, 14544.00);
 
 -- --------------------------------------------------------
 
@@ -386,13 +305,6 @@ CREATE TABLE `procurement_stock_in` (
   `date_received` date DEFAULT (curdate())
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `procurement_stock_in`
---
-
-INSERT INTO `procurement_stock_in` (`stock_in_id`, `po_id`, `item_id`, `quantity_received`, `unit_cost`, `total_cost`, `date_received`) VALUES
-(1, 1, 1, 12, 1212.00, 14544.00, '2026-01-11');
-
 -- --------------------------------------------------------
 
 --
@@ -407,13 +319,6 @@ CREATE TABLE `procurement_stock_out` (
   `project_id` int DEFAULT NULL,
   `date_issued` date DEFAULT (curdate())
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `procurement_stock_out`
---
-
-INSERT INTO `procurement_stock_out` (`stock_out_id`, `item_id`, `quantity`, `issued_to_employee_id`, `project_id`, `date_issued`) VALUES
-(1, 1, 5, 19, NULL, '2026-01-11');
 
 -- --------------------------------------------------------
 
@@ -465,16 +370,6 @@ CREATE TABLE `workforce_assignments` (
   `end_date` date DEFAULT NULL,
   `status` enum('Active','Completed','Cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `workforce_assignments`
---
-
-INSERT INTO `workforce_assignments` (`assignment_id`, `employee_id`, `project_id`, `phase_id`, `role`, `task_description`, `start_date`, `end_date`, `status`) VALUES
-(1, 40, 2, NULL, 'Pipe Fitter', NULL, '2026-01-11', '2026-01-13', 'Active'),
-(2, 34, 2, 1, 'Master Electrician', NULL, '2026-01-11', '2026-02-11', 'Active'),
-(3, 16, 2, 1, 'Quantity Surveyor', NULL, '2026-01-11', '2026-02-11', 'Active'),
-(4, 46, 2, 1, 'Rough Carpenter', NULL, '2026-01-11', '2026-02-11', 'Active');
 
 -- --------------------------------------------------------
 
@@ -654,13 +549,6 @@ CREATE TABLE `workforce_employee_groups` (
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `workforce_employee_groups`
---
-
-INSERT INTO `workforce_employee_groups` (`group_id`, `group_code`, `group_name`, `group_leader_id`, `description`) VALUES
-(1, 'GRP-2026-001', 'Test Team', 22, '');
-
 -- --------------------------------------------------------
 
 --
@@ -689,16 +577,6 @@ CREATE TABLE `workforce_group_memberships` (
   `role_in_group` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `joined_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `workforce_group_memberships`
---
-
-INSERT INTO `workforce_group_memberships` (`membership_id`, `employee_id`, `group_id`, `role_in_group`, `joined_date`) VALUES
-(7, 40, 1, 'Pipe Fitter', '2026-01-11'),
-(8, 34, 1, 'Master Electrician', '2026-01-11'),
-(9, 16, 1, 'Quantity Surveyor', '2026-01-11'),
-(10, 46, 1, 'Rough Carpenter', '2026-01-11');
 
 -- --------------------------------------------------------
 
@@ -768,16 +646,6 @@ CREATE TABLE `workforce_payroll` (
   `status` enum('Calculated','Approved','Processed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Calculated'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `workforce_payroll`
---
-
-INSERT INTO `workforce_payroll` (`payroll_id`, `employee_id`, `period_id`, `hours_worked`, `gross_pay`, `net_pay`, `status`) VALUES
-(1, 40, 1, 8.00, 750.00, 615.00, 'Processed'),
-(2, 34, 1, 8.00, 1100.00, 902.00, 'Processed'),
-(3, 16, 1, 8.00, 23400.00, 20680.00, 'Processed'),
-(4, 46, 1, 8.00, 700.00, 574.00, 'Processed');
-
 -- --------------------------------------------------------
 
 --
@@ -793,13 +661,6 @@ CREATE TABLE `workforce_payroll_periods` (
   `processed_by` int DEFAULT NULL COMMENT 'Employee ID of the person who processed this',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `workforce_payroll_periods`
---
-
-INSERT INTO `workforce_payroll_periods` (`period_id`, `start_date`, `end_date`, `pay_date`, `status`, `processed_by`, `created_at`) VALUES
-(1, '2026-01-01', '2026-01-15', '2026-01-11', 'Closed', NULL, '2026-01-11 11:47:45');
 
 --
 -- Indexes for dumped tables
@@ -1015,43 +876,43 @@ ALTER TABLE `workforce_payroll_periods`
 -- AUTO_INCREMENT for table `budget_expenses`
 --
 ALTER TABLE `budget_expenses`
-  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `expense_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `budget_generated_reports`
 --
 ALTER TABLE `budget_generated_reports`
-  MODIFY `report_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `report_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `budget_line_items`
 --
 ALTER TABLE `budget_line_items`
-  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=93;
+  MODIFY `line_item_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `budget_proposals`
 --
 ALTER TABLE `budget_proposals`
-  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `proposal_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `icmis_audit_logs`
 --
 ALTER TABLE `icmis_audit_logs`
-  MODIFY `log_id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `log_id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `icmis_generated_reports`
 --
 ALTER TABLE `icmis_generated_reports`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `icmis_projects`
 --
 ALTER TABLE `icmis_projects`
-  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `project_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `icmis_project_phases`
@@ -1075,31 +936,31 @@ ALTER TABLE `icmis_users`
 -- AUTO_INCREMENT for table `procurement_inventory`
 --
 ALTER TABLE `procurement_inventory`
-  MODIFY `item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `item_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_orders`
 --
 ALTER TABLE `procurement_purchase_orders`
-  MODIFY `po_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `po_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `procurement_purchase_order_items`
 --
 ALTER TABLE `procurement_purchase_order_items`
-  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `po_item_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_in`
 --
 ALTER TABLE `procurement_stock_in`
-  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `stock_in_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `procurement_stock_out`
 --
 ALTER TABLE `procurement_stock_out`
-  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `stock_out_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `procurement_suppliers`
@@ -1111,7 +972,7 @@ ALTER TABLE `procurement_suppliers`
 -- AUTO_INCREMENT for table `workforce_assignments`
 --
 ALTER TABLE `workforce_assignments`
-  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `assignment_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `workforce_attendance`
@@ -1129,7 +990,7 @@ ALTER TABLE `workforce_employees`
 -- AUTO_INCREMENT for table `workforce_employee_groups`
 --
 ALTER TABLE `workforce_employee_groups`
-  MODIFY `group_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `group_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `workforce_generated_reports`
@@ -1141,7 +1002,7 @@ ALTER TABLE `workforce_generated_reports`
 -- AUTO_INCREMENT for table `workforce_group_memberships`
 --
 ALTER TABLE `workforce_group_memberships`
-  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `membership_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `workforce_job_titles`
@@ -1153,13 +1014,13 @@ ALTER TABLE `workforce_job_titles`
 -- AUTO_INCREMENT for table `workforce_payroll`
 --
 ALTER TABLE `workforce_payroll`
-  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `payroll_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `workforce_payroll_periods`
 --
 ALTER TABLE `workforce_payroll_periods`
-  MODIFY `period_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `period_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
