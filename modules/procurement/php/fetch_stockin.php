@@ -4,6 +4,8 @@ header('Content-Type: application/json');
 ini_set('display_errors', 0); 
 error_reporting(E_ALL);
 
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 try {
     // Use centralized config
     require_once __DIR__ . '/../../../config/config.php';
@@ -12,6 +14,9 @@ try {
         throw new Exception("Database connection failed");
     }
     $conn->set_charset("utf8mb4");
+
+    // Determine project_id from GET or session
+    $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : (isset($_SESSION['current_project_id']) ? intval($_SESSION['current_project_id']) : 0);
 
     // Fetch stock in records with PO reference and user info
     $sql = "SELECT 
@@ -27,8 +32,11 @@ try {
             LEFT JOIN procurement_purchase_orders po ON si.po_id = po.po_id
             LEFT JOIN procurement_inventory i ON si.item_id = i.item_id
             LEFT JOIN icmis_users u ON po.created_by_user_id = u.user_id
-            ORDER BY si.date_received DESC, si.stock_in_id DESC
-            LIMIT 50";
+            WHERE 1=1";
+    if ($project_id > 0) {
+        $sql .= " AND po.project_id = " . $project_id;
+    }
+    $sql .= " ORDER BY si.date_received DESC, si.stock_in_id DESC LIMIT 50";
 
     $result = $conn->query($sql);
 

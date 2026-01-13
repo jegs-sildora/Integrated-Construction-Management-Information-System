@@ -23,6 +23,7 @@
     let items = [];
     let activeTab = 'materials';
     let editingItemId = null;
+    let addItemLock = false;
 
     // Read embedded server data provided by PHP
     const DATA = window.EDIT_PROPOSAL_DATA || {};
@@ -420,42 +421,49 @@
         const qtyInput = document.getElementById(qtyInputId);
         const costInput = document.getElementById(costInputId);
         if (!nameInput || !qtyInput || !costInput) return;
-        let name = nameInput.value;
-        if(nameInput.tagName === 'SELECT') name = nameInput.value;
-        name = name.trim();
-        const quantity = parseFloat(qtyInput.value) || 0;
-        const cost = parseFloat(costInput.value) || 0;
-        if (name && quantity > 0 && cost > 0) {
-            const subtotal = quantity * cost;
-            if (editingItemId !== null) {
-                const index = items.findIndex(i => i.id === editingItemId);
-                if (index !== -1) {
-                    items[index] = { id: editingItemId, category, name, quantity, unitCost: cost, subtotal };
+        if (addItemLock) return; // prevent duplicate invocations
+        addItemLock = true;
+        try {
+            let name = nameInput.value;
+            if(nameInput.tagName === 'SELECT') name = nameInput.value;
+            name = name.trim();
+            const quantity = parseFloat(qtyInput.value) || 0;
+            const cost = parseFloat(costInput.value) || 0;
+            if (name && quantity > 0 && cost > 0) {
+                const subtotal = quantity * cost;
+                if (editingItemId !== null) {
+                    const index = items.findIndex(i => i.id === editingItemId);
+                    if (index !== -1) {
+                        items[index] = { id: editingItemId, category, name, quantity, unitCost: cost, subtotal };
+                    }
+                    showToastAjax('Item updated successfully', 'success');
+                    editingItemId = null;
+                } else {
+                    items.push({ id: Date.now(), category, name, quantity, unitCost: cost, subtotal });
+                    showToastAjax('Item added successfully', 'success');
                 }
-                showToastAjax('Item updated successfully', 'success');
-                editingItemId = null;
+                if(nameInput.tagName === 'INPUT') nameInput.value = '';
+                else nameInput.selectedIndex = 0;
+                qtyInput.value = '';
+                costInput.value = '';
+                renderItems();
+                updateGrandTotal();
+                updateButtonText();
             } else {
-                items.push({ id: Date.now(), category, name, quantity, unitCost: cost, subtotal });
-                showToastAjax('Item added successfully', 'success');
+                showToastAjax('Please fill all fields', 'warning');
             }
-            if(nameInput.tagName === 'INPUT') nameInput.value = '';
-            else nameInput.selectedIndex = 0;
-            qtyInput.value = '';
-            costInput.value = '';
-            renderItems();
-            updateGrandTotal();
-            updateButtonText();
-        } else {
-            showToastAjax('Please fill all fields', 'warning');
+        } finally {
+            // release lock quickly so legitimate subsequent clicks are allowed
+            setTimeout(() => { addItemLock = false; }, 50);
         }
     }
 
     const addMaterialBtn = document.getElementById('add-material');
-    if (addMaterialBtn) addMaterialBtn.addEventListener('click', () => handleAddItem('materials', 'material-name', 'material-quantity', 'material-cost'));
+    if (addMaterialBtn) addMaterialBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); handleAddItem('materials', 'material-name', 'material-quantity', 'material-cost'); });
     const addLaborBtn = document.getElementById('add-labor');
-    if (addLaborBtn) addLaborBtn.addEventListener('click', () => handleAddItem('labor', 'labor-type', 'labor-quantity', 'labor-rate'));
+    if (addLaborBtn) addLaborBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); handleAddItem('labor', 'labor-type', 'labor-quantity', 'labor-rate'); });
     const addEquipmentBtn = document.getElementById('add-equipment');
-    if (addEquipmentBtn) addEquipmentBtn.addEventListener('click', () => handleAddItem('equipment', 'equipment-name', 'equipment-quantity', 'equipment-rate'));
+    if (addEquipmentBtn) addEquipmentBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); handleAddItem('equipment', 'equipment-name', 'equipment-quantity', 'equipment-rate'); });
 
     // Expose edit/remove for inline handlers
     window.editItem = editItem;

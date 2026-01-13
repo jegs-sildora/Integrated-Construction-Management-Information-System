@@ -1,9 +1,10 @@
 <?php
 // generate_report.php - server-side printable report generator
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/project_context.php';
 
-// Get params
-$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+// Get params - fallback to session if not in GET
+$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : (isset($_SESSION['current_project_id']) ? intval($_SESSION['current_project_id']) : 0);
 $report_type = isset($_GET['report_type']) ? $_GET['report_type'] : 'expense-log';
 $phase = isset($_GET['phase']) ? $_GET['phase'] : '';
 
@@ -57,6 +58,30 @@ if (!$data || !isset($data['success']) || !$data['success']) {
 
 $payload = $data['data'];
 $project = $payload['project'] ?? [];
+
+// Determine Prepared By (session user or DB full_name fallback)
+$prepared_by = 'Authorized Staff';
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (!empty($_SESSION['user_name'])) {
+    $prepared_by = $_SESSION['user_name'];
+} elseif (!empty($_SESSION['user_id']) && defined('DB_HOST')) {
+    $uid = intval($_SESSION['user_id']);
+    $uconn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if ($uconn && !$uconn->connect_error) {
+        $q = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
+        if ($q) {
+            $q->bind_param('i', $uid);
+            $q->execute();
+            $res = $q->get_result();
+            if ($res && $res->num_rows > 0) {
+                $r = $res->fetch_assoc();
+                if (!empty($r['full_name'])) $prepared_by = $r['full_name'];
+            }
+            $q->close();
+        }
+        $uconn->close();
+    }
+}
 
 // Helper for report type title
 $reportTitle = match($report_type) {
@@ -549,7 +574,7 @@ $reportTitle = match($report_type) {
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-500 uppercase mb-12">Prepared By:</p>
                     <div class="border-b border-slate-800 w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase"><?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Authorized Staff'); ?></p>
+                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase"><?php echo htmlspecialchars($prepared_by); ?></p>
                     <p class="text-xs text-slate-500">Requestor</p>
                 </div>
 

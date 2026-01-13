@@ -193,8 +193,6 @@ if (!isset($pageSection) || !isset($pageTitle)) {
             
             <div id="userDropdownMenu" class="hidden absolute right-0 mt-3 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 animate-fade-in overflow-hidden">
                 <div class="py-1">
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Profile Settings</a>
-                    <div class="border-t border-gray-100 my-1"></div>
                     <a href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>modules/auth/api/logout.php" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors">
                         <i class="fa-solid fa-right-from-bracket"></i> Log Out
                     </a>

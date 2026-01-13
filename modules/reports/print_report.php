@@ -53,7 +53,29 @@ if ($project_id > 0) {
     $stmt->close();
 }
 
-$userName = $_SESSION['user_name'] ?? 'Admin';
+$userName = 'Admin';
+if (!empty($_SESSION['user_name'])) {
+    $userName = $_SESSION['user_name'];
+} elseif (!empty($_SESSION['user_id'])) {
+    $uid = intval($_SESSION['user_id']);
+    if (defined('DB_HOST')) {
+        $uconn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        if ($uconn && !$uconn->connect_error) {
+            $q = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
+            if ($q) {
+                $q->bind_param('i', $uid);
+                $q->execute();
+                $res = $q->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $r = $res->fetch_assoc();
+                    if (!empty($r['full_name'])) $userName = $r['full_name'];
+                }
+                $q->close();
+            }
+            $uconn->close();
+        }
+    }
+}
 
 // Report configuration
 $report_config = [
@@ -158,56 +180,72 @@ switch ($report_type) {
     // BUDGET REPORTS
     // ========================================
     case 'budget-summary':
+        // Get total budget from project or sum of approved proposals
+        $total_allocated = 0;
+        if ($project_id > 0 && $project) {
+            $total_allocated = floatval($project['total_budget']);
+        } else {
+            // Sum all approved proposals
+            $alloc_sql = "SELECT COALESCE(SUM(total_amount), 0) as total FROM budget_proposals WHERE status = 'APPROVED'";
+            $alloc_result = $conn->query($alloc_sql);
+            if ($alloc_result) {
+                $total_allocated = floatval($alloc_result->fetch_assoc()['total']);
+            }
+        }
+        
+        // Get expenses grouped by category
         $sql = "SELECT 
                     e.category,
-                    COALESCE(SUM(bp.total_amount), 0) as allocated,
-                    SUM(CASE WHEN e.status = 'APPROVED' THEN e.amount ELSE 0 END) as spent
+                    SUM(e.amount) as spent,
+                    COUNT(*) as expense_count
                 FROM budget_expenses e
-                LEFT JOIN budget_proposals bp ON e.project_id = bp.project_id AND bp.status = 'APPROVED'
                 WHERE 1=1";
         if ($project_id > 0) {
             $sql .= " AND e.project_id = $project_id";
         }
-        $sql .= " GROUP BY e.category ORDER BY e.category";
+        $sql .= " GROUP BY e.category ORDER BY spent DESC";
         
         $result = $conn->query($sql);
-        $total_allocated = 0;
         $total_spent = 0;
+        $category_data = [];
         
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $spent = floatval($row['spent']);
-                // Get allocated from budget proposals for this category
-                $allocated_sql = "SELECT COALESCE(SUM(total_amount), 0) as allocated FROM budget_proposals WHERE status = 'APPROVED'";
-                if ($project_id > 0) {
-                    $allocated_sql .= " AND project_id = $project_id";
-                }
-                $alloc_result = $conn->query($allocated_sql);
-                $allocated = $alloc_result ? floatval($alloc_result->fetch_assoc()['allocated']) : $spent * 1.2;
-                
-                // For per-category, estimate allocation proportionally
-                $allocated = max($spent * 1.15, $spent); // Placeholder logic
-                $remaining = $allocated - $spent;
-                $utilization = $allocated > 0 ? ($spent / $allocated) * 100 : 0;
-                
-                $total_allocated += $allocated;
                 $total_spent += $spent;
-                
-                $rows[] = [
+                $category_data[] = [
                     'category' => $row['category'] ?: 'Uncategorized',
-                    'allocated' => $allocated,
-                    'spent' => $spent,
-                    'remaining' => $remaining,
-                    'utilization' => $utilization
+                    'spent' => $spent
                 ];
             }
         }
         
+        // Calculate allocation per category proportionally based on spending
+        foreach ($category_data as $cat) {
+            $proportion = $total_spent > 0 ? ($cat['spent'] / $total_spent) : 0;
+            $allocated = $total_allocated * $proportion;
+            // Ensure allocated is at least equal to spent for display purposes
+            $allocated = max($allocated, $cat['spent']);
+            $remaining = $allocated - $cat['spent'];
+            $utilization = $allocated > 0 ? ($cat['spent'] / $allocated) * 100 : 0;
+            
+            $rows[] = [
+                'category' => $cat['category'],
+                'allocated' => $allocated,
+                'spent' => $cat['spent'],
+                'remaining' => $remaining,
+                'utilization' => $utilization
+            ];
+        }
+        
+        // Recalculate totals from rows
+        $total_allocated_display = array_sum(array_column($rows, 'allocated'));
+        
         $summary = [
-            'Total Allocated' => '₱' . number_format($total_allocated, 2),
+            'Total Budget' => '₱' . number_format($total_allocated, 2),
             'Total Spent' => '₱' . number_format($total_spent, 2),
-            'Total Remaining' => '₱' . number_format($total_allocated - $total_spent, 2),
-            'Overall Utilization' => $total_allocated > 0 ? number_format(($total_spent / $total_allocated) * 100, 1) . '%' : '0%'
+            'Remaining' => '₱' . number_format($total_allocated - $total_spent, 2),
+            'Utilization' => $total_allocated > 0 ? number_format(($total_spent / $total_allocated) * 100, 1) . '%' : '0%'
         ];
         break;
 
@@ -239,6 +277,19 @@ switch ($report_type) {
         break;
 
     case 'cash-flow':
+        // Get total budget as inflow reference
+        $total_budget = 0;
+        if ($project_id > 0 && $project) {
+            $total_budget = floatval($project['total_budget']);
+        } else {
+            $budget_sql = "SELECT COALESCE(SUM(total_budget), 0) as total FROM icmis_projects";
+            $budget_result = $conn->query($budget_sql);
+            if ($budget_result) {
+                $total_budget = floatval($budget_result->fetch_assoc()['total']);
+            }
+        }
+        
+        // Get monthly expenses
         $sql = "SELECT 
                     DATE_FORMAT(expense_date, '%Y-%m') as month_year,
                     SUM(amount) as monthly_total
@@ -247,31 +298,26 @@ switch ($report_type) {
         if ($project_id > 0) {
             $sql .= " AND project_id = $project_id";
         }
-        $sql .= " GROUP BY DATE_FORMAT(expense_date, '%Y-%m') ORDER BY month_year DESC LIMIT 12";
+        $sql .= " GROUP BY DATE_FORMAT(expense_date, '%Y-%m') ORDER BY month_year ASC LIMIT 12";
         
         $result = $conn->query($sql);
         $cumulative = 0;
-        $total_inflow = 0;
         $total_outflow = 0;
         
         if ($result) {
-            $temp_rows = [];
-            while ($row = $result->fetch_assoc()) {
-                $temp_rows[] = $row;
-            }
-            // Reverse to show oldest first for cumulative calculation
-            $temp_rows = array_reverse($temp_rows);
+            $month_count = $result->num_rows;
+            $monthly_budget = $month_count > 0 ? ($total_budget / max($month_count, 1)) : 0;
             
-            foreach ($temp_rows as $row) {
+            while ($row = $result->fetch_assoc()) {
                 $outflow = floatval($row['monthly_total']);
-                $inflow = $outflow * 1.1; // Placeholder - ideally from a revenue table
+                // Use proportional budget as "inflow" (budget allocation per month)
+                $inflow = $monthly_budget;
                 $net = $inflow - $outflow;
                 $cumulative += $net;
                 
                 $dateParts = explode('-', $row['month_year']);
                 $monthName = date('F Y', mktime(0, 0, 0, $dateParts[1], 1, $dateParts[0]));
                 
-                $total_inflow += $inflow;
                 $total_outflow += $outflow;
                 
                 $rows[] = [
@@ -282,14 +328,14 @@ switch ($report_type) {
                     'cumulative' => $cumulative
                 ];
             }
-            // Reverse back to show newest first
+            // Reverse to show newest first
             $rows = array_reverse($rows);
         }
         
         $summary = [
-            'Total Inflow' => '₱' . number_format($total_inflow, 2),
-            'Total Outflow' => '₱' . number_format($total_outflow, 2),
-            'Net Cash Flow' => '₱' . number_format($total_inflow - $total_outflow, 2)
+            'Total Budget' => '₱' . number_format($total_budget, 2),
+            'Total Spent' => '₱' . number_format($total_outflow, 2),
+            'Remaining' => '₱' . number_format($total_budget - $total_outflow, 2)
         ];
         break;
 
@@ -297,43 +343,64 @@ switch ($report_type) {
     // PROCUREMENT REPORTS
     // ========================================
     case 'inventory-status':
-        // Check if the procurement_inventory table has a 'reorder_level' column
+        // Check which columns exist in procurement_inventory
         $hasReorder = false;
-        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_inventory LIKE 'reorder_level'");
-        if ($colCheck && $colCheck->num_rows > 0) {
-            $hasReorder = true;
+        $hasUnitCost = false;
+        $hasProjectId = false;
+        
+        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_inventory");
+        if ($colCheck) {
+            while ($col = $colCheck->fetch_assoc()) {
+                if ($col['Field'] === 'reorder_level') $hasReorder = true;
+                if ($col['Field'] === 'unit_cost') $hasUnitCost = true;
+                if ($col['Field'] === 'project_id') $hasProjectId = true;
+            }
         }
 
-        if ($hasReorder) {
-            $sql = "SELECT item_id, item_name, category, quantity, unit, reorder_level 
-                    FROM procurement_inventory 
-                    ORDER BY category, item_name";
-        } else {
-            // Fallback: don't select a non-existent column
-            $sql = "SELECT item_id, item_name, category, quantity, unit 
-                    FROM procurement_inventory 
-                    ORDER BY category, item_name";
+        // Build dynamic SQL based on available columns
+        $selectCols = "item_id, item_name, category, quantity, unit";
+        if ($hasReorder) $selectCols .= ", reorder_level";
+        if ($hasUnitCost) $selectCols .= ", unit_cost";
+        
+        $sql = "SELECT $selectCols FROM procurement_inventory WHERE 1=1";
+        if ($project_id > 0 && $hasProjectId) {
+            $sql .= " AND project_id = $project_id";
         }
+        $sql .= " ORDER BY category, item_name";
 
         $result = $conn->query($sql);
         $low_stock_count = 0;
         $total_items = 0;
+        $total_value = 0;
 
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $qty = intval($row['quantity']);
-                $reorder = isset($row['reorder_level']) ? intval($row['reorder_level']) : 10; // safe default
-                $status = $qty <= $reorder ? 'Low Stock' : ($qty <= $reorder * 3 ? 'Normal' : 'Well Stocked');
+                $reorder = isset($row['reorder_level']) ? intval($row['reorder_level']) : 10;
+                $unit_cost = isset($row['unit_cost']) ? floatval($row['unit_cost']) : 0;
+                
+                // Determine status based on quantity vs reorder level
+                if ($qty <= 0) {
+                    $status = 'Out of Stock';
+                    $low_stock_count++;
+                } elseif ($qty <= $reorder) {
+                    $status = 'Low Stock';
+                    $low_stock_count++;
+                } elseif ($qty <= $reorder * 2) {
+                    $status = 'Normal';
+                } else {
+                    $status = 'Well Stocked';
+                }
 
-                if ($qty <= $reorder) $low_stock_count++;
                 $total_items++;
+                $total_value += $qty * $unit_cost;
 
                 $rows[] = [
                     'item_id' => $row['item_id'],
                     'item_name' => $row['item_name'],
-                    'category' => $row['category'],
+                    'category' => $row['category'] ?: 'Uncategorized',
                     'quantity' => $qty,
-                    'unit' => $row['unit'],
+                    'unit' => $row['unit'] ?: 'pcs',
                     'status' => $status
                 ];
             }
@@ -341,39 +408,64 @@ switch ($report_type) {
         
         $summary = [
             'Total Items' => $total_items,
-            'Low Stock Items' => $low_stock_count,
+            'Low/Out of Stock' => $low_stock_count,
+            'Total Value' => '₱' . number_format($total_value, 2),
             'Stock Health' => $total_items > 0 ? number_format((($total_items - $low_stock_count) / $total_items) * 100, 1) . '%' : '100%'
         ];
         break;
 
     case 'purchase-orders':
-        $sql = "SELECT po.po_id, po.po_reference, s.supplier_name, po.order_date, po.total_amount, po.status,
+        // Check if project_id column exists
+        $hasProjectId = false;
+        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_purchase_orders LIKE 'project_id'");
+        if ($colCheck && $colCheck->num_rows > 0) {
+            $hasProjectId = true;
+        }
+        
+        $sql = "SELECT po.po_id, po.po_reference, COALESCE(s.supplier_name, 'N/A') as supplier_name, 
+                       po.order_date, po.total_amount, po.status,
                        (SELECT COUNT(*) FROM procurement_purchase_order_items poi WHERE poi.po_id = po.po_id) as item_count
                 FROM procurement_purchase_orders po
                 LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
-                ORDER BY po.order_date DESC LIMIT 50";
+                WHERE 1=1";
+        if ($project_id > 0 && $hasProjectId) {
+            $sql .= " AND po.project_id = $project_id";
+        }
+        $sql .= " ORDER BY po.order_date DESC LIMIT 50";
         
         $result = $conn->query($sql);
         $total_amount = 0;
         $pending_count = 0;
+        $delivered_count = 0;
         
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $total_amount += floatval($row['total_amount']);
-                if (strtolower($row['status']) === 'pending') $pending_count++;
+                $status = strtolower($row['status'] ?? '');
+                if ($status === 'pending' || $status === 'processing') $pending_count++;
+                if ($status === 'delivered' || $status === 'completed' || $status === 'received') $delivered_count++;
                 $rows[] = $row;
             }
         }
         
         $summary = [
             'Total Orders' => count($rows),
-            'Pending Orders' => $pending_count,
+            'Pending' => $pending_count,
+            'Delivered' => $delivered_count,
             'Total Value' => '₱' . number_format($total_amount, 2)
         ];
         break;
 
     case 'stock-movement':
         $movements = [];
+        
+        // Check if project_id columns exist
+        $hasProjectIdIn = false;
+        $hasProjectIdOut = false;
+        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_stock_in LIKE 'project_id'");
+        if ($colCheck && $colCheck->num_rows > 0) $hasProjectIdIn = true;
+        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_stock_out LIKE 'project_id'");
+        if ($colCheck && $colCheck->num_rows > 0) $hasProjectIdOut = true;
         
         // Stock In
         $sql = "SELECT si.date_received as movement_date, COALESCE(i.item_name, 'Unknown') as item_name, 
@@ -382,7 +474,11 @@ switch ($report_type) {
                 FROM procurement_stock_in si
                 LEFT JOIN procurement_purchase_orders po ON si.po_id = po.po_id
                 LEFT JOIN procurement_inventory i ON si.item_id = i.item_id
-                ORDER BY si.date_received DESC LIMIT 50";
+                WHERE 1=1";
+        if ($project_id > 0 && $hasProjectIdIn) {
+            $sql .= " AND si.project_id = $project_id";
+        }
+        $sql .= " ORDER BY si.date_received DESC LIMIT 50";
         
         $result = $conn->query($sql);
         if ($result) {
@@ -391,14 +487,27 @@ switch ($report_type) {
             }
         }
         
-        // Stock Out
+        // Stock Out - detect which quantity column exists to avoid SQL errors
+        $qtyCandidates = ['quantity', 'qty', 'quantity_issued', 'issued_qty'];
+        $foundCols = [];
+        foreach ($qtyCandidates as $c) {
+            $colCheckQty = $conn->query("SHOW COLUMNS FROM procurement_stock_out LIKE '$c'");
+            if ($colCheckQty && $colCheckQty->num_rows > 0) $foundCols[] = "so.$c";
+        }
+        $qtyExpr = !empty($foundCols) ? 'COALESCE(' . implode(', ', $foundCols) . ', 0)' : '0';
+
+        // Build Stock Out SELECT using the discovered quantity expression
         $sql = "SELECT so.date_issued as movement_date, COALESCE(i.item_name, 'Unknown') as item_name,
-                       'Stock Out' as type, so.quantity, '-' as reference,
+                       'Stock Out' as type, $qtyExpr as quantity, '-' as reference,
                        COALESCE(CONCAT(emp.first_name, ' ', emp.last_name), 'N/A') as handler
                 FROM procurement_stock_out so
                 LEFT JOIN procurement_inventory i ON so.item_id = i.item_id
                 LEFT JOIN workforce_employees emp ON so.issued_to_employee_id = emp.employee_id
-                ORDER BY so.date_issued DESC LIMIT 50";
+                WHERE 1=1";
+        if ($project_id > 0 && $hasProjectIdOut) {
+            $sql .= " AND so.project_id = $project_id";
+        }
+        $sql .= " ORDER BY so.date_issued DESC LIMIT 50";
         
         $result = $conn->query($sql);
         if ($result) {
@@ -407,19 +516,26 @@ switch ($report_type) {
             }
         }
         
-        // Sort by date
+        // Sort by date (newest first)
         usort($movements, function($a, $b) {
             return strtotime($b['movement_date']) - strtotime($a['movement_date']);
         });
         
+        // Compute totals using the complete movements list, then slice for display
+        $total_movements = count($movements);
+        $stock_in_count = count(array_filter($movements, function($r){ return ($r['type'] ?? '') === 'Stock In'; }));
+        $stock_out_count = count(array_filter($movements, function($r){ return ($r['type'] ?? '') === 'Stock Out'; }));
+
+        // Calculate total quantities across all movements
+        $total_in_qty = array_sum(array_map(function($r){ return (($r['type'] ?? '') === 'Stock In') ? intval($r['quantity'] ?? 0) : 0; }, $movements));
+        $total_out_qty = array_sum(array_map(function($r){ return (($r['type'] ?? '') === 'Stock Out') ? intval($r['quantity'] ?? 0) : 0; }, $movements));
+
         $rows = array_slice($movements, 0, 50);
-        $stock_in_count = count(array_filter($rows, fn($r) => $r['type'] === 'Stock In'));
-        $stock_out_count = count($rows) - $stock_in_count;
-        
+
         $summary = [
-            'Total Movements' => count($rows),
-            'Stock In' => $stock_in_count,
-            'Stock Out' => $stock_out_count
+            'Total Movements' => $total_movements,
+            'Stock In' => $stock_in_count . ' (' . number_format($total_in_qty) . ' units)',
+            'Stock Out' => $stock_out_count . ' (' . number_format($total_out_qty) . ' units)'
         ];
         break;
 

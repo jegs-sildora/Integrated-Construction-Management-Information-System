@@ -2,6 +2,8 @@
 // modules/procurement/php/save_stockout.php
 header('Content-Type: application/json');
 
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 // Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../core/Logger.php';
@@ -18,7 +20,14 @@ $item_id = intval($_POST['stock_itemID'] ?? 0);
 $qty = floatval($_POST['stock_quantity'] ?? 0);
 $issued_to_input = trim($_POST['stock_issuedTo'] ?? '');
 $issued_to_id = intval($_POST['stock_issuedTo_id'] ?? 0);
-$project_id = intval($_POST['stock_projectID'] ?? 0);
+
+// Get project_id from POST or fallback to session
+$project_id = 0;
+if (isset($_POST['stock_projectID']) && intval($_POST['stock_projectID']) > 0) {
+    $project_id = intval($_POST['stock_projectID']);
+} elseif (isset($_SESSION['current_project_id']) && intval($_SESSION['current_project_id']) > 0) {
+    $project_id = intval($_SESSION['current_project_id']);
+}
 
 // Try to resolve employee id from provided input if hidden id wasn't set
 if ($issued_to_id <= 0 && $issued_to_input !== '') {

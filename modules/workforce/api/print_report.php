@@ -14,7 +14,29 @@ if (!isset($_GET['project_id']) || !isset($_GET['type'])) {
 $project_id = intval($_GET['project_id']);
 $type = $_GET['type'];
 $month = $_GET['month'] ?? date('Y-m');
-$generatedBy = $_SESSION['user_name'] ?? 'System';
+$generatedBy = 'System';
+if (!empty($_SESSION['user_name'])) {
+    $generatedBy = $_SESSION['user_name'];
+} elseif (!empty($_SESSION['user_id'])) {
+    $uid = intval($_SESSION['user_id']);
+    if (defined('DB_HOST')) {
+        $uconn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        if ($uconn && !$uconn->connect_error) {
+            $q = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
+            if ($q) {
+                $q->bind_param('i', $uid);
+                $q->execute();
+                $res = $q->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $r = $res->fetch_assoc();
+                    if (!empty($r['full_name'])) $generatedBy = $r['full_name'];
+                }
+                $q->close();
+            }
+            $uconn->close();
+        }
+    }
+}
 
 // 1. Fetch Project Details
 $project_name = "Unknown Project";
@@ -365,7 +387,7 @@ $conn->close();
                     <p class="text-xs font-bold text-slate-500 uppercase mb-12">Prepared By:</p>
                     <div class="border-b border-slate-800 w-3/4 mx-auto"></div>
                     <p class="text-sm font-bold mt-2 text-slate-900 uppercase"><?php echo htmlspecialchars($generatedBy); ?></p>
-                    <p class="text-xs text-slate-500">System Generated</p>
+                    <p class="text-xs text-slate-500">ICMIS Reporting</p>
                 </div>
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-500 uppercase mb-12">Verified By:</p>

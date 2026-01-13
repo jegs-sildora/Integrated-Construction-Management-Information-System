@@ -4,6 +4,8 @@ error_reporting(0);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
 
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 // Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -13,8 +15,8 @@ if ($conn->connect_error) {
 }
 $conn->set_charset("utf8mb4");
 
-// Get project_id from request if provided
-$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+// Get project_id from request or session
+$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : (isset($_SESSION['current_project_id']) ? intval($_SESSION['current_project_id']) : 0);
 
 // Build query with correct table and column names
 $sql = "SELECT 

@@ -71,6 +71,8 @@ $is_po = in_array($current_page, ['orders.php', 'create_order.php', 'edit_order.
 $is_stock_in = ($current_page === 'stock_in.php');
 $is_stock_out = ($current_page === 'stock_out.php');
 $is_suppliers = ($current_page === 'suppliers.php');
+// Procurement Reports page within procurement module
+$is_procurement_reports = ($current_page === 'reports.php' && $is_procurement);
 
 // 6. WORKFORCE MODULE
 $is_workforce = strpos($current_uri, '/modules/workforce/') !== false;
@@ -154,6 +156,7 @@ $is_audit_logs = (strpos($current_uri, '/modules/logs/') !== false || strpos($cu
                     <li><a href="<?php echo $procurement_path; ?>stock_in.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_stock_in ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_stock_in ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Stock In</span></a></li>
                     <li><a href="<?php echo $procurement_path; ?>stock_out.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_stock_out ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_stock_out ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Stock Out</span></a></li>
                     <li><a href="<?php echo $procurement_path; ?>suppliers.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_suppliers ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_suppliers ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Suppliers</span></a></li>
+                    <li><a href="<?php echo $procurement_path; ?>reports.php<?php echo $project_qs; ?>" class="flex items-center w-full px-3 py-2 <?php echo $is_procurement_reports ? 'text-[#e9922c] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'; ?> rounded-lg"><span class="<?php echo $is_procurement_reports ? 'font-bold' : 'font-semibold'; ?>" style="font-size: 11.75px;">Procurement Reports</span></a></li>
                 </ul>
             </li>
 

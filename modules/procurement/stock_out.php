@@ -90,6 +90,7 @@ $pageTitle = "Stock Out Management";
             <button onclick="closeIssueModal()" class="text-white/80 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
           <form id="issueStockForm" class="p-6 space-y-5">
+            <input type="hidden" id="stock_projectID" name="stock_projectID" value="<?= $project_id ?>">
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-bold text-slate-500 uppercase">Select Item</label>
               <select id="stock_itemID" name="stock_itemID" required class="w-full p-2.5 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-red-200 outline-none transition-all">

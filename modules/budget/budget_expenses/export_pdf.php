@@ -36,8 +36,8 @@ try {
     switch ($report_type) {
         case 'budget-summary':
         case 'budget_summary':
-            // Fetch expenses for project
-            $sql = "SELECT e.expense_id, e.expense_date, e.category, e.description, e.amount, s.supplier_name
+                // Fetch expenses for project (include status so we can compute approved spending)
+                $sql = "SELECT e.expense_id, e.expense_date, e.category, e.description, e.amount, e.status, s.supplier_name
                     FROM budget_expenses e
                     LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
                     WHERE e.project_id = ? ORDER BY e.expense_date DESC";
@@ -46,34 +46,91 @@ try {
             $stmt->execute();
             $result = $stmt->get_result();
             $expenses = [];
-            $totals = ['grand_total' => 0];
+            $totals = ['grand_total' => 0, 'approved_total' => 0];
             while ($r = $result->fetch_assoc()) {
                 $expenses[] = $r;
-                $totals['grand_total'] += floatval($r['amount']);
+                $amt = floatval($r['amount']);
+                $totals['grand_total'] += $amt;
+                if (isset($r['status']) && strtoupper($r['status']) === 'APPROVED') {
+                    $totals['approved_total'] += $amt;
+                }
             }
             $stmt->close();
 
+            // Expose approved spending as actual_spending on the project payload
             $payload['expenses'] = $expenses;
             $payload['totals'] = $totals;
+            $payload['project']['actual_spending'] = $totals['approved_total'];
+            break;
+
+        case 'phase-analysis':
+        case 'phase_analysis':
+            // Fetch project phases and compute allocated (approved proposals) and spent (approved expenses)
+            $phases = [];
+            $pq = $conn->prepare("SELECT phase_id, phase_name, start_date, end_date FROM icmis_project_phases WHERE project_id = ? ORDER BY phase_id ASC");
+            $pq->bind_param('i', $project_id);
+            $pq->execute();
+            $pres = $pq->get_result();
+            while ($prow = $pres->fetch_assoc()) {
+                $phase_id = intval($prow['phase_id']);
+
+                // Allocated from approved proposals for this phase
+                $aq = $conn->prepare("SELECT COALESCE(SUM(total_amount),0) as allocated FROM budget_proposals WHERE project_id = ? AND phase_id = ? AND status = 'APPROVED'");
+                $aq->bind_param('ii', $project_id, $phase_id);
+                $aq->execute();
+                $ares = $aq->get_result();
+                $allocated = floatval($ares->fetch_assoc()['allocated'] ?? 0);
+                $aq->close();
+
+                // Spent from approved expenses in this phase
+                $sq = $conn->prepare("SELECT COALESCE(SUM(amount),0) as spent FROM budget_expenses WHERE project_id = ? AND phase_id = ? AND status = 'APPROVED'");
+                $sq->bind_param('ii', $project_id, $phase_id);
+                $sq->execute();
+                $sres = $sq->get_result();
+                $spent = floatval($sres->fetch_assoc()['spent'] ?? 0);
+                $sq->close();
+
+                $variance = $allocated - $spent;
+                $util = $allocated > 0 ? ($spent / $allocated) * 100 : 0;
+
+                $phases[] = [
+                    'phase_id' => $phase_id,
+                    'phase_name' => $prow['phase_name'],
+                    'start_date' => $prow['start_date'] ?? null,
+                    'end_date' => $prow['end_date'] ?? null,
+                    'budget' => $allocated,
+                    'spent' => $spent,
+                    'variance' => $variance,
+                    'utilization' => $util
+                ];
+            }
+            $pq->close();
+
+            $payload['phases'] = $phases;
             break;
 
         case 'labor-analysis':
         case 'labor_analysis':
-            // Example: use payroll_expenses table if exists
-            $sql = "SELECT le.expense_id, le.expense_date, le.description, le.phase, le.amount
-                    FROM payroll_expenses le
-                    WHERE le.project_id = ? ORDER BY le.expense_date DESC";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param('i', $project_id);
-            $stmt->execute();
-            $res = $stmt->get_result();
+            // Use payroll_expenses table if it exists; otherwise return empty list
             $list = [];
             $total = 0;
-            while ($r = $res->fetch_assoc()) {
-                $list[] = $r;
-                $total += floatval($r['amount']);
+            $check = $conn->query("SHOW TABLES LIKE 'payroll_expenses'");
+            if ($check && $check->num_rows > 0) {
+                $sql = "SELECT le.expense_id, le.expense_date, le.description, le.phase, le.amount
+                        FROM payroll_expenses le
+                        WHERE le.project_id = ? ORDER BY le.expense_date DESC";
+                $stmt = $conn->prepare($sql);
+                if ($stmt) {
+                    $stmt->bind_param('i', $project_id);
+                    $stmt->execute();
+                    $res = $stmt->get_result();
+                    while ($r = $res->fetch_assoc()) {
+                        $list[] = $r;
+                        $total += floatval($r['amount']);
+                    }
+                    $stmt->close();
+                }
             }
-            $stmt->close();
             $payload['labor_expenses'] = $list;
             $payload['total_labor'] = $total;
             break;

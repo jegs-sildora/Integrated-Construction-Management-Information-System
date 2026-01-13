@@ -4,8 +4,7 @@
 // Expenses are now automatically synced from the Procurement module.
 // This file redirects users to the expenses list.
 // ============================================================
-
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Set a notice message
 $_SESSION['toast_message'] = 'Manual expense editing has been disabled. Expenses are now automatically synced from completed Purchase Orders. To modify an expense, please update the corresponding Purchase Order in the Procurement module.';

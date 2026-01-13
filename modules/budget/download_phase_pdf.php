@@ -2,6 +2,7 @@
 // download_phase_pdf.php
 // Include config for database connection
 require_once __DIR__ . '/../../config/config.php';
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -126,6 +127,27 @@ while ($row = $result_expenses_list->fetch_assoc()) {
 
 if (!$phase_data) {
     die('Phase data not found');
+}
+
+// Determine the "Prepared By" name from session; fall back to DB or default text
+$prepared_by = 'System Generated';
+if (!empty($_SESSION['user_name'])) {
+    $prepared_by = $_SESSION['user_name'];
+} elseif (!empty($_SESSION['user_id'])) {
+    $uid = intval($_SESSION['user_id']);
+    $sql_user = "SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1";
+    if ($stmt_user = $conn->prepare($sql_user)) {
+        $stmt_user->bind_param('i', $uid);
+        $stmt_user->execute();
+        $res_user = $stmt_user->get_result();
+        if ($res_user && $res_user->num_rows > 0) {
+            $urow = $res_user->fetch_assoc();
+            if (!empty($urow['full_name'])) {
+                $prepared_by = $urow['full_name'];
+            }
+        }
+        $stmt_user->close();
+    }
 }
 
 // Helper for status badge color
@@ -372,7 +394,7 @@ if ($utilization > 100) {
                 <div class="text-center">
                     <p class="text-xs font-bold text-slate-500 uppercase mb-12">Prepared By:</p>
                     <div class="border-b border-slate-800 w-3/4 mx-auto"></div>
-                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase">System Generated</p>
+                    <p class="text-sm font-bold mt-2 text-slate-900 uppercase"><?php echo htmlspecialchars($prepared_by); ?></p>
                     <p class="text-xs text-slate-500">ICMIS Reporting</p>
                 </div>
 

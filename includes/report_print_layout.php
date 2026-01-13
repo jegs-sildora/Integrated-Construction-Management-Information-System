@@ -71,6 +71,11 @@ function renderPrintStyles(): string {
     .print-footer { margin-top: 50px !important; page-break-inside: avoid; }
 }
 
+// Ensure session is started for helper functions that may access session data
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 /* Logo Sizing (applies in print and preview) */
 .print-logo { height: 80px; width: auto; margin: 0 auto 10px auto; display: block; }
 CSS;
@@ -153,6 +158,31 @@ function renderPrintFooter(
     string $verifiedByRole = 'Project Engineer',
     string $approvedByRole = 'Project Manager'
 ): string {
+    // Attempt to infer preparer if default value is used
+    if (empty($preparedBy) || $preparedBy === 'System') {
+        if (!empty($_SESSION['user_name'])) {
+            $preparedBy = $_SESSION['user_name'];
+        } elseif (!empty($_SESSION['user_id']) && defined('DB_HOST')) {
+            $uid = intval($_SESSION['user_id']);
+            $preparedBy = 'System';
+            $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+            if ($conn && !$conn->connect_error) {
+                $q = $conn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
+                if ($q) {
+                    $q->bind_param('i', $uid);
+                    $q->execute();
+                    $res = $q->get_result();
+                    if ($res && $res->num_rows > 0) {
+                        $r = $res->fetch_assoc();
+                        if (!empty($r['full_name'])) $preparedBy = $r['full_name'];
+                    }
+                    $q->close();
+                }
+                $conn->close();
+            }
+        }
+    }
+
     $escapedPreparedBy = htmlspecialchars($preparedBy);
     $escapedPreparedByRole = htmlspecialchars($preparedByRole);
     $escapedVerifiedByRole = htmlspecialchars($verifiedByRole);

@@ -101,6 +101,27 @@ if (class_exists('Logger')) {
 }
 
 // Render HTML payslip (using payroll report layout)
+// Determine Prepared By
+$prepared_by = 'System Generated';
+if (!empty($_SESSION['user_name'])) {
+  $prepared_by = $_SESSION['user_name'];
+} elseif (!empty($_SESSION['user_id'])) {
+  $uid = intval($_SESSION['user_id']);
+  if (defined('DB_HOST')) {
+    $uconn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if (!$uconn->connect_error) {
+      $s = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
+      if ($s) {
+        $s->bind_param('i', $uid);
+        $s->execute();
+        $r = $s->get_result()->fetch_assoc();
+        if (!empty($r['full_name'])) $prepared_by = $r['full_name'];
+        $s->close();
+      }
+      $uconn->close();
+    }
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -173,7 +194,7 @@ if (class_exists('Logger')) {
 
     <div class="print-footer mt-12 pt-8">
       <div class="grid grid-cols-3 gap-8">
-        <div class="text-center"><p class="text-xs font-bold text-slate-500 uppercase mb-12">Prepared By:</p><div class="border-b border-slate-800 w-3/4 mx-auto"></div><p class="text-sm font-bold mt-2 text-slate-900 uppercase">System Generated</p></div>
+        <div class="text-center"><p class="text-xs font-bold text-slate-500 uppercase mb-12">Prepared By:</p><div class="border-b border-slate-800 w-3/4 mx-auto"></div><p class="text-sm font-bold mt-2 text-slate-900 uppercase"><?php echo htmlspecialchars($prepared_by); ?></p></div>
         <div class="text-center"><p class="text-xs font-bold text-slate-500 uppercase mb-12">Verified By:</p><div class="border-b border-slate-800 w-3/4 mx-auto"></div><p class="text-sm font-bold mt-2 text-slate-900 uppercase">Project Engineer</p></div>
         <div class="text-center"><p class="text-xs font-bold text-slate-500 uppercase mb-12">Approved By:</p><div class="border-b border-slate-800 w-3/4 mx-auto"></div><p class="text-sm font-bold mt-2 text-slate-900 uppercase">Project Manager</p></div>
       </div>

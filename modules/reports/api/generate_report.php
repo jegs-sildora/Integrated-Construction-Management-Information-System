@@ -7,7 +7,7 @@
  */
 
 header('Content-Type: application/json');
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../../../config/config.php';
 
@@ -224,7 +224,7 @@ try {
             }
             
                  $sql = "SELECT so.date_issued as movement_date, i.item_name, 'Stock Out' as type,
-                          so.quantity, NULL as po_reference, CONCAT(emp.first_name, ' ', emp.last_name) as handler
+                          COALESCE(so.quantity, so.qty, so.quantity_issued, 0) as quantity, NULL as po_reference, CONCAT(emp.first_name, ' ', emp.last_name) as handler
                       FROM procurement_stock_out so
                       LEFT JOIN procurement_inventory i ON so.item_id = i.item_id
                       LEFT JOIN workforce_employees emp ON so.issued_to_employee_id = emp.employee_id

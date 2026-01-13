@@ -404,7 +404,12 @@ $reportTitle = match($report_type) {
                 case 'budget_summary':
                     $expenses = $payload['expenses'] ?? [];
                     $totals = $payload['totals'] ?? [];
-                    $grand = $totals['grand_total'] ?? array_sum(array_values($totals));
+                    // Prefer approved_total for "Approved Expenses" when available
+                    if (isset($totals['approved_total'])) {
+                        $grand = $totals['approved_total'];
+                    } else {
+                        $grand = $totals['grand_total'] ?? array_sum(array_values($totals));
+                    }
                     ?>
                     <h3 class="text-sm font-bold text-slate-900 uppercase border-b border-slate-200 pb-2 mb-4">Budget Overview</h3>
                     <div class="grid grid-cols-3 gap-4 mb-6">

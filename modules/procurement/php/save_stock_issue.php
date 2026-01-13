@@ -4,6 +4,8 @@ error_reporting(0);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
 
+if (session_status() === PHP_SESSION_NONE) session_start();
+
 // Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -17,7 +19,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $item_id = intval($_POST['stock_itemID'] ?? 0);
     $qtyToIssue = intval($_POST['stock_quantity'] ?? 0);
     $issuedToId = intval($_POST['stock_issuedTo'] ?? 0);
-    $project_id = intval($_POST['stock_projectID'] ?? 0);
+    
+    // Get project_id from POST or fallback to session
+    $project_id = 0;
+    if (isset($_POST['stock_projectID']) && intval($_POST['stock_projectID']) > 0) {
+        $project_id = intval($_POST['stock_projectID']);
+    } elseif (isset($_SESSION['current_project_id']) && intval($_SESSION['current_project_id']) > 0) {
+        $project_id = intval($_SESSION['current_project_id']);
+    }
 
     if ($item_id <= 0 || $qtyToIssue <= 0 || $issuedToId <= 0) {
         echo json_encode(["status" => "error", "message" => "Invalid input data"]);

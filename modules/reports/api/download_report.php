@@ -48,7 +48,30 @@ if ($report['project_id'] > 0) {
     $stmt->close();
 }
 
-$userName = $report['generated_by'] ?? 'Admin';
+$userName = $report['generated_by'] ?? '';
+if (empty($userName)) {
+    if (!empty($_SESSION['user_name'])) {
+        $userName = $_SESSION['user_name'];
+    } elseif (!empty($_SESSION['user_id']) && defined('DB_HOST')) {
+        $uid = intval($_SESSION['user_id']);
+        $uconn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        if ($uconn && !$uconn->connect_error) {
+            $q = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
+            if ($q) {
+                $q->bind_param('i', $uid);
+                $q->execute();
+                $res = $q->get_result();
+                if ($res && $res->num_rows > 0) {
+                    $r = $res->fetch_assoc();
+                    if (!empty($r['full_name'])) $userName = $r['full_name'];
+                }
+                $q->close();
+            }
+            $uconn->close();
+        }
+    }
+}
+if (empty($userName)) $userName = 'Admin';
 
 // Ensure project_name is available in report array for template
 if (!empty($project) && isset($project['project_name'])) {
