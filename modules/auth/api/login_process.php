@@ -40,6 +40,9 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['login'])) 
             $_SESSION['user_name'] = $row['full_name'];
             $_SESSION['user_role'] = $row['role'];
 
+            // Set a one-time login success toast message for the dashboard
+            $_SESSION['login_success'] = "Welcome back, " . $row['full_name'] . "!";
+
             // Log successful login to audit trail
             Logger::init($conn);
             Logger::login($row['user_id'], $row['full_name']);

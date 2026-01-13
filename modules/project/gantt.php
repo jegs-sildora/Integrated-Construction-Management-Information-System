@@ -238,7 +238,6 @@ $ganttDataJson = json_encode($ganttData);
         
         /* Empty state */
         .empty-gantt {
-            min-height: 400px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -317,7 +316,7 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Total Phases</p>
-                            <h2 id="statTotalPhases" class="text-2xl font-bold text-gray-900"><?php echo count($phases); ?></h2>
+                            <h2 id="statTotalPhases" class="text-2xl font-black text-gray-900"><?php echo count($phases); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -331,7 +330,7 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Total Tasks</p>
-                            <h2 id="statTotalTasks" class="text-2xl font-bold text-gray-900"><?php echo count($tasks); ?></h2>
+                            <h2 id="statTotalTasks" class="text-2xl font-black text-gray-900"><?php echo count($tasks); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -345,7 +344,7 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Projects</p>
-                            <h2 id="statTotalProjects" class="text-2xl font-bold text-gray-900"><?php echo count($allProjects); ?></h2>
+                            <h2 id="statTotalProjects" class="text-2xl font-black text-gray-900"><?php echo count($allProjects); ?></h2>
                         </div>
                     </div>
                 </div>
@@ -359,7 +358,7 @@ $ganttDataJson = json_encode($ganttData);
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">Timeline Items</p>
-                            <h2 id="statTimelineItems" class="text-2xl font-bold text-gray-900"><?php echo count($ganttData); ?></h2>
+                            <h2 id="statTimelineItems" class="text-2xl font-black text-gray-900"><?php echo count($ganttData); ?></h2>
                         </div>
                     </div>
                 </div>

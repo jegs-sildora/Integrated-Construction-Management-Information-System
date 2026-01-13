@@ -142,7 +142,18 @@ $recent_projects = $conn->query($sql_recent);
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
     <?php
     $show_project_selector = false;
-    include __DIR__ . '/includes/header.php'; ?>
+    include __DIR__ . '/includes/header.php';
+
+    // Include toast helper (renders container + JS showToast/dismissToast)
+    include __DIR__ . '/includes/toast.php';
+
+    // Show login success toast if set by the auth flow, then clear it
+    if (isset($_SESSION['login_success']) && !empty($_SESSION['login_success'])) {
+        $loginMsg = $_SESSION['login_success'];
+        unset($_SESSION['login_success']);
+        echo "<script>document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ showToast(" . json_encode($loginMsg) . ", 'success'); }, 150); });</script>";
+    }
+    ?>
 
     <main class="ml-56 mt-16 p-8 min-h-screen transition-all duration-300 animate-fade-in">
         
