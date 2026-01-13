@@ -265,7 +265,7 @@ $pageTitle = "Reports";
                                 </div>
                                 <p class="text-sm text-gray-500 mb-4">Current stock levels, low stock alerts, and inventory valuation report.</p>
                             </div>
-                            <button onclick="generateReport('inventory-status')" class="generate-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-purple-600 text-purple-700 hover:bg-purple-50 font-semibold rounded-lg transition-colors">
+                            <button onclick="generateReport('inventory-status', event)" class="generate-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-purple-600 text-purple-700 hover:bg-purple-50 font-semibold rounded-lg transition-colors">
                                 <i data-lucide="download" class="w-4 h-4"></i>
                                 Generate Report
                             </button>
@@ -282,7 +282,7 @@ $pageTitle = "Reports";
                                 </div>
                                 <p class="text-sm text-gray-500 mb-4">Summary of all purchase orders with status tracking and supplier details.</p>
                             </div>
-                            <button onclick="generateReport('purchase-orders')" class="generate-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 font-semibold rounded-lg transition-colors">
+                            <button onclick="generateReport('purchase-orders', event)" class="generate-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50 font-semibold rounded-lg transition-colors">
                                 <i data-lucide="download" class="w-4 h-4"></i>
                                 Generate Report
                             </button>
@@ -299,7 +299,7 @@ $pageTitle = "Reports";
                                 </div>
                                 <p class="text-sm text-gray-500 mb-4">Track all stock in/out transactions with dates and quantities.</p>
                             </div>
-                            <button onclick="generateReport('stock-movement')" class="generate-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-pink-600 text-pink-700 hover:bg-pink-50 font-semibold rounded-lg transition-colors">
+                            <button onclick="generateReport('stock-movement', event)" class="generate-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-pink-600 text-pink-700 hover:bg-pink-50 font-semibold rounded-lg transition-colors">
                                 <i data-lucide="download" class="w-4 h-4"></i>
                                 Generate Report
                             </button>
@@ -315,7 +315,7 @@ $pageTitle = "Reports";
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Items</p>
-                            <h3 id="stat-total-items" class="text-2xl font-bold text-gray-900 mt-1"><?php echo number_format($stat_total_items); ?></h3>
+                            <h3 id="stat-total-items" class="text-2xl font-black text-gray-900 mt-1"><?php echo number_format($stat_total_items); ?></h3>
                         </div>
                         <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
                             <i data-lucide="boxes" class="w-6 h-6 text-purple-600"></i>
@@ -326,7 +326,7 @@ $pageTitle = "Reports";
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Low Stock Items</p>
-                            <h3 id="stat-low-stock" class="text-2xl font-bold text-red-600 mt-1"><?php echo number_format($stat_low_stock); ?></h3>
+                            <h3 id="stat-low-stock" class="text-2xl font-black text-red-600 mt-1"><?php echo number_format($stat_low_stock); ?></h3>
                         </div>
                         <div class="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
                             <i data-lucide="alert-triangle" class="w-6 h-6 text-red-600"></i>
@@ -337,7 +337,7 @@ $pageTitle = "Reports";
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pending Orders</p>
-                            <h3 id="stat-pending-orders" class="text-2xl font-bold text-indigo-600 mt-1"><?php echo number_format($stat_pending_orders); ?></h3>
+                            <h3 id="stat-pending-orders" class="text-2xl font-black text-indigo-600 mt-1"><?php echo number_format($stat_pending_orders); ?></h3>
                         </div>
                         <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center">
                             <i data-lucide="clock" class="w-6 h-6 text-indigo-600"></i>
@@ -348,7 +348,7 @@ $pageTitle = "Reports";
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Valuation</p>
-                            <h3 id="stat-total-value" class="text-2xl font-bold text-green-600 mt-1">₱<?php echo number_format($stat_total_value, 2); ?></h3>
+                            <h3 id="stat-total-value" class="text-2xl font-black text-green-600 mt-1">₱<?php echo number_format($stat_total_value, 2); ?></h3>
                         </div>
                         <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
                             <i data-lucide="banknote" class="w-6 h-6 text-green-600"></i>
@@ -480,93 +480,6 @@ $pageTitle = "Reports";
                 url.searchParams.delete('project_id');
             }
             window.location.href = url.toString();
-        }
-
-        // ============================================
-        // UI STATE MANAGEMENT
-        // ============================================
-        function setLoadingState(button) {
-            if (!button) return;
-            button.dataset.originalContent = button.innerHTML;
-            button.dataset.originalClasses = button.className;
-            button.disabled = true;
-
-            const width = button.offsetWidth;
-            button.style.width = `${width}px`;
-            button.classList.add('opacity-80', 'cursor-not-allowed');
-            button.innerHTML = `<div class="flex items-center justify-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Generating...</span></div>`;
-            lucide.createIcons();
-        }
-
-        function resetLoadingState(button) {
-            if (!button) return;
-            button.disabled = false;
-            button.style.width = '';
-            button.className = button.dataset.originalClasses;
-            button.innerHTML = button.dataset.originalContent;
-            lucide.createIcons();
-        }
-
-        function showSuccessState(button) {
-            if (!button) return;
-            const originalBorderClass = button.className.match(/border-\w+-600/)?.[0] || 'border-purple-600';
-            button.className = "generate-btn w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg transition-all duration-300 shadow-sm";
-            button.innerHTML = `<div class="flex items-center justify-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i><span>Generated</span></div>`;
-            lucide.createIcons();
-
-            if (typeof showToast === 'function') {
-                showToast('Report generated successfully!', 'success', true);
-            }
-
-            setTimeout(() => {
-                resetLoadingState(button);
-            }, 2000);
-        }
-
-        // ============================================
-        // REPORT GENERATION (Print-Based)
-        // ============================================
-        function generateReport(templateType) {
-            const button = event.target.closest('.generate-btn');
-            const projectId = '<?php echo $selected_project_id; ?>';
-
-            setLoadingState(button);
-
-            // Build URL for the print-based report - use central reports module
-            let url = `../reports/print_report.php?type=${encodeURIComponent(templateType)}`;
-            if (projectId && projectId !== '0') {
-                url += `&project_id=${projectId}`;
-            }
-
-            // Open in new tab
-            const win = window.open(url, '_blank', 'noopener,noreferrer');
-            if (win) {
-                win.opener = null;
-            }
-
-            // Show success and reset button state
-            setTimeout(() => {
-                showSuccessState(button);
-            }, 500);
-        }
-
-        // Regenerate report from recent reports table
-        function regenerateReport(templateType) {
-            const projectId = '<?php echo $selected_project_id; ?>';
-            
-            let url = `../reports/print_report.php?type=${encodeURIComponent(templateType)}`;
-            if (projectId && projectId !== '0') {
-                url += `&project_id=${projectId}`;
-            }
-
-            const win = window.open(url, '_blank', 'noopener,noreferrer');
-            if (win) {
-                win.opener = null;
-            }
-
-            if (typeof showToast === 'function') {
-                showToast('Report regenerated successfully!', 'success', true);
-            }
         }
     </script>
 </body>
