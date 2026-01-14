@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 13, 2026 at 07:30 AM
+-- Generation Time: Jan 14, 2026 at 01:42 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -101,16 +101,16 @@ CREATE TABLE `budget_proposals` (
 
 CREATE TABLE `icmis_audit_logs` (
   `log_id` int UNSIGNED NOT NULL,
-  `user_id` int DEFAULT NULL COMMENT 'Reference to icmis_users table',
-  `user_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'System' COMMENT 'Cached username for faster display',
-  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Action type: CREATE, UPDATE, DELETE, LOGIN, LOGOUT, VIEW, EXPORT, APPROVE, REJECT',
-  `module` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Module name: Project, Budget, Procurement, Workforce, Auth, Reports',
-  `details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Human-readable description of the action',
-  `record_id` int DEFAULT NULL COMMENT 'ID of the affected record (project_id, po_id, employee_id, etc.)',
-  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Client IP address (supports IPv6)',
-  `user_agent` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Browser/client user agent string',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Timestamp when the action occurred'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Audit trail for tracking user actions across all ICMIS modules';
+  `user_id` int DEFAULT NULL,
+  `user_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'System',
+  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `module` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `record_id` int DEFAULT NULL,
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `icmis_audit_logs`
@@ -129,7 +129,7 @@ INSERT INTO `icmis_audit_logs` (`log_id`, `user_id`, `user_name`, `action`, `mod
 CREATE TABLE `icmis_generated_reports` (
   `id` int NOT NULL,
   `report_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'budget, procurement, project, workforce',
+  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `project_id` int DEFAULT NULL,
   `project_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `generated_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE `icmis_project_phases` (
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
-  `duration` int DEFAULT '0' COMMENT 'Duration in days',
+  `duration` int DEFAULT '0',
   `status` enum('Not Started','In Progress','Completed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Not Started'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -658,7 +658,7 @@ CREATE TABLE `workforce_payroll_periods` (
   `end_date` date NOT NULL,
   `pay_date` date DEFAULT NULL,
   `status` enum('Open','Closed','Processing') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Open',
-  `processed_by` int DEFAULT NULL COMMENT 'Employee ID of the person who processed this',
+  `processed_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -704,20 +704,14 @@ ALTER TABLE `budget_proposals`
 --
 ALTER TABLE `icmis_audit_logs`
   ADD PRIMARY KEY (`log_id`),
-  ADD KEY `idx_user_id` (`user_id`),
-  ADD KEY `idx_action` (`action`),
-  ADD KEY `idx_module` (`module`),
-  ADD KEY `idx_created_at` (`created_at`),
-  ADD KEY `idx_record_id` (`record_id`);
+  ADD KEY `idx_user_id` (`user_id`);
 
 --
 -- Indexes for table `icmis_generated_reports`
 --
 ALTER TABLE `icmis_generated_reports`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_category` (`category`),
-  ADD KEY `idx_project_id` (`project_id`),
-  ADD KEY `idx_created_at` (`created_at`);
+  ADD KEY `idx_project_id` (`project_id`);
 
 --
 -- Indexes for table `icmis_projects`
@@ -823,7 +817,8 @@ ALTER TABLE `workforce_employees`
   ADD PRIMARY KEY (`employee_id`),
   ADD UNIQUE KEY `employee_code` (`employee_code`),
   ADD UNIQUE KEY `user_id` (`user_id`),
-  ADD KEY `fk_emp_job` (`job_title_id`);
+  ADD KEY `fk_emp_job` (`job_title_id`),
+  ADD KEY `fk_emp_supervisor` (`supervisor_id`);
 
 --
 -- Indexes for table `workforce_employee_groups`
@@ -966,7 +961,7 @@ ALTER TABLE `procurement_stock_out`
 -- AUTO_INCREMENT for table `procurement_suppliers`
 --
 ALTER TABLE `procurement_suppliers`
-  MODIFY `supplier_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `supplier_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `workforce_assignments`
@@ -1062,6 +1057,12 @@ ALTER TABLE `icmis_audit_logs`
   ADD CONSTRAINT `fk_audit_log_user` FOREIGN KEY (`user_id`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
+-- Constraints for table `icmis_generated_reports`
+--
+ALTER TABLE `icmis_generated_reports`
+  ADD CONSTRAINT `fk_icmis_rep_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE SET NULL;
+
+--
 -- Constraints for table `icmis_projects`
 --
 ALTER TABLE `icmis_projects`
@@ -1087,6 +1088,92 @@ ALTER TABLE `icmis_tasks`
 ALTER TABLE `procurement_inventory`
   ADD CONSTRAINT `fk_inv_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_inv_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `procurement_purchase_orders`
+--
+ALTER TABLE `procurement_purchase_orders`
+  ADD CONSTRAINT `fk_po_creator` FOREIGN KEY (`created_by_user_id`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_po_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_po_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_po_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `procurement_suppliers` (`supplier_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `procurement_purchase_order_items`
+--
+ALTER TABLE `procurement_purchase_order_items`
+  ADD CONSTRAINT `fk_po_item_header` FOREIGN KEY (`po_id`) REFERENCES `procurement_purchase_orders` (`po_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_po_item_inv` FOREIGN KEY (`inventory_item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `procurement_stock_in`
+--
+ALTER TABLE `procurement_stock_in`
+  ADD CONSTRAINT `fk_stockin_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_stockin_po` FOREIGN KEY (`po_id`) REFERENCES `procurement_purchase_orders` (`po_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `procurement_stock_out`
+--
+ALTER TABLE `procurement_stock_out`
+  ADD CONSTRAINT `fk_stockout_emp` FOREIGN KEY (`issued_to_employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_stockout_item` FOREIGN KEY (`item_id`) REFERENCES `procurement_inventory` (`item_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_stockout_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `workforce_assignments`
+--
+ALTER TABLE `workforce_assignments`
+  ADD CONSTRAINT `fk_assign_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_assign_phase` FOREIGN KEY (`phase_id`) REFERENCES `icmis_project_phases` (`phase_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_assign_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `workforce_attendance`
+--
+ALTER TABLE `workforce_attendance`
+  ADD CONSTRAINT `fk_att_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_att_proj` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `workforce_employees`
+--
+ALTER TABLE `workforce_employees`
+  ADD CONSTRAINT `fk_emp_job` FOREIGN KEY (`job_title_id`) REFERENCES `workforce_job_titles` (`job_title_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_emp_supervisor` FOREIGN KEY (`supervisor_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_emp_user` FOREIGN KEY (`user_id`) REFERENCES `icmis_users` (`user_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `workforce_employee_groups`
+--
+ALTER TABLE `workforce_employee_groups`
+  ADD CONSTRAINT `fk_group_leader` FOREIGN KEY (`group_leader_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `workforce_generated_reports`
+--
+ALTER TABLE `workforce_generated_reports`
+  ADD CONSTRAINT `fk_workforce_rep_project` FOREIGN KEY (`project_id`) REFERENCES `icmis_projects` (`project_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `workforce_group_memberships`
+--
+ALTER TABLE `workforce_group_memberships`
+  ADD CONSTRAINT `fk_mem_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_mem_group` FOREIGN KEY (`group_id`) REFERENCES `workforce_employee_groups` (`group_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `workforce_payroll`
+--
+ALTER TABLE `workforce_payroll`
+  ADD CONSTRAINT `fk_payroll_emp` FOREIGN KEY (`employee_id`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_payroll_period` FOREIGN KEY (`period_id`) REFERENCES `workforce_payroll_periods` (`period_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `workforce_payroll_periods`
+--
+ALTER TABLE `workforce_payroll_periods`
+  ADD CONSTRAINT `fk_period_processor` FOREIGN KEY (`processed_by`) REFERENCES `workforce_employees` (`employee_id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

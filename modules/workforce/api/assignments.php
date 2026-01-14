@@ -14,6 +14,7 @@ if (file_exists(__DIR__ . '/../project_context.php')) {
 if (file_exists(__DIR__ . '/../../core/database.php')) {
     include_once __DIR__ . '/../../core/database.php';
 }
+require_once __DIR__ . '/../../core/Logger.php';
 
 // Establish connection
 if (function_exists('getWorkforceConnection')) {
@@ -170,6 +171,9 @@ function createAssignment($conn) {
                 if ($insStmt->execute()) $count++;
             }
         }
+        // Audit log
+        Logger::init($conn);
+        Logger::create('Workforce', "Group Assignment: Group ID {$group_id} assigned to Project #{$project_id} ({$count} members)", intval($project_id));
         jsonResponse(true, "Group processed. $count members assigned.");
     } else {
         $employee_id = $_POST['employee_id'];
@@ -190,8 +194,11 @@ function createAssignment($conn) {
 
         $stmt = $conn->prepare("INSERT INTO workforce_assignments (employee_id, project_id, phase_id, role, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("iiissss", $employee_id, $project_id, $phase_id, $role, $start_date, $end_date, $status);
-        if ($stmt->execute()) jsonResponse(true, "Assignment created.");
-        else jsonResponse(false, "DB Error: " . $stmt->error);
+        if ($stmt->execute()) {
+            Logger::init($conn);
+            Logger::create('Workforce', "Assignment Created: Employee #{$employee_id} -> Project #{$project_id} as {$role}", intval($project_id));
+            jsonResponse(true, "Assignment created.");
+        } else jsonResponse(false, "DB Error: " . $stmt->error);
     }
 }
 
@@ -205,7 +212,11 @@ function updateAssignment($conn) {
 
     $stmt = $conn->prepare("UPDATE workforce_assignments SET role=?, phase_id=?, start_date=?, end_date=?, status=? WHERE assignment_id=?");
     $stmt->bind_param("sisssi", $role, $phase_id, $start_date, $end_date, $status, $id);
-    if ($stmt->execute()) jsonResponse(true, "Updated successfully.");
+    if ($stmt->execute()) {
+        Logger::init($conn);
+        Logger::update('Workforce', "Assignment Updated: ID {$id}", intval($id));
+        jsonResponse(true, "Updated successfully.");
+    }
     else jsonResponse(false, "Update failed.");
 }
 
@@ -213,8 +224,11 @@ function deleteAssignment($conn) {
     $id = $_POST['id'];
     $stmt = $conn->prepare("DELETE FROM workforce_assignments WHERE assignment_id = ?");
     $stmt->bind_param("i", $id);
-    if ($stmt->execute()) jsonResponse(true, "Deleted successfully.");
-    else jsonResponse(false, "Delete failed.");
+    if ($stmt->execute()) {
+        Logger::init($conn);
+        Logger::delete('Workforce', "Assignment Deleted: ID {$id}", intval($id));
+        jsonResponse(true, "Deleted successfully.");
+    } else jsonResponse(false, "Delete failed.");
 }
 
 function getPhases($conn) {

@@ -240,7 +240,7 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Bank Account No.</label>
                                 <div class="relative">
                                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i data-lucide="credit-card" class="w-4 h-4"></i></span>
-                                    <input type="tel" id="bank_account" name="bank_account" autocomplete="off" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 font-mono" placeholder="0000 0000 0000">
+                                    <input type="text" id="bank_account" name="bank_account" inputmode="numeric" pattern="\d*" maxlength="30" autocomplete="off" oninput="this.value = this.value.replace(/\D/g,'')" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#e9922c]/20 focus:border-[#e9922c] outline-none transition-all font-medium text-gray-700 font-mono" placeholder="000000000000">
                                 </div>
                             </div>
                         </div>
