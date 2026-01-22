@@ -3,8 +3,6 @@
 header('Content-Type: application/json');
 include __DIR__ . '/../project_context.php';
 
-require_once __DIR__ . '/../../../core/Logger.php';
-
 $conn = getWorkforceConnection();
 
 // Handle JSON Input and merge into a unified payload
@@ -165,12 +163,6 @@ function saveGroup($conn, $action) {
         }
 
         $conn->commit();
-        Logger::init($conn);
-        if ($action === 'create') {
-            Logger::create('Workforce', "Employee Group Created: {$name} (ID: {$group_id})", intval($group_id));
-        } else {
-            Logger::update('Workforce', "Employee Group Updated: {$name} (ID: {$group_id})", intval($group_id));
-        }
         echo json_encode(['success' => true, 'message' => 'Group saved successfully']);
 
     } catch (Exception $e) {
@@ -187,8 +179,6 @@ function deleteGroup($conn, $id) {
         $conn->query("DELETE FROM workforce_group_memberships WHERE group_id = $id");
         $conn->query("DELETE FROM workforce_employee_groups WHERE group_id = $id");
         $conn->commit();
-        Logger::init($conn);
-        Logger::delete('Workforce', "Employee Group Deleted: ID {$id}", intval($id));
         echo json_encode(['success' => true, 'message' => 'Group deleted successfully']);
     } catch (Exception $e) {
         $conn->rollback();

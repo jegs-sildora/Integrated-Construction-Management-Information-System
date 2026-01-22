@@ -25,7 +25,6 @@ if ($result_projects && $result_projects->num_rows > 0) {
 $stats = [
     'total_employees' => 0,
     'active_employees' => 0,
-    'assigned_employees' => 0,
     'on_leave' => 0,
     'attendance_rate' => 0,
     'inactive_employees' => 0
@@ -37,10 +36,10 @@ $project_filter = ($selected_project_id > 0) ? "AND wa.project_id = $selected_pr
 // A. Employee Counts
 $sql_emp = "
     SELECT 
-        COUNT(DISTINCT e.employee_id) as total,
-        COUNT(DISTINCT CASE WHEN e.status = 'Active' THEN e.employee_id END) as active,
-        COUNT(DISTINCT CASE WHEN e.status = 'On Leave' THEN e.employee_id END) as on_leave,
-        COUNT(DISTINCT CASE WHEN e.status = 'Terminated' OR e.status = 'Resigned' THEN e.employee_id END) as inactive
+        COUNT(*) as total,
+        SUM(CASE WHEN e.status = 'Active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN e.status = 'On Leave' THEN 1 ELSE 0 END) as on_leave,
+        SUM(CASE WHEN e.status = 'Terminated' OR e.status = 'Resigned' THEN 1 ELSE 0 END) as inactive
     FROM workforce_employees e
     LEFT JOIN workforce_assignments wa ON e.employee_id = wa.employee_id
     WHERE 1=1 $project_filter
@@ -53,24 +52,9 @@ if ($row = $res_emp->fetch_assoc()) {
     $stats['inactive_employees'] = $row['inactive'];
 }
 
-// Count employees who have at least one assignment (optionally filtered by project)
-$sql_assigned = "SELECT COUNT(DISTINCT employee_id) as assigned FROM workforce_assignments WHERE 1=1 " . ($selected_project_id > 0 ? "AND project_id = $selected_project_id" : "");
-$res_assigned = $conn->query($sql_assigned);
-$stats['assigned_employees'] = ($res_assigned && ($rassign = $res_assigned->fetch_assoc())) ? intval($rassign['assigned']) : 0;
-
-// Ensure "Total Personnel" shows the total number of active employees
-$sql_total_active = "SELECT COUNT(DISTINCT employee_id) as total_active FROM workforce_employees WHERE status = 'Active'";
-$res_total_active = $conn->query($sql_total_active);
-$stats['total_employees'] = ($res_total_active && ($rt = $res_total_active->fetch_assoc())) ? intval($rt['total_active']) : $stats['total_employees'];
-
 // B. Attendance Rate (Today)
 $today = date('Y-m-d');
-
-// Use all active employees from `workforce_employees` as the denominator
-$sql_active = "SELECT COUNT(DISTINCT employee_id) as active_count FROM workforce_employees WHERE status = 'Active'";
-$res_active = $conn->query($sql_active);
-$active_count = ($res_active && ($r = $res_active->fetch_assoc())) ? intval($r['active_count']) : 0;
-$active_count = $active_count > 0 ? $active_count : 1; // Prevent div by zero
+$active_count = $stats['active_employees'] > 0 ? $stats['active_employees'] : 1; // Prevent div by zero
 
 $sql_att = "
     SELECT COUNT(DISTINCT employee_id) as present 
@@ -80,17 +64,7 @@ $sql_att = "
     
 $res_att = $conn->query($sql_att);
 $present_count = ($res_att->fetch_assoc())['present'] ?? 0;
-$raw_rate = ($present_count / $active_count) * 100;
-$stats['attendance_rate'] = round(min(100, $raw_rate), 1);
-
-// D. On Leave / Absent (based on today's attendance records)
-$sql_onleave = "
-    SELECT COUNT(DISTINCT employee_id) as on_leave_count
-    FROM workforce_attendance
-    WHERE attendance_date = '$today' AND status IN ('On Leave','Absent')
-    " . ($selected_project_id > 0 ? "AND project_id = $selected_project_id" : "");
-$res_onleave = $conn->query($sql_onleave);
-$stats['on_leave'] = ($res_onleave && ($r_on = $res_onleave->fetch_assoc())) ? intval($r_on['on_leave_count']) : 0;
+$stats['attendance_rate'] = round(($present_count / $active_count) * 100, 1);
 
 // C. Recent Activity Logs
 $logs = [];
@@ -150,7 +124,7 @@ if ($log_res) {
                 </div>
             </div>
 
-            <div class="grid grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 
                 <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                     <div class="flex justify-between items-start mb-4">
@@ -203,7 +177,6 @@ if ($log_res) {
                         <div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center text-[#e9922c]">
                             <i data-lucide="clock" class="w-5 h-5"></i>
                         </div>
-                        <span class="text-xs font-medium text-gray-400"><?= date('M d') ?></span>
                     </div>
                     <div class="space-y-1">
                         <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">On Leave / Absent</p>

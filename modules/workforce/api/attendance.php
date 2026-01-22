@@ -9,8 +9,6 @@ header("Access-Control-Allow-Headers: Content-Type");
 
 include __DIR__ . '/../project_context.php';
 
-require_once __DIR__ . '/../../core/Logger.php';
-
 $conn = getWorkforceConnection();
 
 // 1. Handle JSON Input
@@ -111,13 +109,6 @@ function listAttendance($conn) {
     $stmt->close();
     
     echo json_encode(['success' => true, 'data' => $attendance]);
-
-    // Audit: Log when a user checks attendance for today
-    if ($date === date('Y-m-d')) {
-        Logger::init($conn);
-        $project_label = ($project_id && $project_id > 0) ? " for project #{$project_id}" : " (All Projects)";
-        Logger::create('Workforce', "Checked attendance for today" . $project_label, $project_id && $project_id > 0 ? intval($project_id) : null);
-    }
 }
 
 function getAttendance($conn) {
