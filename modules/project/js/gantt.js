@@ -1,10 +1,13 @@
-// modules/project/js/gantt.js
-
+/**
+ * Gantt page JS
+ * - Parses server-rendered JSON timeline data and initializes Frappe Gantt.
+ * - Supports AJAX project filtering and view-mode changes.
+ */
 let gantt = null;
 let ganttData = [];
 let currentViewMode = 'Week';
 
-// ------------------ Data Parsing ------------------
+// Parse timeline JSON injected by the server
 function parseGanttData() {
     const el = document.getElementById('gantt-data');
     if (!el) return [];
@@ -23,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ------------------ Initialization ------------------
+// Initialize the Gantt chart with provided view mode
 function initGantt(viewMode) {
     if (ganttData.length === 0) return;
 

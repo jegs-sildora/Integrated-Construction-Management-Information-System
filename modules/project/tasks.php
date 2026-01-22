@@ -1,16 +1,15 @@
 <?php
-// modules/project/tasks.php - Kanban Board View
-
-// 1. Configuration (Session & Constants)
+/**
+ * Task management (Kanban)
+ *
+ * Loads tasks and groups them by status for display in a responsive Kanban board.
+ * Client-side interactions (drag/drop) are handled by `js/tasks.js` using SortableJS.
+ */
 require_once __DIR__ . '/../../config/config.php';
-
-// 2. Authentication Check
-if (!isset($_SESSION['user_id'])) { 
-    header("Location: " . BASE_URL . "index.php"); 
-    exit(); 
+if (!isset($_SESSION['user_id'])) {
+    header("Location: " . BASE_URL . "index.php");
+    exit();
 }
-
-// 3. Database Connection
 require_once __DIR__ . '/../../config/database.php';
 
 // Define status columns for Kanban
@@ -110,10 +109,9 @@ $statusColors = [
         }
         .animate-modal-slide-in { animation: modal-slide-in 0.3s ease-out forwards; }
         
-        /* Kanban specific styles */
-        .kanban-board {
-            height: 65vh;
-        }
+        /* Kanban specific styles: responsive heights for better mobile fit */
+        .kanban-board { height: 60vh; }
+        @media (min-width: 768px) { .kanban-board { height: 75vh; } }
         .kanban-column {
             min-height: 0;
             flex: 1 1 0;

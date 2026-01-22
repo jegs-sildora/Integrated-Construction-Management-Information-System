@@ -1,97 +1,60 @@
 <?php
-// sidebar.php
+/**
+ * Sidebar component
+ *
+ * Responsibilities:
+ * - Render the main app navigation.
+ * - Preserve an optional `project_id` context and append it to module links when present.
+ * - Provide responsive behavior: the sidebar is hidden on small screens and can be toggled
+ *   via the header's mobile button. CSS classes `sidebar-closed` and `sidebar-open` control
+ *   the mobile slide animation.
+ */
 
-// Sidebar Navigation Component for ICMIS
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Get current page filename and URI
+// Determine current page/URI for active link highlighting
 $current_page = basename($_SERVER['PHP_SELF']);
 $current_uri = $_SERVER['REQUEST_URI'];
 
-// ------------------------------------------------------------------
-// 1. CONTEXT PERSISTENCE LOGIC (ADDED)
-// ------------------------------------------------------------------
+// Preserve project context (priority: URL param > session)
 $active_project_id = 0;
-
-// Priority 1: Check URL
 if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
     $active_project_id = intval($_GET['project_id']);
-    // Update session to keep it fresh
     $_SESSION['current_project_id'] = $active_project_id;
-} 
-// Priority 2: Check Session
-elseif (isset($_SESSION['current_project_id']) && !empty($_SESSION['current_project_id'])) {
+} elseif (isset($_SESSION['current_project_id']) && !empty($_SESSION['current_project_id'])) {
     $active_project_id = $_SESSION['current_project_id'];
 }
 
-// Create the Query String to append to links
 $project_qs = ($active_project_id > 0) ? '?project_id=' . $active_project_id : '';
 
-
-// ------------------------------------------------------------------
-// CONFIGURATION: URL PATHS
-// ------------------------------------------------------------------
-
+// Quick path helpers
 $root_path = '/icmis/';
 $budget_path = '/icmis/modules/budget/';
 $procurement_path = '/icmis/modules/procurement/';
 $workforce_path = '/icmis/modules/workforce/';
-$project_path = '/icmis/modules/project/'; 
+$project_path = '/icmis/modules/project/';
 $reports_path = '/icmis/modules/reports/';
-$logs_path = '/icmis/modules/admin/'; 
-$admin_path = '/icmis/modules/admin/'; 
+$logs_path = '/icmis/modules/admin/';
+$admin_path = '/icmis/modules/admin/';
 
-// ------------------------------------------------------------------
-// ACTIVE STATE LOGIC
-// ------------------------------------------------------------------
-
-// 1. MAIN DASHBOARD
+// Active-state booleans used to style current section
 $is_main_dashboard = ($current_page === 'dashboard.php' && 
-                      strpos($current_uri, '/modules/budget/') === false && 
-                      strpos($current_uri, '/modules/procurement/') === false && 
-                      strpos($current_uri, '/modules/workforce/') === false && 
-                      strpos($current_uri, '/modules/project/') === false);
-
-// 2. PROJECT MANAGEMENT
+    strpos($current_uri, '/modules/budget/') === false && 
+    strpos($current_uri, '/modules/procurement/') === false && 
+    strpos($current_uri, '/modules/workforce/') === false && 
+    strpos($current_uri, '/modules/project/') === false);
 $is_projects = (strpos($current_uri, '/modules/project/') !== false);
-
-// 4. BUDGET MODULE
 $is_budget = strpos($current_uri, '/modules/budget/') !== false;
-$is_budget_dashboard = ($current_page === 'dashboard.php' && $is_budget);
 $is_proposals = in_array($current_page, ['proposals.php', 'create_proposal.php', 'edit_proposal.php']);
 $is_expenses  = in_array($current_page, ['expenses.php', 'payroll_expenses.php', 'create_expense.php', 'edit_expense.php']);
-$is_budget_reports = ($current_page === 'reports.php' && $is_budget);
-
-// 5. PROCUREMENT MODULE
 $is_procurement = strpos($current_uri, '/modules/procurement/') !== false;
-$is_inventory = ($current_page === 'inventory.php');
-$is_po = in_array($current_page, ['orders.php', 'create_order.php', 'edit_order.php']);
-$is_stock_in = ($current_page === 'stock_in.php');
-$is_stock_out = ($current_page === 'stock_out.php');
-$is_suppliers = ($current_page === 'suppliers.php');
-// Procurement Reports page within procurement module
-$is_procurement_reports = ($current_page === 'reports.php' && $is_procurement);
-
-// 6. WORKFORCE MODULE
 $is_workforce = strpos($current_uri, '/modules/workforce/') !== false;
-$is_workforce_dashboard = ($current_page === 'dashboard.php' && $is_workforce);
-$is_employees = in_array($current_page, ['employees.php', 'employee_profile.php', 'edit_employee.php', 'employee_groups.php', 'group_details.php']);
-$is_attendance = ($current_page === 'attendance.php');
-$is_assignments = ($current_page === 'assignments.php');
-$is_workforce_payroll = ($current_page === 'payroll.php' && $is_workforce);
-$is_workforce_reports = ($current_page === 'reports.php' && $is_workforce);
-
-// 7. REPORTS MODULE
 $is_reports = strpos($current_uri, '/modules/reports/') !== false;
-
-// 8. AUDIT LOGS MODULE (Admin Only)
 $is_audit_logs = (strpos($current_uri, '/modules/logs/') !== false || strpos($current_uri, '/modules/admin/audit_logs') !== false);
-
-// 9. TASK MANAGEMENT (removed - navigation consolidated under Project Management)
 ?>
-<aside class="w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
+<aside id="appSidebar" class="md:flex sidebar-closed w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
     <div class="px-4 py-[1.1rem] border-b border-gray-200 ml-10">
         <div class="flex items-center gap-3 mb-1">
             <img src="<?php echo $root_path; ?>assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-10 h-10 object-contain">
@@ -233,6 +196,21 @@ $is_audit_logs = (strpos($current_uri, '/modules/logs/') !== false || strpos($cu
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #9ca3af; 
+        }
+        /* Sidebar slide animation for small screens */
+        .sidebar-closed {
+            transform: translateX(-100%);
+            transition: transform 320ms cubic-bezier(.22,.99,.39,1);
+        }
+        .sidebar-open {
+            transform: translateX(0);
+            transition: transform 320ms cubic-bezier(.22,.99,.39,1);
+        }
+        @media (min-width: 768px) {
+            .sidebar-closed, .sidebar-open {
+                transform: none !important;
+                transition: none !important;
+            }
         }
     </style>
 </aside>

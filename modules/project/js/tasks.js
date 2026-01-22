@@ -1,6 +1,10 @@
+/**
+ * Tasks page JS (Kanban)
+ * - Initializes SortableJS, updates task status via AJAX, and manages modals.
+ */
 let taskToDelete = null;
 
-// ------------------ Sortable Initialization ------------------
+// Initialize SortableJS on Kanban columns
 function initSortable() {
     const columns = document.querySelectorAll('.kanban-column');
     columns.forEach(column => {
@@ -24,12 +28,9 @@ function initSortable() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    initSortable();
-});
+document.addEventListener('DOMContentLoaded', function() { initSortable(); });
 
-// ------------------ Dashboard Refresh (AJAX) ------------------
-// Fetches current page content via AJAX and updates DOM
+// AJAX refresh: update kanban container and stats
 async function refreshDashboard() {
     try {
         const response = await fetch(window.location.href);
@@ -74,8 +75,7 @@ async function refreshDashboard() {
     }
 }
 
-// ------------------ Event Delegation (Edit/Delete) ------------------
-// Use delegation to handle clicks on elements created dynamically after AJAX refresh
+// Event delegation for edit/delete buttons (works after DOM replacement)
 document.addEventListener('click', function(e) {
     const editBtn = e.target.closest('.edit-btn');
     const deleteBtn = e.target.closest('.delete-btn');
@@ -92,7 +92,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ------------------ Update Status ------------------
+// Update task status on server when dragged to a new column
 function updateTaskStatus(taskId, newStatus, cardElement) {
     const formData = new FormData();
     formData.append('task_id', taskId);
@@ -126,7 +126,7 @@ function updateTaskStatus(taskId, newStatus, cardElement) {
     });
 }
 
-// ------------------ Dropdown Helpers ------------------
+// Dropdown helpers for project/phase/assignee selects
 function populateProjectSelect(selectedProjectId = null) {
     const select = document.getElementById('task_project_id');
     if (!select) return;

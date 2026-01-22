@@ -1,8 +1,13 @@
+/**
+ * Projects page JS
+ * - Handles AJAX CRUD for projects, inline table refresh, filtering, and modals.
+ * - Exposes UX-friendly helpers and uses `fetch` for API calls.
+ */
 const backendUrl = "api/projects.php";
 const employeesUrl = "../workforce/api/employees.php?action=list&status=Active";
 let projectToDelete = null;
 
-// Safely parse JSON responses — log raw text when parsing fails (helps debug HTML/PHP errors)
+// Parse JSON safely, logging non-JSON responses for debugging server errors
 async function parseJSONResponse(res) {
     const ct = res.headers.get('content-type') || '';
     const text = await res.text();
@@ -20,8 +25,7 @@ async function parseJSONResponse(res) {
     throw new Error('Expected JSON response but received non-JSON content');
 }
 
-// ------------------ Dashboard Refresh (AJAX) ------------------
-// Fetches the current page HTML and updates Table & Stats in place.
+// AJAX: refresh table and stats from the server-rendered page fragment
 async function refreshDashboard() {
     try {
         const response = await fetch(window.location.href);
@@ -55,8 +59,7 @@ async function refreshDashboard() {
     }
 }
 
-// ------------------ Event Delegation (Edit & Delete) ------------------
-// We attach this to the container so it works even after Table Refresh
+// Event delegation for dynamic edit/delete buttons
 document.addEventListener('click', function(e) {
     const editBtn = e.target.closest('.edit-btn');
     const deleteBtn = e.target.closest('.delete-btn');
@@ -71,7 +74,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ------------------ Search & Filter ------------------
+// Search & filter logic for client-side table filtering
 function filterProjects() {
     const searchTerm = document.getElementById('projectSearch')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('projectStatusFilter')?.value.toLowerCase() || '';
@@ -142,7 +145,7 @@ document.getElementById('projectSearch')?.addEventListener('input', filterProjec
 document.getElementById('projectStatusFilter')?.addEventListener('change', filterProjects);
 document.getElementById('projectBudgetFilter')?.addEventListener('change', filterProjects);
 
-// ------------------ Add Project ------------------
+// Open the Add Project modal and prepare form state
 document.getElementById('addProjectBtn')?.addEventListener('click', function() {
     document.getElementById('projectForm').reset();
     document.getElementById('projectModalTitle').textContent = 'Add Project';
@@ -183,7 +186,7 @@ document.getElementById('addProjectBtn')?.addEventListener('click', function() {
     document.getElementById('projectModal').style.display = 'flex';
 });
 
-// ------------------ Edit Project Logic ------------------
+// Load project data and open Edit modal
 function handleEditProject(projectId) {
     fetch(backendUrl + '?fetch_id=' + projectId)
         .then(parseJSONResponse)
@@ -264,7 +267,7 @@ function handleEditProject(projectId) {
         }).catch(err => console.error('Fetch project error:', err));
 }
 
-// ------------------ Delete Project Logic ------------------
+// Delete modal helpers
 function closeDeleteModal() {
     projectToDelete = null;
     document.getElementById('deleteModal').classList.add('hidden');
@@ -312,7 +315,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// ------------------ Close Project Modal ------------------
+// Close the project modal and reset form
 function closeProjectModal() {
     document.getElementById('projectForm').reset();
     if (document.getElementById('total_budget_display')) document.getElementById('total_budget_display').value = '';
@@ -321,7 +324,7 @@ function closeProjectModal() {
 document.getElementById('closeProjectModal')?.addEventListener('click', closeProjectModal);
 document.getElementById('cancelProjectModal')?.addEventListener('click', closeProjectModal);
 
-// ------------------ Submit Add/Edit (AJAX) ------------------
+// Submit create/update via AJAX
 document.getElementById('projectForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     

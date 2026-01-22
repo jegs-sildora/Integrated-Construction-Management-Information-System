@@ -1,9 +1,20 @@
 <?php
-// 1. Load Configuration & Database
+/**
+ * Dashboard page
+ *
+ * Purpose:
+ * - Aggregate data from the DB and render the main dashboard UI.
+ * - Provide JSON-safe datasets for Chart.js visualizations.
+ *
+ * Notes on responsiveness:
+ * - Layout and sizing are controlled by Tailwind utility classes in the markup below.
+ * - Small-screen adjustments (margins, paddings, chart heights) are applied via responsive classes.
+ */
+
 require_once __DIR__ . '/config/config.php';
 require_once BASE_PATH . '/config/database.php';
 
-// 2. Security: Ensure User is Logged In
+// Start session and enforce authentication. Redirect unauthenticated users.
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -14,11 +25,13 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 /**
- * DASHBOARD DATA FETCHING
- * -----------------------
+ * ===================================================================================
+ * DASHBOARD DATA AGGREGATION
+ * Fetches all necessary data from the database to populate the dashboard widgets.
+ * ===================================================================================
  */
 
-// A. Project Statistics
+// A. Project Statistics: Counts total and active projects.
 $sql_proj_stats = "SELECT 
     COUNT(*) as total_projects,
     SUM(CASE WHEN status IN ('In Progress', 'Active') THEN 1 ELSE 0 END) as active_projects
@@ -28,7 +41,7 @@ $proj_data = $res_proj_stats->fetch_assoc();
 $total_projects = $proj_data['total_projects'] ?? 0;
 $active_projects = $proj_data['active_projects'] ?? 0;
 
-// B. Financial Overview
+// B. Financial Overview: Summarizes total budget and approved expenses across all projects.
 $sql_budget = "SELECT SUM(total_budget) as total_budget FROM icmis_projects";
 $res_budget = $conn->query($sql_budget);
 $total_budget = $res_budget->fetch_assoc()['total_budget'] ?? 0;
@@ -37,7 +50,7 @@ $sql_expenses = "SELECT SUM(amount) as total_spent FROM budget_expenses WHERE st
 $res_expenses = $conn->query($sql_expenses);
 $total_spent = $res_expenses->fetch_assoc()['total_spent'] ?? 0;
 
-// C. Workforce
+// C. Workforce Summary: Counts active employees who are not currently assigned to a project.
 $sql_staff = "SELECT COUNT(*) as total_staff
     FROM workforce_employees e
     LEFT JOIN workforce_assignments wa ON e.employee_id = wa.employee_id
@@ -45,12 +58,12 @@ $sql_staff = "SELECT COUNT(*) as total_staff
 $res_staff = $conn->query($sql_staff);
 $total_staff = $res_staff->fetch_assoc()['total_staff'] ?? 0;
 
-// D. Procurement
+// D. Procurement Summary: Counts purchase orders with a 'PENDING' status.
 $sql_po = "SELECT COUNT(*) as pending_po FROM procurement_purchase_orders WHERE status = 'PENDING'";
 $res_po = $conn->query($sql_po);
 $pending_po = $res_po->fetch_assoc()['pending_po'] ?? 0;
 
-// E. Chart 1: Top 5 Projects (Budget vs Expenses)
+// E. Chart Data: Top 5 Projects by Financials (Budget vs. Expenses)
 $sql_chart_financials = "SELECT 
         p.project_name, 
         p.total_budget,
@@ -70,7 +83,7 @@ while ($row = $res_chart_financials->fetch_assoc()) {
     $chart_expenses[] = $row['total_expenses'];
 }
 
-// F. Chart 2: Expense Category Distribution
+// F. Chart Data: Expense Category Distribution
 $sql_chart_cats = "SELECT category, SUM(amount) as total FROM budget_expenses WHERE status = 'APPROVED' GROUP BY category";
 $res_chart_cats = $conn->query($sql_chart_cats);
 $cat_labels = [];
@@ -80,8 +93,8 @@ while ($row = $res_chart_cats->fetch_assoc()) {
     $cat_data[] = $row['total'];
 }
 
-// G. Chart 3 (NEW): Monthly Spending Trend (Last 6 Months)
-// Uses DATE_FORMAT to group expenses by Month-Year
+// G. Chart Data: Monthly Spending Trend (Last 6 Months)
+// Groups approved expenses by month and year to show recent financial trends.
 $sql_trend = "SELECT 
         DATE_FORMAT(expense_date, '%b %Y') as month_label,
         SUM(amount) as total_spent
@@ -98,8 +111,8 @@ while ($row = $res_trend->fetch_assoc()) {
     $trend_data[] = $row['total_spent'];
 }
 
-// H. Chart 4 (NEW): Workforce Attendance (Last 7 Days)
-// Stacks Present, Late, and Absent counts
+// H. Chart Data: Workforce Attendance (Last 7 Days)
+// Aggregates and stacks daily attendance statuses (Present, Late, Absent) for the past week.
 $sql_attendance = "SELECT 
         attendance_date,
         SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
@@ -115,14 +128,14 @@ $att_present = [];
 $att_late = [];
 $att_absent = [];
 while ($row = $res_att->fetch_assoc()) {
-    // Format date as 'Jan 10'
+    // Format date for display, e.g., 'Jan 22'
     $att_labels[] = date('M d', strtotime($row['attendance_date']));
     $att_present[] = $row['present_count'];
     $att_late[] = $row['late_count'];
     $att_absent[] = $row['absent_count'];
 }
 
-// I. Recent Projects List
+// I. Data for Recent Projects Table: Fetches the 5 most recently added projects.
 $sql_recent = "SELECT project_name, location, status, total_budget FROM icmis_projects ORDER BY project_id DESC LIMIT 5";
 $recent_projects = $conn->query($sql_recent);
 ?>
@@ -141,29 +154,30 @@ $recent_projects = $conn->query($sql_recent);
 
     <?php include __DIR__ . '/includes/sidebar.php'; ?>
     <?php
-    $show_project_selector = false;
+    $show_project_selector = false; // This view does not require a project context selector in the header.
     include __DIR__ . '/includes/header.php';
 
-    // Include toast helper (renders container + JS showToast/dismissToast)
+    // Renders the toast container and provides JS functions (showToast, dismissToast).
     include __DIR__ . '/includes/toast.php';
 
-    // Show login success toast if set by the auth flow, then clear it
+    // Check for a one-time 'login_success' message, display it as a toast, and then clear it from the session.
     if (isset($_SESSION['login_success']) && !empty($_SESSION['login_success'])) {
         $loginMsg = $_SESSION['login_success'];
-        unset($_SESSION['login_success']);
+        unset($_SESSION['login_success']); // Prevent the message from showing again on refresh.
+        // The script is injected to run after the DOM is fully loaded. A small delay ensures UI elements are ready.
         echo "<script>document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ showToast(" . json_encode($loginMsg) . ", 'success'); }, 150); });</script>";
     }
     ?>
 
-    <main class="ml-56 mt-16 p-8 min-h-screen transition-all duration-300 animate-fade-in">
+    <main class="ml-0 md:ml-56 mt-16 p-8 min-h-screen transition-all duration-300 animate-fade-in">
         
         <div class="flex justify-between items-center mb-8 animate-fade-in">
-            <div>
+            <div class="">
                 <h1 class="text-3xl font-black text-navy-dark tracking-tight">System Overview</h1>
                 <p class="text-slate-500 mt-1 font-medium">Snapshot of Construction Operations & Financials</p>
             </div>
             <div class="flex items-center gap-4">
-                <span class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 shadow-sm flex items-center gap-2">
+                <span class="hidden sm:flex px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 shadow-sm flex items-center gap-2">
                     <i class="fa-regular fa-calendar text-[#e9922c]"></i>
                     <?php echo date('F j, Y'); ?>
                 </span>
@@ -229,7 +243,7 @@ $recent_projects = $conn->query($sql_recent);
                     <h2 class="text-lg font-bold text-navy-dark">Project Financial Performance</h2>
                     <p class="text-xs text-slate-500">Allocated Budget vs. Actual Expenses (Top 5 Projects)</p>
                 </div>
-                <div class="h-64">
+                <div class="h-56 md:h-64">
                     <canvas id="financialChart"></canvas>
                 </div>
             </div>
@@ -239,7 +253,7 @@ $recent_projects = $conn->query($sql_recent);
                     <h2 class="text-lg font-bold text-navy-dark">Cost Distribution</h2>
                     <p class="text-xs text-slate-500">Expenses by Category</p>
                 </div>
-                <div class="h-64 flex justify-center">
+                <div class="h-56 md:h-64 flex justify-center">
                     <canvas id="categoryChart"></canvas>
                 </div>
             </div>
@@ -256,7 +270,7 @@ $recent_projects = $conn->query($sql_recent);
                         <i class="fa-solid fa-chart-line"></i>
                     </div>
                 </div>
-                <div class="h-64">
+                <div class="h-56 md:h-64">
                     <canvas id="trendChart"></canvas>
                 </div>
             </div>
@@ -271,7 +285,7 @@ $recent_projects = $conn->query($sql_recent);
                         <i class="fa-solid fa-user-clock"></i>
                     </div>
                 </div>
-                <div class="h-64">
+                <div class="h-56 md:h-64">
                     <canvas id="attendanceChart"></canvas>
                 </div>
             </div>
@@ -287,27 +301,27 @@ $recent_projects = $conn->query($sql_recent);
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="bg-slate-50 border-b border-slate-100">
-                        <tr>
-                            <th class="px-6 py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider">Project Name</th>
-                            <th class="px-6 py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider">Location</th>
-                            <th class="px-6 py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider text-right">Total Budget</th>
-                        </tr>
+                                <tr>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider">Project Name</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider">Location</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 text-xs font-extrabold text-slate-500 uppercase tracking-wider text-right">Total Budget</th>
+                                </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         <?php if ($recent_projects && $recent_projects->num_rows > 0): ?>
                             <?php while($row = $recent_projects->fetch_assoc()): ?>
                             <tr class="hover:bg-orange-50/30 transition-colors duration-150">
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-3 md:px-6 md:py-4">
                                     <div class="text-sm font-bold text-navy-dark"><?php echo htmlspecialchars($row['project_name']); ?></div>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-3 md:px-6 md:py-4">
                                     <div class="text-sm text-slate-600 flex items-center gap-2 font-bold">
                                         <i class="fa-solid fa-location-dot text-slate-400 text-xs"></i>
                                         <?php echo htmlspecialchars($row['location']); ?>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-3 md:px-6 md:py-4">
                                     <?php 
                                         $status = $row['status'];
                                         $statusClass = match($status) {
@@ -322,7 +336,7 @@ $recent_projects = $conn->query($sql_recent);
                                         <?php echo htmlspecialchars($status); ?>
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-sm font-bold text-slate-700 text-right">
+                                <td class="px-3 py-3 md:px-6 md:py-4 text-sm font-bold text-slate-700 text-right">
                                     ₱<?php echo number_format($row['total_budget'], 2); ?>
                                 </td>
                             </tr>
@@ -343,13 +357,13 @@ $recent_projects = $conn->query($sql_recent);
     </main>
 
     <script>
-        // Setup Chart Contexts
+        // Get the 2D rendering context for each canvas element where charts will be drawn.
         const ctxFinance = document.getElementById('financialChart').getContext('2d');
         const ctxCategory = document.getElementById('categoryChart').getContext('2d');
         const ctxTrend = document.getElementById('trendChart').getContext('2d');
         const ctxAtt = document.getElementById('attendanceChart').getContext('2d');
 
-        // Data Injection from PHP
+        // Securely inject PHP data into JavaScript variables for chart rendering.
         const projectLabels = <?php echo json_encode($chart_labels); ?>;
         const projectBudgets = <?php echo json_encode($chart_budget); ?>;
         const projectExpenses = <?php echo json_encode($chart_expenses); ?>;
@@ -365,7 +379,10 @@ $recent_projects = $conn->query($sql_recent);
         const attLate = <?php echo json_encode($att_late); ?>;
         const attAbsent = <?php echo json_encode($att_absent); ?>;
 
-        // 1. Financial Bar Chart
+        /**
+         * Chart 1: Project Financial Performance (Bar Chart)
+         * Compares the allocated budget vs. actual approved expenses for the top 5 projects.
+         */
         new Chart(ctxFinance, {
             type: 'bar',
             data: {
@@ -385,7 +402,11 @@ $recent_projects = $conn->query($sql_recent);
             }
         });
 
-        // 2. Category Doughnut Chart
+        /**
+         * Chart 2: Cost Distribution (Doughnut Chart)
+         * Shows the proportion of expenses across different spending categories.
+         * A fallback state is provided if no expense data is available.
+         */
         new Chart(ctxCategory, {
             type: 'doughnut',
             data: {
@@ -400,11 +421,14 @@ $recent_projects = $conn->query($sql_recent);
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom' } },
-                cutout: '70%'
+                cutout: '70%' // Creates the "doughnut" hole.
             }
         });
 
-        // 3. (NEW) Monthly Trend Line Chart
+        /**
+         * Chart 3: Monthly Cash Flow (Line Chart)
+         * Visualizes the spending trend over the past 6 months with a smoothed line.
+         */
         new Chart(ctxTrend, {
             type: 'line',
             data: {
@@ -415,7 +439,7 @@ $recent_projects = $conn->query($sql_recent);
                     borderColor: '#e9922c',
                     backgroundColor: 'rgba(233, 146, 44, 0.1)',
                     borderWidth: 3,
-                    tension: 0.4, // Smooth curve
+                    tension: 0.4, // Creates a smooth, curved line instead of sharp angles.
                     fill: true,
                     pointBackgroundColor: '#fff',
                     pointBorderColor: '#e9922c',
@@ -433,7 +457,11 @@ $recent_projects = $conn->query($sql_recent);
             }
         });
 
-        // 4. (NEW) Attendance Stacked Bar Chart
+        /**
+         * Chart 4: Workforce Efficiency (Stacked Bar Chart)
+         * Displays daily attendance counts (Present, Late, Absent) for the last 7 days.
+         * The bars are stacked to show the total workforce checked in each day.
+         */
         new Chart(ctxAtt, {
             type: 'bar',
             data: {

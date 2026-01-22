@@ -1,16 +1,15 @@
 <?php
-// modules/project/gantt.php - Gantt Chart View
-
-// 1. Configuration (Session & Constants)
+/**
+ * Gantt chart view
+ *
+ * - Prepares timeline data for phases and tasks and renders the Frappe Gantt chart.
+ * - Supports optional `project_id` filter via query string.
+ */
 require_once __DIR__ . '/../../config/config.php';
-
-// 2. Authentication Check
-if (!isset($_SESSION['user_id'])) { 
-    header("Location: " . BASE_URL . "index.php"); 
-    exit(); 
+if (!isset($_SESSION['user_id'])) {
+    header("Location: " . BASE_URL . "index.php");
+    exit();
 }
-
-// 3. Database Connection
 require_once __DIR__ . '/../../config/database.php';
 
 // Fetch all projects for filter dropdown
@@ -258,7 +257,7 @@ $ganttDataJson = json_encode($ganttData);
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
+    <main class="ml-0 md:ml-56 mt-16 p-4 md:p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-full mx-auto">
             
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">

@@ -1,7 +1,19 @@
 <?php
-// includes/header.php
+/**
+ * Header component
+ *
+ * Responsibilities:
+ * - Render the top navigation/header area with page title and user info.
+ * - Show a project selector when appropriate (controlled by `$show_project_selector`).
+ * - Provide a mobile sidebar toggle for small screens.
+ *
+ * Implementation notes:
+ * - User display name is pulled from session when available; a DB lookup is attempted
+ *   only when a name is missing and a DB connection can be established.
+ * - The project selector uses `$_SESSION['selected_project_id']` and can be overridden
+ *   via `project_id` URL parameter.
+ */
 
-// 1. Session & User Data
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -9,10 +21,17 @@ if (session_status() === PHP_SESSION_NONE) {
 $userName = $_SESSION['user_name'] ?? 'Guest User';
 $userRole = $_SESSION['user_role'] ?? 'Staff';
 
-// If session doesn't have a display name but we have a user_id, try to fetch from DB
+// Ensure header labels are defined to avoid deprecated null warnings
+if (!isset($pageSection) || $pageSection === null) {
+    $pageSection = 'ICMIS';
+}
+if (!isset($pageTitle) || $pageTitle === null) {
+    $pageTitle = 'Dashboard';
+}
+
+// Attempt to hydrate missing user info from DB (safe, optional step)
 if (($userName === 'Guest User' || empty($userName)) && !empty($_SESSION['user_id'])) {
     $uid = intval($_SESSION['user_id']);
-    // Ensure we have a mysqli connection available
     if (!(isset($conn) && $conn instanceof mysqli && !$conn->connect_error)) {
         $db_path = __DIR__ . '/../config/database.php';
         if (file_exists($db_path)) require_once $db_path;
@@ -26,7 +45,6 @@ if (($userName === 'Guest User' || empty($userName)) && !empty($_SESSION['user_i
                 if ($row = $r->fetch_assoc()) {
                     $userName = $row['full_name'] ?? $userName;
                     $userRole = $row['role'] ?? $userRole;
-                    // cache into session for subsequent requests
                     $_SESSION['user_name'] = $userName;
                     $_SESSION['user_role'] = $userRole;
                 }
@@ -39,68 +57,41 @@ if (($userName === 'Guest User' || empty($userName)) && !empty($_SESSION['user_i
 $nameParts = explode(' ', $userName);
 $userInitials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
 
-// ==================================================================
-// 2. CONTEXT SWITCHER VISIBILITY LOGIC
-// ==================================================================
-
+// Determine when to show the project selector (controlled by page context)
 $current_uri = $_SERVER['REQUEST_URI'];
 $current_file = basename($_SERVER['PHP_SELF']);
-
-// Define where the Project Dropdown should appear
 if (!isset($show_project_selector)) {
     $show_project_selector = (
         strpos($current_uri, '/modules/budget/') !== false ||
         strpos($current_uri, '/modules/procurement/') !== false ||
         strpos($current_uri, '/modules/workforce/') !== false ||
         strpos($current_uri, '/modules/reports/') !== false ||
-        $current_file === 'dashboard.php' // Main Dashboard
+        $current_file === 'dashboard.php'
     );
 }
 
-// Explicitly hide for Project Module
 if (strpos($current_uri, '/modules/project/') !== false) {
     $show_project_selector = false;
 }
 
-// ==================================================================
-// 3. GLOBAL PROJECT CONTEXT LOGIC
-// ==================================================================
-
+// If selector is enabled, load projects (optional, requires DB connection)
 $header_projects = [];
 $header_project_id = 0;
-
 if ($show_project_selector) {
-    // FIX: Robust Connection Handling
-    // 1. Check if $conn is valid and open
-    $db_connection_valid = (isset($conn) && $conn instanceof mysqli && !$conn->connect_error);
-    
-    if (!$db_connection_valid) {
-        // 2. Try to include database.php
+    if (!(isset($conn) && $conn instanceof mysqli && !$conn->connect_error)) {
         $db_path = __DIR__ . '/../config/database.php';
-        if (file_exists($db_path)) {
-            require_once $db_path;
-        }
+        if (file_exists($db_path)) require_once $db_path;
     }
-
-    // Handle Context Switch (URL param overrides session)
     if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
         $_SESSION['selected_project_id'] = intval($_GET['project_id']);
     }
-
-    // Get Current ID
     $header_project_id = $_SESSION['selected_project_id'] ?? 0;
-
-    // Fetch Projects for Dropdown
-    // Only proceed if we have a valid connection object
     if (isset($conn) && $conn instanceof mysqli) {
-        // FIX: CHANGED ORDER BY 'created_at' TO 'project_id' (created_at column does not exist)
         $h_sql = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
         $h_result = $conn->query($h_sql);
-
         if ($h_result && $h_result->num_rows > 0) {
             while ($row = $h_result->fetch_assoc()) {
                 $header_projects[] = $row;
-                // Default to first if 0
                 if ($header_project_id == 0) {
                     $header_project_id = $row['project_id'];
                     $_SESSION['selected_project_id'] = $header_project_id;
@@ -109,41 +100,14 @@ if ($show_project_selector) {
         }
     }
 }
-
-// ==================================================================
-// 4. PAGE TITLES & BREADCRUMBS
-// ==================================================================
-
-// Define defaults if not set by parent
-if (!isset($pageSection) || !isset($pageTitle)) {
-    if (strpos($current_uri, '/procurement/') !== false) {
-        $pageSection = 'Procurement & Inventory';
-        $pageTitle = 'Overview';
-    } elseif (strpos($current_uri, '/budget/') !== false) {
-        $pageSection = 'Budget';
-        $pageTitle = 'Overview';
-    } elseif (strpos($current_uri, '/workforce/') !== false) {
-        $pageSection = 'Labor & Workforce';
-        $pageTitle = 'Workforce Dashboard';
-    } elseif (strpos($current_uri, '/project/') !== false) {
-        $pageSection = 'Projects';
-        $pageTitle = 'Overview';
-    } elseif (strpos($current_uri, '/reports/') !== false) {
-        $pageSection = 'Reports Center';
-        $pageTitle = 'Overview';
-    } elseif (strpos($current_uri, '/admin/') !== false) {
-        $pageSection = 'ICMIS Administration';
-        $pageTitle = 'Audit Logs';
-    } else {
-        $pageSection = 'ICMIS';
-        $pageTitle = 'Dashboard';
-    }
-}
 ?>
 
-<header class="bg-white border-b border-gray-200 shadow-sm px-6 py-4 fixed top-0 left-56 right-0 z-50 h-20 flex items-center justify-between">
+<header class="bg-white border-b border-gray-200 shadow-sm px-4 md:px-6 py-4 fixed top-0 left-0 md:left-56 right-0 z-50 h-20 flex items-center justify-between">
     
     <div class="flex items-center gap-4">
+        <button id="sidebarToggle" class="md:hidden p-2 rounded-lg hover:bg-slate-100 mr-2" aria-label="Toggle sidebar">
+            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
         
         <div class="flex flex-col">
             <span class="text-xs font-bold text-gray-400 uppercase tracking-wider"><?php echo htmlspecialchars($pageSection); ?></span>
@@ -202,6 +166,9 @@ if (!isset($pageSection) || !isset($pageTitle)) {
     </div>
 </header>
 
+<!-- Mobile backdrop: appears when sidebar is open on small screens. Uses opacity transition for fade. -->
+<div id="mobileSidebarBackdrop" class="fixed inset-0 bg-black bg-opacity-40 z-40 transition-opacity duration-300 opacity-0 pointer-events-none md:hidden"></div>
+
 <script>
     function changeHeaderProject(id) {
         const url = new URL(window.location.href);
@@ -215,6 +182,58 @@ if (!isset($pageSection) || !isset($pageTitle)) {
         if (trigger && menu) {
             trigger.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
             window.addEventListener('click', (e) => { if (!trigger.contains(e.target)) menu.classList.add('hidden'); });
+        }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('appSidebar');
+        const backdrop = document.getElementById('mobileSidebarBackdrop');
+        if (toggle && sidebar) {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // Toggle animated classes for mobile slide-in/out
+                if (sidebar.classList.contains('sidebar-open')) {
+                    sidebar.classList.remove('sidebar-open');
+                    sidebar.classList.add('sidebar-closed');
+                    if (backdrop) { backdrop.classList.remove('opacity-100'); backdrop.classList.remove('pointer-events-auto'); backdrop.classList.add('opacity-0'); backdrop.classList.add('pointer-events-none'); }
+                    document.body.classList.remove('overflow-hidden');
+                } else {
+                    sidebar.classList.remove('sidebar-closed');
+                    sidebar.classList.add('sidebar-open');
+                    if (backdrop) { backdrop.classList.remove('opacity-0'); backdrop.classList.remove('pointer-events-none'); backdrop.classList.add('opacity-100'); backdrop.classList.add('pointer-events-auto'); }
+                    document.body.classList.add('overflow-hidden');
+                }
+            });
+
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth < 768 && sidebar.classList.contains('sidebar-open')) {
+                    const isClickInside = sidebar.contains(e.target) || toggle.contains(e.target);
+                    if (!isClickInside) {
+                        sidebar.classList.remove('sidebar-open');
+                        sidebar.classList.add('sidebar-closed');
+                        if (backdrop) { backdrop.classList.remove('opacity-100'); backdrop.classList.remove('pointer-events-auto'); backdrop.classList.add('opacity-0'); backdrop.classList.add('pointer-events-none'); }
+                        document.body.classList.remove('overflow-hidden');
+                    }
+                }
+            });
+
+            // Close sidebar when clicking the backdrop
+            if (backdrop) {
+                backdrop.addEventListener('click', function(e) {
+                    if (sidebar.classList.contains('sidebar-open')) {
+                        sidebar.classList.remove('sidebar-open');
+                        sidebar.classList.add('sidebar-closed');
+                        backdrop.classList.remove('opacity-100');
+                        backdrop.classList.remove('pointer-events-auto');
+                        backdrop.classList.add('opacity-0');
+                        backdrop.classList.add('pointer-events-none');
+                        document.body.classList.remove('overflow-hidden');
+                    }
+                });
+            }
         }
     });
 </script>

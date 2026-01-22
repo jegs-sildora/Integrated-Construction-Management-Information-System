@@ -1,20 +1,19 @@
-// Moved from phases.php inline script
-// Expects `backendUrl` and `projectsData` to be defined on the page (injected by PHP)
-
+/**
+ * Phases page JS
+ * - Client-side filtering, pagination and AJAX-driven CRUD helpers for phases.
+ * - Requires `backendUrl` and `projectsData` injected by the server page.
+ */
 let phaseToDelete = null;
 
-// Pagination
+// Pagination state
 let currentPage = 1;
 const itemsPerPage = 10;
 let filteredRows = [];
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    updateTable();
-});
+// Initialize table on DOM ready
+document.addEventListener('DOMContentLoaded', function() { updateTable(); });
 
-// ------------------ Dashboard Refresh (AJAX) ------------------
-// Fetches the current page HTML and updates Table & Stats in place.
+// AJAX: refresh table and stats from the server-rendered fragment
 async function refreshDashboard() {
     try {
         const response = await fetch(window.location.href);
@@ -48,7 +47,7 @@ async function refreshDashboard() {
     }
 }
 
-// ------------------ Search & Filter ------------------
+// Search & filter bindings
 document.getElementById('searchInput')?.addEventListener('input', updateTable);
 document.getElementById('projectFilter')?.addEventListener('change', updateTable);
 

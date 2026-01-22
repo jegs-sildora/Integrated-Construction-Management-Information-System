@@ -1,19 +1,21 @@
 <?php
-// modules/project/phases.php
-
-// 1. Configuration (Session & Constants)
+/**
+ * Phase management view
+ *
+ * - Loads project phases and associated approved budget totals.
+ * - Renders a responsive Tailwind UI for filtering and managing phases.
+ */
 require_once __DIR__ . '/../../config/config.php';
 
-// 2. Authentication Check
-if (!isset($_SESSION['user_id'])) { 
-    header("Location: " . BASE_URL . "index.php"); 
-    exit(); 
+// enforce authentication
+if (!isset($_SESSION['user_id'])) {
+    header("Location: " . BASE_URL . "index.php");
+    exit();
 }
 
-// 3. Database Connection
 require_once __DIR__ . '/../../config/database.php';
 
-// Default Phases for new projects
+// Default phase templates for new projects
 $defaultPhases = [
     'Phase 1: Mobilization',
     'Phase 2: Structural',
@@ -21,11 +23,11 @@ $defaultPhases = [
     'Phase 4: Finishing'
 ];
 
-// Fetch all phases across all projects with approved budget from budget_proposals
+// Load phases with approved budget totals (grouped by phase)
 $sql = "SELECT ph.*, p.project_name, p.project_code,
            COALESCE(SUM(CASE WHEN bp.status = 'APPROVED' THEN bp.total_amount ELSE 0 END), 0) AS phase_budget
-    FROM icmis_project_phases ph 
-    LEFT JOIN icmis_projects p ON ph.project_id = p.project_id 
+    FROM icmis_project_phases ph
+    LEFT JOIN icmis_projects p ON ph.project_id = p.project_id
     LEFT JOIN budget_proposals bp ON bp.phase_id = ph.phase_id AND bp.status = 'APPROVED'
     GROUP BY ph.phase_id
     ORDER BY ph.phase_id DESC, ph.start_date DESC";
@@ -41,7 +43,6 @@ if ($result && $result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $phases[] = $row;
         $totalPhases++;
-        
         $status = strtolower($row['status'] ?? '');
         if ($status === 'in progress') $activeCount++;
         if ($status === 'completed') $completedCount++;
@@ -49,7 +50,7 @@ if ($result && $result->num_rows > 0) {
     }
 }
 
-// Fetch all projects for dropdown filter
+// Projects for selector (used by filters)
 $projectsResult = $conn->query("SELECT project_id, project_name, project_code FROM icmis_projects ORDER BY project_name ASC");
 $allProjects = [];
 while ($row = $projectsResult->fetch_assoc()) {
@@ -87,7 +88,7 @@ while ($row = $projectsResult->fetch_assoc()) {
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
+    <main class="ml-0 md:ml-56 mt-16 p-4 md:p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
@@ -201,17 +202,17 @@ while ($row = $projectsResult->fetch_assoc()) {
 
         <div id="phasesTableContainer" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full" id="phasesTable">
+                    <table class="w-full" id="phasesTable">
                     <thead>
                         <tr class="bg-gradient-to-r from-slate-800 to-slate-700">
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Phase Name</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Project</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Description</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Start Date</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Priority</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Budget</th>
-                            <th class="px-6 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Actions</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Phase Name</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Project</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Description</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Start Date</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Priority</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Budget</th>
+                            <th class="px-3 py-3 md:px-6 md:py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200" id="phasesTableBody">

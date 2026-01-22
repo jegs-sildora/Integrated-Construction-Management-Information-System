@@ -1,5 +1,4 @@
 <?php
-// 1. Load Configuration FIRST
 require_once __DIR__ . '/config/config.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -18,7 +17,6 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="manifest" href="<?php echo BASE_URL; ?>assets/images/favicon/site.webmanifest">
     
     <style>
-        /* Page-Specific Background Pattern */
         .login-bg {
             background-image: linear-gradient(135deg, #f1f5f9 50%, transparent 50%), 
                               url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=2070&auto=format&fit=crop');
@@ -26,7 +24,6 @@ if (session_status() === PHP_SESSION_NONE) {
             background-position: center;
             filter: grayscale(100%) opacity(0.6);
         }
-        /* Decorative Dots */
         .dot-pattern {
             background-image: radial-gradient(#e9922c 1px, transparent 1px);
             background-size: 20px 20px;
@@ -99,7 +96,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         </span>
                         <input type="password" name="password" id="login-pass" 
                                class="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-lg text-[#1e293b] text-sm focus:outline-none focus:border-[#e9922c] focus:ring-1 focus:ring-[#e9922c] transition-all placeholder-slate-400"
-                               placeholder="••••••••" required>
+                               placeholder="••••••••" autocomplete="off" required>
                         <i class="fa-solid fa-eye absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer hover:text-[#1e293b] transition-colors" 
                            onclick="togglePassword('login-pass', this)"></i>
                     </div>
@@ -160,7 +157,11 @@ if (session_status() === PHP_SESSION_NONE) {
     </div>
 
     <script>
-        // 1. Tab Switching Logic
+        /**
+         * Toggles the visibility of the login and signup forms.
+         * It also updates the styling of the tabs to indicate which form is active.
+         * @param {string} type - The type of form to display, either 'login' or 'signup'.
+         */
         function toggleForm(type) {
             const loginForm = document.getElementById('login-form');
             const signupForm = document.getElementById('signup-form');
@@ -187,7 +188,12 @@ if (session_status() === PHP_SESSION_NONE) {
             }
         }
 
-        // 2. Show/Hide Password Logic
+        /**
+         * Toggles the visibility of the password in a password input field.
+         * It changes the input type between 'password' and 'text' and updates the icon.
+         * @param {string} inputId - The ID of the password input field.
+         * @param {HTMLElement} icon - The icon element that triggers the toggle.
+         */
         function togglePassword(inputId, icon) {
             const input = document.getElementById(inputId);
             if (input.type === "password") {
@@ -201,7 +207,11 @@ if (session_status() === PHP_SESSION_NONE) {
             }
         }
 
-        // 3. Auto-switch to Signup if needed
+        /**
+         * Checks the URL for a 'signup_name' parameter on page load.
+         * If the parameter is present, it automatically switches to the signup form.
+         * This is useful for redirecting to the signup form from other pages with pre-filled data.
+         */
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('signup_name')) {
             toggleForm('signup');

@@ -1,16 +1,22 @@
 <?php
-// modules/project/projects.php
-
-// 1. Configuration (Session & Constants)
+/**
+ * Projects list view
+ *
+ * Responsibilities:
+ * - Load projects from the database and compute simple dashboard stats.
+ * - Render a responsive Tailwind-based UI for searching, filtering, and managing projects.
+ *
+ * Notes:
+ * - Authentication is enforced via session; this page expects a valid `$_SESSION['user_id']`.
+ * - Database connection is provided by `config/database.php` and used to fetch project rows.
+ */
 require_once __DIR__ . '/../../config/config.php';
-
-// 2. Authentication Check
-if (!isset($_SESSION['user_id'])) { 
-    header("Location: " . BASE_URL . "index.php"); 
-    exit(); 
+// ensure user is authenticated
+if (!isset($_SESSION['user_id'])) {
+    header("Location: " . BASE_URL . "index.php");
+    exit();
 }
-
-// 3. Database Connection
+// database connection
 require_once __DIR__ . '/../../config/database.php';
 
 $sql = "SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
@@ -73,7 +79,7 @@ if ($result && $result->num_rows > 0) {
         include __DIR__ . '/../../includes/header.php'; 
     ?>
 
-    <main class="ml-56 mt-16 p-6 transition-all duration-300 animate-fade-in">
+    <main class="ml-0 md:ml-56 mt-16 p-4 md:p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-7xl mx-auto">
             
             <div class="flex items-center gap-1 mb-6 border-b border-gray-200">
@@ -118,7 +124,7 @@ if ($result && $result->num_rows > 0) {
                 </select>
             </div>
             
-            <button id="addProjectBtn" class="flex items-center gap-2 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
+            <button id="addProjectBtn" class="flex items-center gap-3 bg-[#e9922c] text-white px-6 py-2.5 rounded-lg hover:bg-[#d17f1f] transition-colors duration-200 shadow-sm">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
@@ -247,13 +253,13 @@ if ($result && $result->num_rows > 0) {
                     <table class="w-full" id="generalTable">
                         <thead>
                             <tr class="bg-gradient-to-r from-slate-800 to-slate-700">
-                                <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Project</th>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Manager</th>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Location</th>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Timeline</th>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Budget</th>
-                                <th class="px-6 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Actions</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Project</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Manager</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Location</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Timeline</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Budget</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200" id="projectsTableBody">
@@ -263,7 +269,7 @@ if ($result && $result->num_rows > 0) {
                                 data-budget="<?php echo floatval($project['total_budget'] ?? 0); ?>"
                                 data-name="<?php echo strtolower($project['project_name'] ?? ''); ?>"
                                 data-manager="<?php echo strtolower($project['manager_name'] ?? ''); ?>">
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-3 md:px-6 md:py-4">
                                     <div class="flex items-center gap-3">
                                         <div class="bg-slate-100 rounded-lg p-2">
                                             <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,19 +282,19 @@ if ($result && $result->num_rows > 0) {
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-3 md:px-6 md:py-4">
                                     <div class="text-sm text-gray-900"><?php echo htmlspecialchars($project['manager_name'] ?? '-'); ?></div>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-3 md:px-6 md:py-4">
                                     <div class="text-sm text-gray-600"><?php echo htmlspecialchars($project['location'] ?? '-'); ?></div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900"><?php echo !empty($project['start_date']) ? date('M d, Y', strtotime($project['start_date'])) : '-'; ?></div>
                                     <?php if (!empty($project['end_date'])): ?>
                                     <div class="text-xs text-gray-500">to <?php echo date('M d, Y', strtotime($project['end_date'])); ?></div>
                                     <?php endif; ?>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap">
                                     <?php 
                                         $statusClass = match(strtolower($project['status'] ?? '')) {
                                             'planning' => 'bg-blue-100 text-blue-700',
@@ -303,10 +309,10 @@ if ($result && $result->num_rows > 0) {
                                         <?php echo htmlspecialchars($project['status'] ?? 'Unknown'); ?>
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap">
                                     <span class="text-sm font-semibold text-gray-900">₱<?php echo number_format($project['total_budget'] ?? 0, 2); ?></span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <td class="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap text-center">
                                     <div class="flex items-center justify-center gap-1">
                                         <button class="edit-btn text-gray-500 p-2 rounded-lg hover:text-green-600 hover:bg-green-50 transition-colors duration-200" 
                                                 data-id="<?php echo $project['project_id']; ?>" title="Edit">
