@@ -1,18 +1,16 @@
 <?php
   // 1. Connection & Context
   include __DIR__ . '/project_context.php';
-  // Fallback connection if getBudgetConnection not defined
-  $conn = function_exists('getBudgetConnection') ? getBudgetConnection() : new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+  require_once __DIR__ . '/../../core/ApiHelper.php';
 
   // Get selected project from context
-  $selected_project_id = function_exists('getProjectContext') ? getProjectContext($conn) : (isset($_SESSION['selected_project_id']) ? $_SESSION['selected_project_id'] : 0);
+  $selected_project_id = getProjectContext();
   
-  // Basic Projects Dropdown Logic (Preserved from your design)
-  $projects = [];
-  $res = $conn->query("SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC");
-  if ($res) while($r = $res->fetch_assoc()) $projects[] = $r;
+  // Basic Projects Dropdown Logic
+  $projectRes = ApiHelper::get('project/projects');
+  $projects = $projectRes['data']['projects'] ?? [];
 
-  // FETCH PAYROLL EXPENSES (Closed Payrolls Only)
+  // FETCH PAYROLL EXPENSES
   $expenses = [];
   $total_payroll_expense = 0;
 
@@ -20,41 +18,12 @@
   $pageSection = "Budget & Cost Control";
 
   if ($selected_project_id > 0) {
-      // Query: Join Payroll -> Periods -> Employees -> Job Titles
-      // Filter: Period Status = 'Closed' AND Project Context
-      $sql = "SELECT 
-                  wp.payroll_id,
-                  wp.net_pay as amount, -- Expense is the Net Pay disbursed
-                  wp.gross_pay,
-                  (wp.gross_pay - wp.net_pay) as deductions,
-                  wpp.pay_date as expense_date,
-                  wpp.start_date,
-                  wpp.end_date,
-                  CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-                  jt.title_name as role,
-                  pp.phase_name
-              FROM workforce_payroll wp
-              JOIN workforce_payroll_periods wpp ON wp.period_id = wpp.period_id
-              JOIN workforce_employees e ON wp.employee_id = e.employee_id
-              -- Join Assignments to link Employee to Project/Phase for this context
-              JOIN workforce_assignments wa ON e.employee_id = wa.employee_id 
-              LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-              LEFT JOIN icmis_project_phases pp ON wa.phase_id = pp.phase_id
-              WHERE wpp.status = 'Closed' 
-              AND wa.project_id = ?
-              AND wa.status = 'Active' -- Ensure we get their active assignment for the project
-              ORDER BY wpp.pay_date DESC, e.last_name ASC";
-      
-      $stmt = $conn->prepare($sql);
-      $stmt->bind_param("i", $selected_project_id);
-      $stmt->execute();
-      $result = $stmt->get_result();
-      
-      while ($row = $result->fetch_assoc()) {
-          $expenses[] = $row;
-          $total_payroll_expense += $row['amount'];
+      // Fetch payroll expenses via Gateway (mapped to workforce/payroll in reality, but for budget logic)
+      $expRes = ApiHelper::get("workforce/payroll?action=project_expenses&project_id=" . $selected_project_id);
+      $expenses = $expRes['data']['data'] ?? [];
+      foreach ($expenses as $row) {
+          $total_payroll_expense += floatval($row['amount'] ?? 0);
       }
-      $stmt->close();
   }
 ?>
 <!DOCTYPE html>

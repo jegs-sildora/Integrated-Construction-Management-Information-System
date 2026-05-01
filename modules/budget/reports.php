@@ -2,47 +2,29 @@
     // reports.php - using centralized config
     include __DIR__ . '/project_context.php';
     require_once __DIR__ . '/../../includes/report_print_layout.php';
-    $conn = getBudgetConnection();
+    require_once __DIR__ . '/../../core/ApiHelper.php';
 
     // 1. Get selected project ID from global context
-    $selected_project_id = getProjectContext($conn);
+    $selected_project_id = getProjectContext();
     
     // 2. Fetch Current Project Name for Context Display
     $current_project_name = "No Project Selected";
     $current_project_code = "";
     
     if ($selected_project_id) {
-        $stmt = $conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?");
-        $stmt->bind_param("i", $selected_project_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        if ($row = $res->fetch_assoc()) {
-            $current_project_name = $row['project_name'];
-            $current_project_code = $row['project_code'];
+        $projRes = ApiHelper::get("project/projects?fetch_id=" . $selected_project_id);
+        $project = $projRes['data']['project'] ?? null;
+        if ($project) {
+            $current_project_name = $project['project_name'];
+            $current_project_code = $project['project_code'];
         }
-        $stmt->close();
     }
 
-    // 3. Fetch Real Reports from Database
+    // 3. Fetch Real Reports from Database via Gateway
     $recent_reports = [];
-    // Note: budget_budget_generated_reports is in icmis_budget, so no prefix needed if $conn defaults to it
-    $tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
-    
-    if ($tableExists && $tableExists->num_rows > 0 && $selected_project_id) {
-        $report_sql = "SELECT * FROM budget_generated_reports 
-                       WHERE project_id = ? 
-                       ORDER BY created_at DESC 
-                       LIMIT 50"; 
-        
-        $stmt = $conn->prepare($report_sql);
-        $stmt->bind_param("i", $selected_project_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        while ($row = $result->fetch_assoc()) {
-            $recent_reports[] = $row;
-        }
-        $stmt->close();
+    if ($selected_project_id) {
+        $reportRes = ApiHelper::get("budget/reports?project_id=" . $selected_project_id);
+        $recent_reports = $reportRes['data']['reports'] ?? [];
     }
 
     $userName = $_SESSION['user_name'] ?? "Admin"; 
@@ -79,16 +61,9 @@
       <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
 
       <?php
-        // Fetch all projects for dropdown
-        $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-        $result_projects = $conn->query($sql_projects);
-        $projects = [];
-        
-        if ($result_projects && $result_projects->num_rows > 0) {
-          while ($row = $result_projects->fetch_assoc()) {
-            $projects[] = $row;
-          }
-        }
+        // Fetch all projects for dropdown from Project Service
+        $projectRes = ApiHelper::get('project/projects');
+        $projects = $projectRes['data']['projects'] ?? [];
 
         // Build breadcrumb navigation with dropdown
         $current_page = basename($_SERVER['PHP_SELF']);
@@ -108,21 +83,11 @@
         $breadcrumbHTML .= '</div>';
         $breadcrumbHTML .= '</div>';
 
-        // Fetch project phases for the selected project (for Phase Variance template)
+        // Fetch project phases for the selected project via API
         $project_phases = [];
         if ($selected_project_id) {
-            $stmt_ph = $conn->prepare("SELECT phase_id, phase_name FROM icmis_project_phases WHERE project_id = ? ORDER BY phase_id ASC");
-            if ($stmt_ph) {
-                $stmt_ph->bind_param("i", $selected_project_id);
-                $stmt_ph->execute();
-                $res_ph = $stmt_ph->get_result();
-                if ($res_ph) {
-                    while ($rph = $res_ph->fetch_assoc()) {
-                        $project_phases[] = $rph;
-                    }
-                }
-                $stmt_ph->close();
-            }
+            $phaseRes = ApiHelper::get("project/phases?project_id=" . $selected_project_id);
+            $project_phases = $phaseRes['data']['phases'] ?? [];
         }
         $pageTitle = "Financial Reports";
         $pageSection = "Budget & Cost Control";

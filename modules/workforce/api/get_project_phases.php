@@ -1,30 +1,17 @@
 <?php
-// File: modules/workforce/api/get_project_phases.php
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
+
 header('Content-Type: application/json');
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
 
-// Adjust this path if your project_context.php is in a different location relative to this file
-include __DIR__ . '/../project_context.php'; 
+// Bridge to 'project/phases' via ApiHelper::get
+$params = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
 
-$conn = getWorkforceConnection();
-$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+$res = ApiHelper::get('project/phases' . $params);
 
-if ($project_id > 0) {
-    // Fetch phases for the selected project
-    $stmt = $conn->prepare("SELECT phase_id, phase_name FROM icmis_project_phases WHERE project_id = ? ORDER BY start_date ASC, phase_name ASC");
-    $stmt->bind_param("i", $project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    $phases = [];
-    while ($row = $result->fetch_assoc()) {
-        $phases[] = $row;
-    }
-    
-    echo json_encode(['success' => true, 'phases' => $phases]);
-    $stmt->close();
-} else {
-    echo json_encode(['success' => false, 'phases' => []]);
-}
-
-$conn->close();
+http_response_code($res['status']);
+echo json_encode($res['data']);
 ?>

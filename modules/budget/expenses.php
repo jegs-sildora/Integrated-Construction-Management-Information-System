@@ -1,26 +1,17 @@
 <?php
   // 1. Connection & Context - using centralized config (MUST be before any HTML output)
   include __DIR__ . '/project_context.php';
+  require_once __DIR__ . '/../../core/ApiHelper.php';
+
   $conn = getBudgetConnection();
   
   // Get selected project ID and phase from global context BEFORE HTML
   $selected_project_id = getProjectContext($conn);
   $selected_phase = getPhaseContext();
   
-  // Fetch all projects for dropdown
-  $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-  $result_projects = $conn->query($sql_projects);
-  $projects = [];
-  if ($result_projects && $result_projects->num_rows > 0) {
-    while ($row = $result_projects->fetch_assoc()) {
-      $projects[] = $row;
-      // Set first project as default if none selected
-      if ($selected_project_id == 0) {
-        $selected_project_id = $row['project_id'];
-        $_SESSION['selected_project_id'] = $selected_project_id;
-      }
-    }
-  }
+  // Fetch all projects for dropdown from Project Service
+  $projectRes = ApiHelper::get('project/projects');
+  $projects = $projectRes['data']['projects'] ?? [];
 
   // Define phases
   $phases = [
@@ -64,29 +55,15 @@
   $alert_type = 'good';
   $alert_message = '';
 
-  // Fetch selected project details with budget data
+  // Fetch selected project details with budget data from Budget Service
   if ($selected_project_id > 0) {
-    // Get project basic info with total approved budget proposals
-    // Actual spending now comes from COMPLETED purchase orders in Procurement
-    $sql_project = "SELECT p.project_id, p.project_code, p.project_name,
-                    (SELECT COALESCE(SUM(bp.total_amount), 0) 
-                     FROM budget_proposals bp 
-                     WHERE bp.project_id = p.project_id AND bp.status = 'APPROVED') as total_budget,
-                    (SELECT COALESCE(SUM(po.total_amount), 0) 
-                     FROM procurement_purchase_orders po 
-                     WHERE po.project_id = p.project_id AND po.status = 'COMPLETED') as actual_spending
-                    FROM icmis_projects p
-                    WHERE p.project_id = ?";
-    $stmt = $conn->prepare($sql_project);
-    $stmt->bind_param("i", $selected_project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result && $result->num_rows > 0) {
-      $project = $result->fetch_assoc();
-        $project_name = $project['project_name']; 
-        $total_budget = floatval($project['total_budget']);
-        $actual_spending = floatval($project['actual_spending']);
+    $summaryRes = ApiHelper::get('budget/summary?project_id=' . $selected_project_id);
+    $projectSummary = $summaryRes['data'] ?? [];
+
+    if (!empty($projectSummary)) {
+        $project_name = $projectSummary['project_name'] ?? 'N/A';
+        $total_budget = floatval($projectSummary['total_budget'] ?? 0);
+        $actual_spending = floatval($projectSummary['actual_spending'] ?? 0);
         $remaining_budget = $total_budget - $actual_spending;
         $budget_utilization = $total_budget > 0 ? ($actual_spending / $total_budget) * 100 : 0;
 
@@ -101,192 +78,26 @@
           $alert_type = 'good';
           $alert_message = "$project_name is under budget at " . number_format($budget_utilization, 1) . "% utilization. Good progress.";
         }
-      }
-      $stmt->close();
-
-      // Fetch phase-based budget data from completed Purchase Orders
-      $phases_data = [];
-      $sql_phases = "SELECT 
-              COALESCE(pp.phase_name, 'Unassigned') as phase,
-              (SELECT COALESCE(SUM(bp.total_amount), 0)
-               FROM budget_proposals bp
-               WHERE bp.project_id = ?
-               AND bp.phase_id = po.phase_id
-               AND bp.status = 'APPROVED') as allocated,
-              COALESCE(SUM(po.total_amount), 0) as spent,
-              COUNT(po.po_id) as expense_count
-             FROM procurement_purchase_orders po
-             LEFT JOIN icmis_project_phases pp ON po.phase_id = pp.phase_id
-             WHERE po.project_id = ? AND po.status = 'COMPLETED'
-             GROUP BY po.phase_id, pp.phase_name
-             ORDER BY pp.phase_name";
-      $stmt_phases = $conn->prepare($sql_phases);
-      $stmt_phases->bind_param("ii", $selected_project_id, $selected_project_id);
-      $stmt_phases->execute();
-      $result_phases = $stmt_phases->get_result();
-      
-      $phase_definitions = [
-        'Phase 1: Mobilization' => ['color' => 'blue', 'icon' => 'truck', 'date_range' => 'Jan 15 - Mar 30'],
-        'Phase 2: Structural' => ['color' => 'purple', 'icon' => 'building-2', 'date_range' => 'Apr 1 - Jun 30'],
-        'Phase 3: MEPFS' => ['color' => 'orange', 'icon' => 'zap', 'date_range' => 'Jul 1 - Sep 30'],
-        'Phase 4: Finishing' => ['color' => 'green', 'icon' => 'check-circle-2', 'date_range' => 'Oct 1 - Dec 31']
-      ];
-
-      while ($row = $result_phases->fetch_assoc()) {
-        $phase_name = $row['phase'];
-        
-        // Skip if phase_name is NULL or not in definitions (expenses with NULL phase_id)
-        if (empty($phase_name) || !isset($phase_definitions[$phase_name])) {
-          continue;
-        }
-        
-        $allocated = floatval($row['allocated']);
-        $spent = floatval($row['spent']);
-        $remaining = $allocated - $spent;
-        $utilization = $allocated > 0 ? ($spent / $allocated) * 100 : 0;
-        
-        // Determine status
-        $status = 'Upcoming';
-        if ($utilization > 100) {
-          $status = 'Over Budget';
-        } elseif ($utilization > 0) {
-          $status = 'Active';
-        } elseif ($allocated > 0 && $spent >= $allocated * 0.99) {
-          $status = 'Completed';
-        }
-        
-        $phases_data[$phase_name] = [
-          'phase' => $phase_name,
-          'color' => $phase_definitions[$phase_name]['color'],
-          'icon' => $phase_definitions[$phase_name]['icon'],
-          'date_range' => $phase_definitions[$phase_name]['date_range'],
-          'allocated' => $allocated,
-          'spent' => $spent,
-          'remaining' => $remaining,
-          'utilization' => $utilization,
-          'expense_count' => intval($row['expense_count']),
-          'status' => $status
-        ];
-      }
-      $stmt_phases->close();
-
-      // Fill in missing phases with zero data
-      foreach ($phase_definitions as $phase_name => $phase_info) {
-        if (!isset($phases_data[$phase_name])) {
-          $phases_data[$phase_name] = [
-            'phase' => $phase_name,
-            'color' => $phase_info['color'],
-            'icon' => $phase_info['icon'],
-            'date_range' => $phase_info['date_range'],
-            'allocated' => 0,
-            'spent' => 0,
-            'remaining' => 0,
-            'utilization' => 0,
-            'expense_count' => 0,
-            'status' => 'Upcoming'
-          ];
-        }
-      }
-
-      // Calculate active phases count
-      $active_phases_count = 0;
-      foreach ($phases_data as $phase) {
-        if ($phase['status'] === 'Active' || $phase['status'] === 'Over Budget') {
-          $active_phases_count++;
-        }
-      }
     }
 
-    // Fetch monthly chart data for the project (Sept-Dec)
-    $chart_months = ['Sept', 'Oct', 'Nov', 'Dec'];
-    $projected_data = [0, 0, 0, 0];
-    $actual_data = [0, 0, 0, 0];
+    // Fetch phase-based budget data from Budget Service
+    $phaseDataRes = ApiHelper::get('budget/phases?project_id=' . $selected_project_id);
+    $phases_data = $phaseDataRes['data']['phases'] ?? [];
 
-    if ($selected_project_id > 0) {
-      // Get monthly expenses from completed Purchase Orders (Sept=9, Oct=10, Nov=11, Dec=12)
-      $sql_monthly = "SELECT MONTH(order_date) as month, YEAR(order_date) as year, SUM(total_amount) as total
-                      FROM procurement_purchase_orders
-                      WHERE project_id = ? AND status = 'COMPLETED'
-                      AND MONTH(order_date) BETWEEN 9 AND 12
-                      GROUP BY YEAR(order_date), MONTH(order_date)
-                      ORDER BY YEAR(order_date), MONTH(order_date)";
-      $stmt_monthly = $conn->prepare($sql_monthly);
-      $stmt_monthly->bind_param("i", $selected_project_id);
-      $stmt_monthly->execute();
-      $result_monthly = $stmt_monthly->get_result();
-      
-      // Initialize array to track monthly totals across years
-      $monthly_totals = [0, 0, 0, 0]; // Sept, Oct, Nov, Dec
-      
-      while ($row = $result_monthly->fetch_assoc()) {
-        $month_num = intval($row['month']);
-        // Map Sept(9)->0, Oct(10)->1, Nov(11)->2, Dec(12)->3
-        $month_index = $month_num - 9;
-        if ($month_index >= 0 && $month_index < 4) {
-          $monthly_totals[$month_index] += floatval($row['total']);
-        }
-      }
-      
-      $actual_data = $monthly_totals;
-      $stmt_monthly->close();
-
-      // Calculate projected spending (evenly distributed across 4 months)
-      $monthly_projected = $total_budget / 12;
-      for ($i = 0; $i < 4; $i++) {
-        $projected_data[$i] = $monthly_projected;
-      }
-    }
-
-    // Fetch recent expenses for the table (now from completed Purchase Orders)
-    $expenses = [];
-    if ($selected_project_id > 0) {
-      $sql_expenses = "SELECT 
-                         po.po_id as expense_id,
-                         po.po_id,
-                         po.po_reference,
-                         po.order_date as expense_date,
-                         COALESCE(pp.phase_name, 'Phase 1: Mobilization') as phase,
-                         'MATERIALS' as category,
-                         CONCAT(po.order_title, ' (', po.po_reference, ')') as description,
-                         po.total_amount as amount,
-                         'APPROVED' as status,
-                         s.supplier_name as supplier_name
-                       FROM procurement_purchase_orders po
-                       LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
-                       LEFT JOIN icmis_project_phases pp ON po.phase_id = pp.phase_id
-                       WHERE po.project_id = ? AND po.status = 'COMPLETED'
-                       ORDER BY po.order_date DESC
-                       LIMIT 10";
-      $stmt_expenses = $conn->prepare($sql_expenses);
-      $stmt_expenses->bind_param("i", $selected_project_id);
-      $stmt_expenses->execute();
-      $result_expenses = $stmt_expenses->get_result();
-      
-      if ($result_expenses && $result_expenses->num_rows > 0) {
-        while ($row = $result_expenses->fetch_assoc()) {
-          $expenses[] = $row;
-        }
-      }
-      $stmt_expenses->close();
-    }
-
+    // Fetch recent expenses from Budget Service (synced from Procurement)
+    $expenseRes = ApiHelper::get('budget/expenses?project_id=' . $selected_project_id . '&limit=10');
+    $expenses = $expenseRes['data']['expenses'] ?? [];
     $total_expenses = count($expenses);
 
-    // Check if there are approved budget proposals for the selected project
+    // Check for approved proposals
+    $proposalsCheckRes = ApiHelper::get('budget/proposals?project_id=' . $selected_project_id . '&status=APPROVED&count_only=true');
+    $has_approved_proposals = ($proposalsCheckRes['data']['count'] ?? 0) > 0;
+  } else {
+    $expenses = [];
+    $total_expenses = 0;
+    $phases_data = [];
     $has_approved_proposals = false;
-    if ($selected_project_id > 0) {
-      $sql_check_proposals = "SELECT COUNT(*) as proposal_count 
-                              FROM budget_proposals 
-                              WHERE project_id = ? AND status = 'APPROVED'";
-      $stmt_check = $conn->prepare($sql_check_proposals);
-      $stmt_check->bind_param("i", $selected_project_id);
-      $stmt_check->execute();
-      $result_check = $stmt_check->get_result();
-      if ($result_check && $row_check = $result_check->fetch_assoc()) {
-        $has_approved_proposals = intval($row_check['proposal_count']) > 0;
-      }
-      $stmt_check->close();
-    }
+  }
 ?>
 <!DOCTYPE html>
 <html lang="en">

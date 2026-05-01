@@ -4,12 +4,11 @@
 require_once '../../config/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
-require_once '../../config/database.php';
+require_once '../../core/ApiHelper.php';
 // Prefer procurement project context if available
 if (file_exists(__DIR__ . '/project_context.php')) {
     require_once __DIR__ . '/project_context.php';
-    $__proc_conn = getProcurementConnection();
-    $__ctx_project = getProjectContext($__proc_conn);
+    $__ctx_project = getProjectContext();
     if ($__ctx_project && $__ctx_project > 0) {
         $_SESSION['current_project_id'] = $__ctx_project;
     }
@@ -37,20 +36,16 @@ $project_code = '';
 $projects_list = [];
 
 if ($project_id > 0) {
-    $stmt = $conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?");
-    $stmt->bind_param("i", $project_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) {
-        $project_name = $row['project_name'];
-        $project_code = $row['project_code'] ?? '';
+    $projRes = ApiHelper::get("project/projects/$project_id");
+    if ($projRes['status'] === 200 && !empty($projRes['data'])) {
+        $project_name = $projRes['data']['project_name'];
+        $project_code = $projRes['data']['project_code'] ?? '';
     }
 }
 
 // Fetch All Projects for Dropdown
-$sql_all = "SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC";
-$res_all = $conn->query($sql_all);
-if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
+$allProjRes = ApiHelper::get("project/projects");
+if ($allProjRes['status'] === 200) { $projects_list = $allProjRes['data']; }
 
 $pageSection = "Procurement & Inventory";
 $pageTitle = "Inventory Masterlist";

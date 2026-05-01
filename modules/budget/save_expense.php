@@ -1,15 +1,18 @@
 <?php
-// ============================================================
-// DEPRECATED: Manual expense saving has been removed.
-// Expenses are now automatically synced from the Procurement module.
-// ============================================================
+/**
+ * save_expense.php - Bridge to Budget Service
+ */
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 
 header('Content-Type: application/json');
 
-echo json_encode([
-    'success' => false,
-    'message' => 'Manual expense entry has been disabled. Expenses are now automatically synced from completed Purchase Orders in the Procurement module.',
-    'deprecated' => true
-]);
-exit;
+$method = $_SERVER['REQUEST_METHOD'];
+$data = json_decode(file_get_contents('php://input'), true);
+
+// Call Budget Service via Gateway
+$res = ApiHelper::call('budget/expenses', $method, $data);
+
+http_response_code($res['status']);
+echo json_encode($res['data']);
 ?>

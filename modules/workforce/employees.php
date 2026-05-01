@@ -4,6 +4,7 @@
 // ============================================================
 
 include __DIR__ . '/project_context.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 $conn = getWorkforceConnection();
 
 $selected_project_id = getProjectContext($conn);
@@ -12,23 +13,9 @@ $selected_project_id = getProjectContext($conn);
 include __DIR__ . '/api/job_titles_include.php';
 
 // --- HELPER FUNCTION FOR STATS ---
-function getEmployeeStats($conn) {
-    $stats = [ 'total' => 0, 'active' => 0, 'inactive' => 0, 'new_this_month' => 0 ];
-    
-    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees");
-    if ($result) $stats['total'] = $result->fetch_assoc()['total'];
-
-    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Active'");
-    if ($result) $stats['active'] = $result->fetch_assoc()['total'];
-
-    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Inactive'");
-    if ($result) $stats['inactive'] = $result->fetch_assoc()['total'];
-
-    $thisMonth = date('Y-m-01');
-    $result = $conn->query("SELECT COUNT(*) as total FROM workforce_employees WHERE hire_date >= '$thisMonth'");
-    if ($result) $stats['new_this_month'] = $result->fetch_assoc()['total'];
-    
-    return $stats;
+function getEmployeeStats() {
+    $res = ApiHelper::get('workforce/employees/stats');
+    return $res['status'] === 200 ? $res['data'] : [ 'total' => 0, 'active' => 0, 'inactive' => 0, 'new_this_month' => 0 ];
 }
 
 // --- PAGINATION & DATA FETCH LOGIC ---
@@ -38,39 +25,23 @@ if ($page < 1) $page = 1;
 $offset = ($page - 1) * $limit;
 
 // Fetch Employees Function
-function fetchEmployees($conn, $limit, $offset) {
-    $employees = [];
-    $sql = "SELECT e.*, jt.title_name as job_title, jt.department, jt.default_daily_rate
-            FROM workforce_employees e 
-            LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-            ORDER BY e.employee_id DESC
-            LIMIT $limit OFFSET $offset";
-
-    $result = $conn->query($sql);
-    if ($result && $result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $employees[] = $row;
-        }
-    }
-    return $employees;
+function fetchEmployees($limit, $offset) {
+    $res = ApiHelper::get("workforce/employees?limit=$limit&offset=$offset");
+    return $res['status'] === 200 ? ($res['data']['data'] ?? $res['data']) : [];
 }
 
 // --- AJAX REQUEST HANDLER ---
 // If the JS requests 'fetch_updates', we return JSON and exit.
 if (isset($_GET['fetch_updates'])) {
     // 1. Get Stats
-    $stats = getEmployeeStats($conn);
+    $stats = getEmployeeStats();
     
-    // 2. Get Pagination Info
-    $total_pages_sql = "SELECT COUNT(*) as total FROM workforce_employees"; 
-    $total_pages_result = $conn->query($total_pages_sql);
-    $total_rows = $total_pages_result->fetch_assoc()['total'];
+    // 2. Get Employees
+    $employees = fetchEmployees($limit, $offset);
+    $total_rows = $stats['total'] ?? 0;
     $total_pages = ceil($total_rows / $limit);
     
-    // 3. Get Employees
-    $employees = fetchEmployees($conn, $limit, $offset);
-    
-    // 4. Render Table HTML
+    // 3. Render Table HTML
     ob_start();
     if (count($employees) > 0):
         foreach ($employees as $emp): 
@@ -179,12 +150,9 @@ if (isset($_GET['fetch_updates'])) {
 
 // Standard Page Load Logic
 $projects = [];
-$sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-$result_projects = $conn->query($sql_projects);
-if ($result_projects && $result_projects->num_rows > 0) {
-    while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-    }
+$res_projects = ApiHelper::get('project/projects');
+if ($res_projects['status'] === 200) {
+    $projects = $res_projects['data'];
 }
 
 // Build breadcrumb
@@ -205,14 +173,12 @@ $pageTitle = "Employee Management";
 $pageSubTitle = $breadcrumbHTML;
 
 // Initial Stats Load
-$stats = getEmployeeStats($conn);
+$stats = getEmployeeStats();
 
 // Initial Employee Load
-$total_pages_sql = "SELECT COUNT(*) as total FROM workforce_employees"; 
-$total_pages_result = $conn->query($total_pages_sql);
-$total_rows = $total_pages_result->fetch_assoc()['total'];
+$total_rows = $stats['total'] ?? 0;
 $total_pages = ceil($total_rows / $limit);
-$employees = fetchEmployees($conn, $limit, $offset);
+$employees = fetchEmployees($limit, $offset);
 
 $userName = $_SESSION['user_name'] ?? "Admin";
 ?>

@@ -3,8 +3,9 @@
 // ALL PHP LOGIC MUST BE BEFORE ANY HTML OUTPUT
 // ============================================================
 
-include __DIR__ . '/../project_context.php';
-$conn = getBudgetConnection();
+if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 
 // Get proposal ID from URL
 $proposal_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -14,92 +15,22 @@ if ($proposal_id <= 0) {
   exit;
 }
 
-// Fetch proposal details
-$sql = "SELECT bp.*, p.project_code, p.project_name 
-    FROM budget_proposals bp 
-    LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
-    WHERE bp.proposal_id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $proposal_id);
-$stmt->execute();
-$result = $stmt->get_result();
+// Fetch proposal details from API
+$response = ApiHelper::get('budget/proposals?id=' . $proposal_id);
 
-if ($result->num_rows === 0) {
+if ($response['status'] !== 200 || !isset($response['data']['proposal'])) {
   header('Location: ../proposals.php');
   exit;
 }
 
-$proposal = $result->fetch_assoc();
-$stmt->close();
+$proposal = $response['data']['proposal'];
+$line_items = $response['data']['line_items'] ?? [];
 
-// Normalize scope description: some code paths saved it as `description` column.
-if (empty($proposal['scope_description']) && !empty($proposal['description'])) {
-    $proposal['scope_description'] = $proposal['description'];
-}
-
-// Populate `target_phase` from `phase_id` if present
-if (empty($proposal['target_phase']) && !empty($proposal['phase_id'])) {
-    $stmt_phase = $conn->prepare("SELECT phase_name FROM icmis_project_phases WHERE phase_id = ? LIMIT 1");
-    if ($stmt_phase) {
-        $stmt_phase->bind_param("i", $proposal['phase_id']);
-        $stmt_phase->execute();
-        $res_phase = $stmt_phase->get_result();
-        if ($r = $res_phase->fetch_assoc()) {
-            $proposal['target_phase'] = $r['phase_name'];
-        }
-        $stmt_phase->close();
-    }
-}
-
-// If phase_id is missing, try to resolve it using the proposal code (some older records saved mapping by code)
-if ((empty($proposal['phase_id']) || $proposal['phase_id'] == 0) && !empty($proposal['code'])) {
-    $stmt_code = $conn->prepare("SELECT phase_id FROM budget_proposals WHERE code = ? LIMIT 1");
-    if ($stmt_code) {
-        $stmt_code->bind_param("s", $proposal['code']);
-        $stmt_code->execute();
-        $res_code = $stmt_code->get_result();
-        if ($rc = $res_code->fetch_assoc()) {
-            $resolved_phase_id = intval($rc['phase_id']);
-            if ($resolved_phase_id > 0) {
-                $proposal['phase_id'] = $resolved_phase_id;
-                // also populate target_phase for display
-                $stmt_p = $conn->prepare("SELECT phase_name FROM icmis_project_phases WHERE phase_id = ? LIMIT 1");
-                if ($stmt_p) {
-                    $stmt_p->bind_param("i", $proposal['phase_id']);
-                    $stmt_p->execute();
-                    $res_p = $stmt_p->get_result();
-                    if ($rp = $res_p->fetch_assoc()) {
-                        $proposal['target_phase'] = $rp['phase_name'];
-                    }
-                    $stmt_p->close();
-                }
-            }
-        }
-        $stmt_code->close();
-    }
-}
-
-// Fetch line items
-$sql_items = "SELECT * FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id";
-$stmt_items = $conn->prepare($sql_items);
-$stmt_items->bind_param("i", $proposal_id);
-$stmt_items->execute();
-$result_items = $stmt_items->get_result();
-
-$line_items = [];
-while ($row = $result_items->fetch_assoc()) {
-  $line_items[] = $row;
-}
-$stmt_items->close();
-
-// Fetch all projects for dropdown
-$sql_projects = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
-$result_projects = $conn->query($sql_projects);
+// Fetch all projects for dropdown from Project Service
+$projResponse = ApiHelper::get('project/projects');
 $projects = [];
-if ($result_projects && $result_projects->num_rows > 0) {
-  while ($row = $result_projects->fetch_assoc()) {
-    $projects[] = $row;
-  }
+if ($projResponse['status'] === 200) {
+    $projects = $projResponse['data']['projects'] ?? [];
 }
 
 // Header variables

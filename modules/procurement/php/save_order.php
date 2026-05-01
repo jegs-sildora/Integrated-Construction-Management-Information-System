@@ -1,19 +1,12 @@
 <?php
 // modules/procurement/php/save_order.php
-// Note: This file is for legacy compatibility. Main save_order is in purchase_order folder.
-error_reporting(0);
-ini_set('display_errors', 0);
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 header('Content-Type: application/json');
 
-// Use centralized config
-require_once __DIR__ . '/../../../config/config.php';
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    echo json_encode(["status" => "error", "message" => "Database connection failed"]);
-    exit;
-}
-$conn->set_charset("utf8mb4");
+$method = $_SERVER['REQUEST_METHOD'];
+$res = ApiHelper::call("procurement/orders", $method, $_POST);
 
-echo json_encode(["status" => "error", "message" => "Please use the purchase_order/save_order.php endpoint"]);
-$conn->close();
+http_response_code($res['status']);
+echo json_encode($res['data']);
 ?>

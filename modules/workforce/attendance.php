@@ -4,18 +4,16 @@
 // ============================================================
 
 include __DIR__ . '/project_context.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 $conn = getWorkforceConnection();
 
 $selected_project_id = getProjectContext($conn);
 
 // Fetch all projects for dropdown
 $projects = [];
-$sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-$result_projects = $conn->query($sql_projects);
-if ($result_projects) {
-    while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-    }
+$res_projects = ApiHelper::get('project/projects');
+if ($res_projects['status'] === 200) {
+    $projects = $res_projects['data'];
 }
 
 // Determine Current Project Name
@@ -51,100 +49,29 @@ $selectedDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 // --- 1. STATISTICS ---
 $stats = ['total' => 0, 'present' => 0, 'absent' => 0, 'late' => 0];
+$res_stats = ApiHelper::get("workforce/attendance/stats?date=$selectedDate&project_id=$selected_project_id");
+if ($res_stats['status'] === 200) {
+    $stats = $res_stats['data'];
+}
 
-// Count Total Active Employees (Always Count ALL)
-$countSql = "SELECT COUNT(*) as total FROM workforce_employees WHERE status = 'Active'";
-$stmt = $conn->prepare($countSql);
-$stmt->execute();
-$stats['total'] = $stmt->get_result()->fetch_assoc()['total'];
-$stmt->close();
-
-// Count Statuses for the Selected Date (and optionally Project)
-$projectFilter = ($selected_project_id > 0) ? " AND project_id = $selected_project_id" : "";
-$statSql = "SELECT 
-    SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,
-    SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) as absent,
-    SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late
-    FROM workforce_attendance WHERE attendance_date = ? $projectFilter";
-$stmt = $conn->prepare($statSql);
-$stmt->bind_param("s", $selectedDate);
-$stmt->execute();
-$res = $stmt->get_result()->fetch_assoc();
-$stats['present'] = $res['present'] ?? 0;
-$stats['absent'] = $res['absent'] ?? 0;
-$stats['late'] = $res['late'] ?? 0;
-$stmt->close();
-
-// --- 2. INDIVIDUAL EMPLOYEES (Fetch ALL) ---
+// --- 2. INDIVIDUAL EMPLOYEES ---
 $limit = 10;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $limit;
-$totalPages = ceil($stats['total'] / $limit);
+$totalPages = ceil(($stats['total'] ?? 0) / $limit);
 
 $individual_employees = [];
-
-// Query: Fetch ALL active employees, Left join Attendance
-// We do NOT join workforce_assignments, so we see everyone.
-$sql = "SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, 
-        jt.title_name as job_title,
-        a.attendance_id, a.time_in, a.time_out, a.status as attendance_status, a.remarks
-        FROM workforce_employees e
-        LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-        -- Join attendance for this specific date
-        LEFT JOIN workforce_attendance a ON e.employee_id = a.employee_id AND a.attendance_date = ?
-        WHERE e.status = 'Active' 
-        ORDER BY e.last_name ASC LIMIT ? OFFSET ?";
-
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("sii", $selectedDate, $limit, $offset);
-$stmt->execute();
-$res = $stmt->get_result();
-while ($row = $res->fetch_assoc()) $individual_employees[] = $row;
-$stmt->close();
-
+$res_indiv = ApiHelper::get("workforce/attendance?date=$selectedDate&limit=$limit&offset=$offset&project_id=$selected_project_id");
+if ($res_indiv['status'] === 200) {
+    $individual_employees = $res_indiv['data']['data'] ?? $res_indiv['data'];
+}
 
 // --- 3. GROUPED EMPLOYEES ---
 $groups_data = [];
-$gSql = "SELECT g.group_id, g.group_name, g.group_code,
-         CONCAT(l.first_name, ' ', l.last_name) as leader_name,
-         e.employee_id, e.first_name, e.last_name, e.employee_code,
-         jt.title_name as job_title,
-         att.status as attendance_status, att.time_in, att.time_out, att.remarks
-         FROM workforce_employee_groups g
-         LEFT JOIN workforce_employees l ON g.group_leader_id = l.employee_id
-         JOIN workforce_group_memberships gm ON g.group_id = gm.group_id
-         JOIN workforce_employees e ON gm.employee_id = e.employee_id
-         LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-         LEFT JOIN workforce_attendance att ON e.employee_id = att.employee_id 
-              AND att.attendance_date = ? 
-         WHERE e.status = 'Active'
-         ORDER BY g.group_name, e.last_name";
-
-$stmt = $conn->prepare($gSql);
-$stmt->bind_param("s", $selectedDate);
-$stmt->execute();
-$gRes = $stmt->get_result();
-
-while ($row = $gRes->fetch_assoc()) {
-    $gid = $row['group_id'];
-    if (!isset($groups_data[$gid])) {
-        $groups_data[$gid] = [
-            'info' => [
-                'name' => $row['group_name'],
-                'code' => $row['group_code'],
-                'leader' => $row['leader_name']
-            ],
-            'members' => [],
-            'stats' => ['total' => 0, 'present' => 0]
-        ];
-    }
-    $groups_data[$gid]['members'][] = $row;
-    $groups_data[$gid]['stats']['total']++;
-    if ($row['attendance_status'] === 'Present') {
-        $groups_data[$gid]['stats']['present']++;
-    }
+$res_groups = ApiHelper::get("workforce/attendance/groups?date=$selectedDate&project_id=$selected_project_id");
+if ($res_groups['status'] === 200) {
+    $groups_data = $res_groups['data'];
 }
-$stmt->close();
 
 $userName = $_SESSION['user_name'] ?? "Admin";
 ?>

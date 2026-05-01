@@ -4,18 +4,18 @@
  * Location: /workforce/payroll.php
  */
 include __DIR__ . '/../../config/config.php';
-include __DIR__ . '/../../config/database.php';
+include __DIR__ . '/../../core/ApiHelper.php';
 include __DIR__ . '/project_context.php';
 
+$conn = getWorkforceConnection();
 $selected_project_id = getProjectContext($conn);
 $selected_project_name = 'All Projects';
 
 if ($selected_project_id && $selected_project_id > 0) {
-    $sq = $conn->prepare("SELECT project_name FROM icmis_projects WHERE project_id = ? LIMIT 1");
-    $sq->bind_param('i', $selected_project_id);
-    $sq->execute();
-    if ($row = $sq->get_result()->fetch_assoc()) $selected_project_name = $row['project_name'];
-    $sq->close();
+    $res = ApiHelper::get("project/projects/$selected_project_id");
+    if ($res['status'] === 200) {
+        $selected_project_name = $res['data']['project_name'] ?? 'Unknown Project';
+    }
 }
 
 $pageSection = "Labor & Workforce";

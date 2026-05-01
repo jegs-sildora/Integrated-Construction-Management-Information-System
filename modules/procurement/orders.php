@@ -5,16 +5,12 @@ require_once '../../config/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
 
-// DB Connection - Using centralized config
-require_once '../../config/database.php';
-$main_conn = $conn;
-$procurement_conn = $conn; // Use same connection - all tables now in icmis_db
+require_once '../../core/ApiHelper.php';
 
 // Prefer procurement project context if available
 if (file_exists(__DIR__ . '/project_context.php')) {
     require_once __DIR__ . '/project_context.php';
-    $__proc_conn = getProcurementConnection();
-    $__ctx_project = getProjectContext($__proc_conn);
+    $__ctx_project = getProjectContext();
     if ($__ctx_project && $__ctx_project > 0) {
         $_SESSION['current_project_id'] = $__ctx_project;
     }
@@ -42,47 +38,33 @@ $project_name = 'Select Project';
 $project_code = 'N/A';
 $projects_list = [];
 
-// Fetch Current Project Info
+// Fetch Current Project Info via Gateway
 if ($project_id > 0) {
-    $stmt = $main_conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?");
-    $stmt->bind_param("i", $project_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) {
-        $project_name = $row['project_name'];
-        $project_code = $row['project_code'];
+    $projRes = ApiHelper::get("project/projects/$project_id");
+    if ($projRes['status'] === 200 && !empty($projRes['data'])) {
+        $project_name = $projRes['data']['project_name'];
+        $project_code = $projRes['data']['project_code'];
     }
 }
 
-// Fetch ALL Projects for Dropdown
-$sql_all = "SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC";
-$res_all = $main_conn->query($sql_all);
-if ($res_all) { while($p = $res_all->fetch_assoc()) $projects_list[] = $p; }
+// Fetch ALL Projects for Dropdown via Gateway
+$allProjRes = ApiHelper::get("project/projects");
+if ($allProjRes['status'] === 200) { $projects_list = $allProjRes['data']; }
 
 // ==========================================================================
-// 3. FETCH ORDERS DATA
+// 3. FETCH ORDERS DATA VIA GATEWAY
 // ==========================================================================
 $kpi = ['total' => 0, 'pending' => 0, 'approved' => 0, 'completed' => 0];
-if ($project_id > 0) {
-    // KPI
-    $sql_kpi = "SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END) as approved,
-        SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed
-    FROM procurement_purchase_orders WHERE project_id = '$project_id'";
-    $kpi_res = $procurement_conn->query($sql_kpi);
-    if ($kpi_res) $kpi = $kpi_res->fetch_assoc();
+$orders_list = [];
 
-    // Orders List
-    $sql_orders = "SELECT po.*, s.supplier_name 
-                   FROM procurement_purchase_orders po
-                   LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
-                   WHERE po.project_id = '$project_id'  
-                   ORDER BY po.order_date DESC";
-    $result_orders = $procurement_conn->query($sql_orders);
-} else {
-    $result_orders = false;
+if ($project_id > 0) {
+    // Fetch KPI via Gateway
+    $kpiRes = ApiHelper::get("procurement/kpi?project_id=$project_id");
+    if ($kpiRes['status'] === 200) { $kpi = $kpiRes['data']; }
+
+    // Fetch Orders List via Gateway
+    $ordersRes = ApiHelper::get("procurement/orders?project_id=$project_id");
+    if ($ordersRes['status'] === 200) { $orders_list = $ordersRes['data']; }
 }
 
 $pageSection = "Procurement & Inventory";
@@ -154,8 +136,8 @@ $pageTitle = "Purchase Orders";
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <?php if ($result_orders && $result_orders->num_rows > 0): ?>
-                            <?php while ($row = $result_orders->fetch_assoc()): ?>
+                        <?php if (!empty($orders_list)): ?>
+                            <?php foreach ($orders_list as $row): ?>
                                 <?php 
                                     $status = strtoupper($row['status']);
                                     $statusClass = match($status) {
@@ -179,7 +161,7 @@ $pageTitle = "Purchase Orders";
                                         <button onclick="openDeleteModal('<?= $row['po_id'] ?>', '<?= htmlspecialchars($row['po_reference'] ?? '') ?>')" class="text-gray-400 hover:text-red-600 ml-2"><i class="fa-solid fa-trash"></i></button>
                                     </td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 italic">
                                 <?= ($project_id > 0) ? 'No orders found.' : 'Please select a project above.' ?>

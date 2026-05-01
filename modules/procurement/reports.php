@@ -2,38 +2,16 @@
 /**
  * Reports Module - Procurement Reports Dashboard
  * ICMIS - Integrated Construction Management Information System
- * 
- * Provides report generation for Procurement & Inventory module:
- * - Inventory Status
- * - Purchase Orders
- * - Stock Movement
  */
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 require_once __DIR__ . '/../../includes/report_print_layout.php';
 
 // Use procurement project context
-if (file_exists(__DIR__ . '/project_context.php')) {
-    require_once __DIR__ . '/project_context.php';
-    $conn = getProcurementConnection();
-    $selected_project_id = getProjectContext($conn);
-} else {
-    // Fallback to standard connection
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
-    }
-    $conn->set_charset("utf8mb4");
-    
-    $selected_project_id = 0;
-    if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
-        $selected_project_id = intval($_GET['project_id']);
-        $_SESSION['current_project_id'] = $selected_project_id;
-    } elseif (isset($_SESSION['current_project_id'])) {
-        $selected_project_id = $_SESSION['current_project_id'];
-    }
-}
+require_once __DIR__ . '/project_context.php';
+$selected_project_id = getProjectContext();
 
 // Fetch current project info
 $current_project_name = "All Projects";
@@ -41,26 +19,18 @@ $current_project_code = "";
 $current_project_status = "";
 
 if ($selected_project_id > 0) {
-    $stmt = $conn->prepare("SELECT project_name, project_code, status FROM icmis_projects WHERE project_id = ?");
-    $stmt->bind_param("i", $selected_project_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) {
-        $current_project_name = $row['project_name'];
-        $current_project_code = $row['project_code'];
-        $current_project_status = $row['status'] ?? 'Active';
+    $projRes = ApiHelper::get("project/projects?fetch_id=" . $selected_project_id);
+    $project = $projRes['data']['project'] ?? null;
+    if ($project) {
+        $current_project_name = $project['project_name'];
+        $current_project_code = $project['project_code'];
+        $current_project_status = $project['status'] ?? 'Active';
     }
-    $stmt->close();
 }
 
 // Fetch all projects for dropdown
-$projects = [];
-$result_projects = $conn->query("SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC");
-if ($result_projects && $result_projects->num_rows > 0) {
-    while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-    }
-}
+$projectRes = ApiHelper::get('project/projects');
+$projects = $projectRes['data']['projects'] ?? [];
 
 // Get user name for footer
 $userName = $_SESSION['user_name'] ?? "Admin";
@@ -73,76 +43,21 @@ $stat_low_stock = 0;
 $stat_pending_orders = 0;
 $stat_total_value = 0;
 
-// Check which columns exist in procurement_inventory
-$hasReorder = false;
-$hasUnitCost = false;
-$hasProjectId = false;
+// Fetch stats via API
+$statsRes = ApiHelper::get("procurement/reports?action=stats&project_id=" . $selected_project_id);
+$stats = $statsRes['data']['data'] ?? [];
 
-$colCheck = $conn->query("SHOW COLUMNS FROM procurement_inventory");
-if ($colCheck) {
-    while ($col = $colCheck->fetch_assoc()) {
-        if ($col['Field'] === 'reorder_level') $hasReorder = true;
-        if ($col['Field'] === 'unit_cost') $hasUnitCost = true;
-        if ($col['Field'] === 'project_id') $hasProjectId = true;
-    }
-}
-
-// Build stats query dynamically
-$reorderExpr = $hasReorder ? "reorder_level" : "10";
-$unitCostExpr = $hasUnitCost ? "COALESCE(unit_cost, 0)" : "0";
-
-$inv_sql = "SELECT COUNT(*) as total_items, 
-            SUM(CASE WHEN quantity <= $reorderExpr THEN 1 ELSE 0 END) as low_stock,
-            SUM(quantity * $unitCostExpr) as total_value
-            FROM procurement_inventory WHERE 1=1";
-if ($selected_project_id > 0 && $hasProjectId) {
-    $inv_sql .= " AND project_id = $selected_project_id";
-}
-$inv_result = $conn->query($inv_sql);
-if ($inv_result && $row = $inv_result->fetch_assoc()) {
-    $stat_total_items = intval($row['total_items']);
-    $stat_low_stock = intval($row['low_stock']);
-    $stat_total_value = floatval($row['total_value']);
-}
-
-// Pending Orders from procurement_purchase_orders
-$hasPoProjectId = false;
-$colCheck = $conn->query("SHOW COLUMNS FROM procurement_purchase_orders LIKE 'project_id'");
-if ($colCheck && $colCheck->num_rows > 0) $hasPoProjectId = true;
-
-$po_sql = "SELECT COUNT(*) as pending FROM procurement_purchase_orders WHERE LOWER(status) IN ('pending', 'processing')";
-if ($selected_project_id > 0 && $hasPoProjectId) {
-    $po_sql .= " AND project_id = $selected_project_id";
-}
-$po_result = $conn->query($po_sql);
-if ($po_result && $row = $po_result->fetch_assoc()) {
-    $stat_pending_orders = intval($row['pending']);
-}
+$stat_total_items = $stats['total_items'] ?? 0;
+$stat_low_stock = $stats['low_stock'] ?? 0;
+$stat_total_value = $stats['total_value'] ?? 0;
+$stat_pending_orders = $stats['pending_orders'] ?? 0;
 
 // ==========================================================================
 // FETCH RECENT REPORTS
 // ==========================================================================
 $recent_reports = [];
-$tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
-if ($tableExists && $tableExists->num_rows > 0) {
-    $report_sql = "SELECT r.report_id, r.report_type, r.report_name, r.project_id, 
-                          COALESCE(p.project_name, 'All') AS project_name, 
-                          r.generated_by, r.created_at 
-                   FROM budget_generated_reports r 
-                   LEFT JOIN icmis_projects p ON r.project_id = p.project_id 
-                   WHERE r.report_type IN ('inventory-status', 'purchase-orders', 'stock-movement')";
-    if ($selected_project_id > 0) {
-        $report_sql .= " AND r.project_id = $selected_project_id";
-    }
-    $report_sql .= " ORDER BY r.created_at DESC LIMIT 20";
-    
-    $result = $conn->query($report_sql);
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $recent_reports[] = $row;
-        }
-    }
-}
+$reportRes = ApiHelper::get("budget/reports?types=procurement&project_id=" . $selected_project_id);
+$recent_reports = $reportRes['data']['reports'] ?? [];
 
 $pageSection = "Procurement & Inventory";
 $pageTitle = "Reports";

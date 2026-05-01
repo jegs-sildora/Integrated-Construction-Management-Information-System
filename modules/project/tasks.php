@@ -6,11 +6,12 @@
  * Client-side interactions (drag/drop) are handled by `js/tasks.js` using SortableJS.
  */
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "index.php");
     exit();
 }
-require_once __DIR__ . '/../../config/database.php';
 
 // Define status columns for Kanban
 $statusColumns = [
@@ -20,67 +21,44 @@ $statusColumns = [
     'Completed' => []
 ];
 
-// Fetch all tasks and group by status
-$sql = "SELECT t.*, 
-               p.project_name, p.project_code,
-               ph.phase_name,
-               CONCAT(e.first_name, ' ', e.last_name) as assignee_name,
-               SUBSTRING(e.first_name, 1, 1) as assignee_initial_first,
-               SUBSTRING(e.last_name, 1, 1) as assignee_initial_last
-        FROM icmis_tasks t 
-        LEFT JOIN icmis_projects p ON t.project_id = p.project_id
-        LEFT JOIN icmis_project_phases ph ON t.phase_id = ph.phase_id
-        LEFT JOIN workforce_employees e ON t.assigned_to_employee_id = e.employee_id
-        ORDER BY t.priority DESC, t.due_date ASC";
-$result = $conn->query($sql);
+// Fetch all tasks from Project Service
+$taskRes = ApiHelper::get('project/tasks');
+$tasksData = $taskRes['data']['tasks'] ?? [];
 
 $totalTasks = 0;
 $overdueCount = 0;
 $now = new DateTime();
 
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $status = $row['status'] ?? 'Not Started';
-        if (isset($statusColumns[$status])) {
-            $statusColumns[$status][] = $row;
-        } else {
-            $statusColumns['Not Started'][] = $row;
-        }
-        $totalTasks++;
-        
-        // Check if overdue
-        if (!empty($row['due_date']) && strtolower($row['status']) !== 'completed') {
-            $dueDate = new DateTime($row['due_date']);
-            if ($dueDate < $now) {
-                $overdueCount++;
-            }
+foreach ($tasksData as $row) {
+    // Group by status
+    $status = $row['status'] ?? 'Not Started';
+    if (isset($statusColumns[$status])) {
+        $statusColumns[$status][] = $row;
+    } else {
+        $statusColumns['Not Started'][] = $row;
+    }
+    $totalTasks++;
+    
+    // Check if overdue
+    if (!empty($row['due_date']) && strtolower($row['status']) !== 'completed') {
+        $dueDate = new DateTime($row['due_date']);
+        if ($dueDate < $now) {
+            $overdueCount++;
         }
     }
 }
 
 // Fetch all projects for dropdown filter
-$projectsResult = $conn->query("SELECT project_id, project_name, project_code FROM icmis_projects ORDER BY project_name ASC");
-$allProjects = [];
-while ($row = $projectsResult->fetch_assoc()) {
-    $allProjects[] = $row;
-}
+$projRes = ApiHelper::get('project/projects');
+$allProjects = $projRes['data']['projects'] ?? [];
 
 // Fetch all phases for dropdown
-$phasesResult = $conn->query("SELECT ph.phase_id, ph.phase_name, ph.project_id, p.project_name 
-                              FROM icmis_project_phases ph 
-                              LEFT JOIN icmis_projects p ON ph.project_id = p.project_id 
-                              ORDER BY p.project_name, ph.phase_name ASC");
-$allPhases = [];
-while ($row = $phasesResult->fetch_assoc()) {
-    $allPhases[] = $row;
-}
+$phaseRes = ApiHelper::get('project/phases');
+$allPhases = $phaseRes['data']['phases'] ?? [];
 
-// Fetch all employees for dropdown
-$employeesResult = $conn->query("SELECT employee_id, employee_code, first_name, last_name FROM workforce_employees ORDER BY first_name, last_name ASC");
-$allEmployees = [];
-while ($row = $employeesResult->fetch_assoc()) {
-    $allEmployees[] = $row;
-}
+// Fetch all employees from Workforce Service
+$empRes = ApiHelper::get('workforce/employees?action=list');
+$allEmployees = $empRes['data']['data'] ?? [];
 
 // Status column colors
 $statusColors = [

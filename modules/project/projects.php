@@ -10,20 +10,26 @@
  * - Authentication is enforced via session; this page expects a valid `$_SESSION['user_id']`.
  * - Database connection is provided by `config/database.php` and used to fetch project rows.
  */
+// authentication check and configuration
 require_once __DIR__ . '/../../config/config.php';
-// ensure user is authenticated
+require_once __DIR__ . '/../../core/ApiHelper.php';
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "index.php");
     exit();
 }
-// database connection
-require_once __DIR__ . '/../../config/database.php';
 
-$sql = "SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) AS manager_name
-    FROM icmis_projects p 
-    LEFT JOIN workforce_employees e ON p.project_manager_id = e.employee_id 
-    ORDER BY p.project_id DESC";
-$result = $conn->query($sql);
+// Fetch projects from Project Service
+$projectRes = ApiHelper::get('project/projects');
+$projectsData = $projectRes['data']['projects'] ?? [];
+
+// Fetch employees from Workforce Service for manager mapping
+$employeeRes = ApiHelper::get('workforce/employees?action=list');
+$employees = $employeeRes['data']['data'] ?? [];
+$employeeMap = [];
+foreach ($employees as $emp) {
+    $employeeMap[$emp['employee_id']] = $emp['first_name'] . ' ' . $emp['last_name'];
+}
 
 $projects = [];
 $totalProjects = 0;
@@ -33,17 +39,18 @@ $upcomingCount = 0;
 $totalBudget = 0;
 $now = new DateTime();
 
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $projects[] = $row;
-        $totalProjects++;
-        $totalBudget += floatval($row['total_budget'] ?? 0);
-        
-        $status = strtolower($row['status'] ?? '');
-        if ($status === 'planning' || $status === 'in progress' || $status === 'active') $activeCount++;
-        if ($status === 'completed') $completedCount++;
-        if (!empty($row['start_date']) && new DateTime($row['start_date']) > $now) $upcomingCount++;
-    }
+foreach ($projectsData as $row) {
+    // Map manager name from Workforce data
+    $row['manager_name'] = $employeeMap[$row['project_manager_id'] ?? 0] ?? 'N/A';
+    
+    $projects[] = $row;
+    $totalProjects++;
+    $totalBudget += floatval($row['total_budget'] ?? 0);
+    
+    $status = strtolower($row['status'] ?? '');
+    if ($status === 'planning' || $status === 'in progress' || $status === 'active') $activeCount++;
+    if ($status === 'completed') $completedCount++;
+    if (!empty($row['start_date']) && new DateTime($row['start_date']) > $now) $upcomingCount++;
 }
 ?>
 <!DOCTYPE html>

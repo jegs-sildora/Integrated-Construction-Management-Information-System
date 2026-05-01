@@ -4,33 +4,21 @@
 // ============================================================
 
 include __DIR__ . '/project_context.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 $conn = getWorkforceConnection();
 
 // Fetch Employees for the Member Selection List (All Active)
 $employees = [];
-$e_sql = "SELECT e.employee_id, e.first_name, e.last_name, jt.title_name 
-          FROM workforce_employees e 
-          LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id 
-          WHERE e.status = 'Active' 
-          ORDER BY e.last_name ASC";
-$e_result = $conn->query($e_sql);
-if ($e_result) {
-    while ($row = $e_result->fetch_assoc()) {
-        $employees[] = $row;
-    }
+$res_employees = ApiHelper::get('workforce/employees?status=Active');
+if ($res_employees['status'] === 200) {
+    $employees = $res_employees['data']['data'] ?? $res_employees['data'];
 }
 
 // Fetch Leaders/Foremen ONLY
 $leaders = [];
-$l_sql = "SELECT e.employee_id, e.first_name, e.last_name 
-          FROM workforce_employees e 
-          WHERE e.job_title_id = 11 AND e.status = 'Active' 
-          ORDER BY e.last_name ASC";
-$l_result = $conn->query($l_sql);
-if ($l_result) {
-    while ($row = $l_result->fetch_assoc()) {
-        $leaders[] = $row;
-    }
+$res_leaders = ApiHelper::get('workforce/employees?job_title_id=11&status=Active');
+if ($res_leaders['status'] === 200) {
+    $leaders = $res_leaders['data']['data'] ?? $res_leaders['data'];
 }
 
 $pageSection = "Labor & Workforce";

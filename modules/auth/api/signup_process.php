@@ -3,7 +3,6 @@
 
 // 1. Load Configuration
 require_once '../../../config/config.php';
-require_once BASE_PATH . '/config/database.php';
 
 // 2. Start Session
 if (session_status() === PHP_SESSION_NONE) {
@@ -24,47 +23,33 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['signup']))
         exit();
     }
 
-    // A. Check if email already exists
-    $check = $conn->prepare("SELECT user_id FROM icmis_users WHERE email = ?");
-    if ($check === false) {
-        // Redirect with DB error instead of white screen
-        header("Location: " . BASE_URL . "index.php?error=Database error: " . urlencode($conn->error));
-        exit();
-    }
-    $check->bind_param("s", $email);
-    $check->execute();
-    $check->store_result();
+    // Call API Gateway
+    $ch = curl_init(GATEWAY_URL . 'auth/signup');
+    $payload = json_encode([
+        'full_name' => $full_name,
+        'email' => $email,
+        'password' => $password
+    ]);
+    
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type:application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    if ($check->num_rows > 0) {
-        $check->close();
-        header("Location: " . BASE_URL . "index.php?error=Email already exists&signup_name=" . urlencode($full_name));
-        exit();
-    }
-    $check->close();
+    $data = json_decode($response, true);
 
-    // B. Create New User
-    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-    $role = 'Admin'; // Default role for new signups
-
-    $stmt = $conn->prepare("INSERT INTO icmis_users (full_name, email, password, role) VALUES (?, ?, ?, ?)");
-    if ($stmt === false) {
-        header("Location: " . BASE_URL . "index.php?error=Database error: " . urlencode($conn->error));
-        exit();
-    }
-    $stmt->bind_param("ssss", $full_name, $email, $hashed_password, $role);
-
-    // C. Execute and Redirect
-    if ($stmt->execute()) {
-        // SUCCESS: Redirect back to login with success message for the toast
-        header("Location: " . BASE_URL . "index.php?success=Account created successfully.");
+    if ($httpCode === 201) {
+        // SUCCESS: Redirect back to login with success message
+        header("Location: " . BASE_URL . "index.php?success=" . urlencode($data['message']));
         exit();
     } else {
-        // ERROR: Redirect with the specific SQL error for the toast
-        header("Location: " . BASE_URL . "index.php?error=Registration failed: " . urlencode($stmt->error));
+        // ERROR: Redirect with the error from Gateway
+        $error = $data['error'] ?? 'Registration failed. Please try again.';
+        header("Location: " . BASE_URL . "index.php?error=" . urlencode($error) . "&signup_name=" . urlencode($full_name));
         exit();
     }
-    $stmt->close();
-
 } else {
     // If accessed directly without POST, redirect back to index
     header("Location: " . BASE_URL . "index.php");

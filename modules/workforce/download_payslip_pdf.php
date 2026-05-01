@@ -1,13 +1,11 @@
 <?php
 // download_payslip_pdf.php
 // Renders a printable payslip for a single employee.
+// Refactored to use ApiHelper for microservices communication.
 
 session_start();
 
-// Load config and DB
-if (file_exists(__DIR__ . '/../../config/config.php')) include_once __DIR__ . '/../../config/config.php';
-if (file_exists(__DIR__ . '/../../config/database.php')) include_once __DIR__ . '/../../config/database.php';
-if (file_exists(__DIR__ . '/../../core/Logger.php')) include_once __DIR__ . '/../../core/Logger.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
 // Require login
 if (!isset($_SESSION['user_id'])) {
@@ -45,83 +43,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['payload'])) {
 } elseif (isset($_GET['employee_id']) && isset($_GET['period_id'])) {
     $employee_id = intval($_GET['employee_id']);
     $period_id = intval($_GET['period_id']);
+    $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 
-    if (!isset($conn) || !$conn instanceof mysqli) {
-        if (defined('DB_HOST')) $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-        else { echo 'DB config missing'; exit; }
+    try {
+        $apiRes = ApiHelper::get("workforce/payroll?action=get_payslip&period_id=$period_id&employee_id=$employee_id&project_id=$project_id");
+        
+        if ($apiRes['status'] === 200 && $apiRes['data']['success']) {
+            $resData = $apiRes['data']['data'];
+            $r = $resData['payroll'];
+            $pres = $resData['period'];
+
+            $employee = [
+                'code' => $r['code'] ?? '',
+                'fullname' => $r['fullname'] ?? '',
+                'basic_pay' => $r['basic_pay'] ?? ($r['monthly_salary'] ?? 0),
+                'ot_pay' => $r['ot_pay'] ?? 0,
+                'gross_pay' => $r['gross_pay'] ?? 0,
+                'sss_deduction' => $r['sss_deduction'] ?? 0,
+                'philhealth_deduction' => $r['philhealth_deduction'] ?? 0,
+                'pagibig_deduction' => $r['pagibig_deduction'] ?? 0,
+                'deductions' => $r['deductions'] ?? (($r['sss_deduction']??0)+($r['philhealth_deduction']??0)+($r['pagibig_deduction']??0)),
+                'net_pay' => $r['net_pay'] ?? 0,
+                'days_worked' => $r['days_worked'] ?? ($r['hours_worked'] ? round($r['hours_worked']/8,2) : '-'),
+                'ot_hours' => $r['ot_hours'] ?? 0
+            ];
+
+            if ($pres) $meta['period'] = date('M j', strtotime($pres['start_date'])) . ' - ' . date('M j, Y', strtotime($pres['end_date']));
+        } else {
+            echo 'Payslip not found: ' . ($apiRes['data']['message'] ?? 'Unknown error');
+            exit;
+        }
+    } catch (Exception $e) {
+        echo 'API Error: ' . $e->getMessage();
+        exit;
     }
-
-    $sql = "SELECT wp.*, CONCAT(e.first_name, ' ', e.last_name) AS fullname, e.employee_code AS code, e.daily_rate, e.monthly_salary
-            FROM workforce_payroll wp
-            JOIN workforce_employees e ON wp.employee_id = e.employee_id
-            WHERE wp.employee_id = ? AND wp.period_id = ? LIMIT 1";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ii', $employee_id, $period_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($r = $res->fetch_assoc()) {
-        $employee = [
-            'code' => $r['code'] ?? '',
-            'fullname' => $r['fullname'] ?? '',
-            'basic_pay' => $r['basic_pay'] ?? ($r['monthly_salary'] ?? 0),
-            'ot_pay' => $r['ot_pay'] ?? 0,
-            'gross_pay' => $r['gross_pay'] ?? 0,
-            'sss_deduction' => $r['sss_deduction'] ?? 0,
-            'philhealth_deduction' => $r['philhealth_deduction'] ?? 0,
-            'pagibig_deduction' => $r['pagibig_deduction'] ?? 0,
-            'deductions' => $r['deductions'] ?? (($r['sss_deduction']??0)+($r['philhealth_deduction']??0)+($r['pagibig_deduction']??0)),
-            'net_pay' => $r['net_pay'] ?? 0,
-            'days_worked' => $r['days_worked'] ?? ($r['hours_worked'] ? round($r['hours_worked']/8,2) : '-'),
-            'ot_hours' => $r['ot_hours'] ?? 0
-        ];
-
-        // Fetch period label
-        $pq = $conn->prepare("SELECT start_date, end_date FROM workforce_payroll_periods WHERE period_id = ? LIMIT 1");
-        $pq->bind_param('i', $period_id);
-        $pq->execute();
-        $pres = $pq->get_result()->fetch_assoc();
-        if ($pres) $meta['period'] = date('M j', strtotime($pres['start_date'])) . ' - ' . date('M j, Y', strtotime($pres['end_date']));
-        $pq->close();
-    } else {
-        echo 'Payslip not found'; exit;
-    }
-    $stmt->close();
 
 } else {
     echo 'No payslip data provided'; exit;
 }
 
-// Audit
-if (class_exists('Logger')) {
-    try {
-        Logger::init($conn ?? null);
-        $rec = isset($employee['code']) ? $employee['code'] : null;
-        Logger::export('Workforce', 'Payslip printed for ' . ($employee['fullname'] ?? $rec), null);
-    } catch (Throwable $e) {}
-}
-
-// Render HTML payslip (using payroll report layout)
-// Determine Prepared By
-$prepared_by = 'System Generated';
-if (!empty($_SESSION['user_name'])) {
-  $prepared_by = $_SESSION['user_name'];
-} elseif (!empty($_SESSION['user_id'])) {
-  $uid = intval($_SESSION['user_id']);
-  if (defined('DB_HOST')) {
-    $uconn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    if (!$uconn->connect_error) {
-      $s = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
-      if ($s) {
-        $s->bind_param('i', $uid);
-        $s->execute();
-        $r = $s->get_result()->fetch_assoc();
-        if (!empty($r['full_name'])) $prepared_by = $r['full_name'];
-        $s->close();
-      }
-      $uconn->close();
-    }
-  }
-}
+// Prepared By
+$prepared_by = $_SESSION['user_name'] ?? 'System Generated';
 ?>
 <!DOCTYPE html>
 <html lang="en">

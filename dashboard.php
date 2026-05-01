@@ -12,7 +12,7 @@
  */
 
 require_once __DIR__ . '/config/config.php';
-require_once BASE_PATH . '/config/database.php';
+require_once __DIR__ . '/core/ApiHelper.php';
 
 // Start session and enforce authentication. Redirect unauthenticated users.
 if (session_status() === PHP_SESSION_NONE) {
@@ -26,118 +26,122 @@ if (!isset($_SESSION['user_id'])) {
 
 /**
  * ===================================================================================
- * DASHBOARD DATA AGGREGATION
- * Fetches all necessary data from the database to populate the dashboard widgets.
+ * DASHBOARD DATA AGGREGATION (Microservices Version)
+ * Fetches data via ApiHelper and Gateway to populate the dashboard widgets.
  * ===================================================================================
  */
 
-// A. Project Statistics: Counts total and active projects.
-$sql_proj_stats = "SELECT 
-    COUNT(*) as total_projects,
-    SUM(CASE WHEN status IN ('In Progress', 'Active') THEN 1 ELSE 0 END) as active_projects
-FROM icmis_projects";
-$res_proj_stats = $conn->query($sql_proj_stats);
-$proj_data = $res_proj_stats->fetch_assoc();
-$total_projects = $proj_data['total_projects'] ?? 0;
-$active_projects = $proj_data['active_projects'] ?? 0;
+// A. Project Statistics
+$projRes = ApiHelper::get('project/projects');
+$all_projects = $projRes['data']['projects'] ?? [];
+$total_projects = count($all_projects);
+$active_projects = 0;
+foreach ($all_projects as $p) {
+    if (in_array($p['status'], ['In Progress', 'Active'])) $active_projects++;
+}
 
-// B. Financial Overview: Summarizes total budget and approved expenses across all projects.
-$sql_budget = "SELECT SUM(total_budget) as total_budget FROM icmis_projects";
-$res_budget = $conn->query($sql_budget);
-$total_budget = $res_budget->fetch_assoc()['total_budget'] ?? 0;
+// B. Financial Overview
+$total_budget = 0;
+foreach ($all_projects as $p) {
+    $total_budget += floatval($p['total_budget'] ?? 0);
+}
 
-$sql_expenses = "SELECT SUM(amount) as total_spent FROM budget_expenses WHERE status = 'APPROVED'";
-$res_expenses = $conn->query($sql_expenses);
-$total_spent = $res_expenses->fetch_assoc()['total_spent'] ?? 0;
+$expRes = ApiHelper::get('budget/expenses');
+$all_expenses = $expRes['data']['expenses'] ?? [];
+$total_spent = 0;
+foreach ($all_expenses as $e) {
+    if (($e['status'] ?? '') === 'APPROVED') {
+        $total_spent += floatval($e['amount'] ?? 0);
+    }
+}
 
-// C. Workforce Summary: Counts active employees who are not currently assigned to a project.
-$sql_staff = "SELECT COUNT(*) as total_staff
-    FROM workforce_employees e
-    LEFT JOIN workforce_assignments wa ON e.employee_id = wa.employee_id
-    WHERE e.status = 'Active' AND wa.employee_id IS NULL";
-$res_staff = $conn->query($sql_staff);
-$total_staff = $res_staff->fetch_assoc()['total_staff'] ?? 0;
+// C. Workforce Summary
+$empRes = ApiHelper::get('workforce/employees?action=list');
+$all_employees = $empRes['data']['data'] ?? [];
+$total_staff = count($all_employees);
 
-// D. Procurement Summary: Counts purchase orders with a 'PENDING' status.
-$sql_po = "SELECT COUNT(*) as pending_po FROM procurement_purchase_orders WHERE status = 'PENDING'";
-$res_po = $conn->query($sql_po);
-$pending_po = $res_po->fetch_assoc()['pending_po'] ?? 0;
+// D. Procurement Summary
+$poRes = ApiHelper::get('procurement/orders');
+$all_orders = $poRes['data']['orders'] ?? [];
+$pending_po = 0;
+foreach ($all_orders as $o) {
+    if (($o['status'] ?? '') === 'PENDING') $pending_po++;
+}
 
-// E. Chart Data: Top 5 Projects by Financials (Budget vs. Expenses)
-$sql_chart_financials = "SELECT 
-        p.project_name, 
-        p.total_budget,
-        COALESCE(SUM(e.amount), 0) as total_expenses
-    FROM icmis_projects p
-    LEFT JOIN budget_expenses e ON p.project_id = e.project_id AND e.status = 'APPROVED'
-    GROUP BY p.project_id, p.project_name, p.total_budget
-    ORDER BY p.total_budget DESC
-    LIMIT 5";
-$res_chart_financials = $conn->query($sql_chart_financials);
+// E. Chart Data: Top 5 Projects by Financials
 $chart_labels = [];
 $chart_budget = [];
 $chart_expenses = [];
-while ($row = $res_chart_financials->fetch_assoc()) {
-    $chart_labels[] = $row['project_name'];
-    $chart_budget[] = $row['total_budget'];
-    $chart_expenses[] = $row['total_expenses'];
+$proj_expenses = [];
+foreach ($all_expenses as $e) {
+    if (($e['status'] ?? '') === 'APPROVED') {
+        $pid = $e['project_id'];
+        $proj_expenses[$pid] = ($proj_expenses[$pid] ?? 0) + floatval($e['amount']);
+    }
+}
+// Sort projects by budget DESC
+usort($all_projects, function($a, $b) {
+    return floatval($b['total_budget'] ?? 0) <=> floatval($a['total_budget'] ?? 0);
+});
+$top_projects = array_slice($all_projects, 0, 5);
+foreach ($top_projects as $p) {
+    $chart_labels[] = $p['project_name'];
+    $chart_budget[] = floatval($p['total_budget'] ?? 0);
+    $chart_expenses[] = $proj_expenses[$p['project_id']] ?? 0;
 }
 
 // F. Chart Data: Expense Category Distribution
-$sql_chart_cats = "SELECT category, SUM(amount) as total FROM budget_expenses WHERE status = 'APPROVED' GROUP BY category";
-$res_chart_cats = $conn->query($sql_chart_cats);
-$cat_labels = [];
-$cat_data = [];
-while ($row = $res_chart_cats->fetch_assoc()) {
-    $cat_labels[] = $row['category'];
-    $cat_data[] = $row['total'];
+$cat_map = [];
+foreach ($all_expenses as $e) {
+    if (($e['status'] ?? '') === 'APPROVED') {
+        $cat = $e['category'] ?? 'Other';
+        $cat_map[$cat] = ($cat_map[$cat] ?? 0) + floatval($e['amount']);
+    }
 }
+$cat_labels = array_keys($cat_map);
+$cat_data = array_values($cat_map);
 
 // G. Chart Data: Monthly Spending Trend (Last 6 Months)
-// Groups approved expenses by month and year to show recent financial trends.
-$sql_trend = "SELECT 
-        DATE_FORMAT(expense_date, '%b %Y') as month_label,
-        SUM(amount) as total_spent
-    FROM budget_expenses 
-    WHERE status = 'APPROVED' 
-    AND expense_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-    GROUP BY month_label
-    ORDER BY MAX(expense_date) ASC";
-$res_trend = $conn->query($sql_trend);
-$trend_labels = [];
-$trend_data = [];
-while ($row = $res_trend->fetch_assoc()) {
-    $trend_labels[] = $row['month_label'];
-    $trend_data[] = $row['total_spent'];
+$trend_map = [];
+$now_ts = time();
+for ($i = 5; $i >= 0; $i--) {
+    $m = date('M Y', strtotime("-$i months", $now_ts));
+    $trend_map[$m] = 0;
 }
+foreach ($all_expenses as $e) {
+    if (($e['status'] ?? '') === 'APPROVED') {
+        $m = date('M Y', strtotime($e['expense_date']));
+        if (isset($trend_map[$m])) {
+            $trend_map[$m] += floatval($e['amount']);
+        }
+    }
+}
+$trend_labels = array_keys($trend_map);
+$trend_data = array_values($trend_map);
 
 // H. Chart Data: Workforce Attendance (Last 7 Days)
-// Aggregates and stacks daily attendance statuses (Present, Late, Absent) for the past week.
-$sql_attendance = "SELECT 
-        attendance_date,
-        SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_count,
-        SUM(CASE WHEN status = 'Late' THEN 1 ELSE 0 END) as late_count,
-        SUM(CASE WHEN status = 'Absent' OR status = 'On Leave' THEN 1 ELSE 0 END) as absent_count
-    FROM workforce_attendance
-    WHERE attendance_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-    GROUP BY attendance_date
-    ORDER BY attendance_date ASC";
-$res_att = $conn->query($sql_attendance);
-$att_labels = [];
-$att_present = [];
-$att_late = [];
-$att_absent = [];
-while ($row = $res_att->fetch_assoc()) {
-    // Format date for display, e.g., 'Jan 22'
-    $att_labels[] = date('M d', strtotime($row['attendance_date']));
-    $att_present[] = $row['present_count'];
-    $att_late[] = $row['late_count'];
-    $att_absent[] = $row['absent_count'];
+$attRes = ApiHelper::get('workforce/attendance'); // Assuming this returns all attendance
+$all_attendance = $attRes['data']['data'] ?? [];
+$att_map = [];
+for ($i = 6; $i >= 0; $i--) {
+    $d = date('Y-m-d', strtotime("-$i days", $now_ts));
+    $att_map[$d] = ['present' => 0, 'late' => 0, 'absent' => 0, 'label' => date('M d', strtotime($d))];
 }
+foreach ($all_attendance as $a) {
+    $d = $a['attendance_date'];
+    if (isset($att_map[$d])) {
+        if ($a['status'] === 'Present') $att_map[$d]['present']++;
+        elseif ($a['status'] === 'Late') $att_map[$d]['late']++;
+        else $att_map[$d]['absent']++;
+    }
+}
+$att_labels = array_column($att_map, 'label');
+$att_present = array_column($att_map, 'present');
+$att_late = array_column($att_map, 'late');
+$att_absent = array_column($att_map, 'absent');
 
-// I. Data for Recent Projects Table: Fetches the 5 most recently added projects.
-$sql_recent = "SELECT project_name, location, status, total_budget FROM icmis_projects ORDER BY project_id DESC LIMIT 5";
-$recent_projects = $conn->query($sql_recent);
+// I. Data for Recent Projects Table
+$recent_projects = array_slice($all_projects, 0, 5);
 ?>
 
 <!DOCTYPE html>

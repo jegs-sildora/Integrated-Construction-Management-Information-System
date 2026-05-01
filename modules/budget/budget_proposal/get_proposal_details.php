@@ -1,105 +1,17 @@
 <?php
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+/**
+ * get_proposal_details.php - Bridge to Budget Service
+ */
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 
-// Set CORS headers
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+$proposal_id = $_GET['id'] ?? 0;
 
-// Include config for database connection
-require_once __DIR__ . '/../../../config/config.php';
+// Call Budget Service via Gateway
+$res = ApiHelper::get('budget/proposals?fetch_id=' . $proposal_id);
 
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]);
-    exit;
-}
-$conn->set_charset("utf8mb4");
-
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    echo json_encode(['success' => false, 'message' => 'Proposal ID is required']);
-    exit;
-}
-
-$proposal_id = intval($_GET['id']);
-
-if ($proposal_id <= 0) {
-    echo json_encode(['success' => false, 'message' => 'Invalid proposal ID']);
-    exit;
-}
-
-try {
-    // Fetch proposal details with project, phase, and user information
-    $sql = "SELECT bp.*, p.project_name, p.project_code, pp.phase_name, COALESCE(u.full_name, 'System') as user_name 
-            FROM budget_proposals bp 
-            LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
-            LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
-            LEFT JOIN icmis_users u ON bp.created_by = u.user_id
-            WHERE bp.proposal_id = ?";
-    
-    $stmt = $conn->prepare($sql);
-    
-    if (!$stmt) {
-        throw new Exception("Failed to prepare statement: " . $conn->error);
-    }
-    
-    $stmt->bind_param("i", $proposal_id);
-    
-    if (!$stmt->execute()) {
-        throw new Exception("Failed to execute statement: " . $stmt->error);
-    }
-    
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows === 0) {
-        echo json_encode(['success' => false, 'message' => 'Proposal not found']);
-        exit;
-    }
-    
-    $proposal = $result->fetch_assoc();
-    
-    // Format created_at date
-    $proposal['created_at'] = date('M d, Y', strtotime($proposal['created_at']));
-    
-    // Fetch line items
-    $sql_items = "SELECT * FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id ASC";
-    $stmt_items = $conn->prepare($sql_items);
-    $stmt_items->bind_param("i", $proposal_id);
-    $stmt_items->execute();
-    $result_items = $stmt_items->get_result();
-    
-    $items = [];
-    while ($row = $result_items->fetch_assoc()) {
-        $items[] = $row;
-    }
-    
-    echo json_encode([
-        'success' => true,
-        'proposal' => $proposal,
-        'items' => $items
-    ]);
-    
-} catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error fetching proposal details: ' . $e->getMessage(),
-        'error_type' => get_class($e),
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
-    ]);
-}
-
-if (isset($conn) && $conn) {
-    $conn->close();
-}
+http_response_code($res['status']);
+echo json_encode($res['data']);
 ?>

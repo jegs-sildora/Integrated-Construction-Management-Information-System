@@ -1,21 +1,16 @@
 <?php
   // 1. Connection & Context - using centralized config
   include __DIR__ . '/project_context.php';
+  require_once __DIR__ . '/../../core/ApiHelper.php';
+  
   $conn = getBudgetConnection();
 
   // Get selected project ID from global context
   $selected_project_id = getProjectContext($conn);
 
-  // Fetch all projects for dropdown
-  $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-  $result_projects = $conn->query($sql_projects);
-  $projects = [];
-  
-  if ($result_projects && $result_projects->num_rows > 0) {
-    while ($row = $result_projects->fetch_assoc()) {
-      $projects[] = $row;
-    }
-  }
+  // Fetch all projects for dropdown from Project Service
+  $projectRes = ApiHelper::get('project/projects');
+  $projects = $projectRes['data']['projects'] ?? [];
 
   // Build breadcrumb navigation with dropdown
   $current_page = basename($_SERVER['PHP_SELF']);
@@ -40,30 +35,34 @@
   $pageTitle = "Budget Proposals";
   $pageSubTitle = $breadcrumbHTML;
 
-  // Fetch budget proposals for selected project
+  // Fetch budget proposals for selected project from Budget Service
+  $proposals = [];
   if ($selected_project_id > 0) {
-    $sql = "SELECT bp.*, p.project_name, p.project_code, 
-            COALESCE(u.full_name, 'System Admin') as user_name 
-            FROM budget_proposals bp 
-            LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
-            LEFT JOIN icmis_users u ON bp.created_by = u.user_id
-            WHERE bp.project_id = ?
-            ORDER BY bp.created_at DESC";
+    $proposalRes = ApiHelper::get('budget/proposals?project_id=' . $selected_project_id);
+    $proposals = $proposalRes['data']['proposals'] ?? [];
     
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $selected_project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    $proposals = [];
-    if ($result && $result->num_rows > 0) {
-      while ($row = $result->fetch_assoc()) {
-        $proposals[] = $row;
+    // Fetch users for mapping if needed (optional if service returns it)
+    $userRes = ApiHelper::get('auth/users');
+    $users = $userRes['data']['users'] ?? [];
+    $userMap = [];
+    foreach ($users as $u) {
+      $userMap[$u['user_id']] = $u['full_name'];
+    }
+
+    // Map project names and user names if not provided by service
+    foreach ($proposals as &$p) {
+      if (!isset($p['project_name'])) {
+        foreach ($projects as $proj) {
+          if ($proj['project_id'] == $p['project_id']) {
+            $p['project_name'] = $proj['project_name'];
+            break;
+          }
+        }
+      }
+      if (!isset($p['user_name'])) {
+        $p['user_name'] = $userMap[$p['created_by']] ?? 'System Admin';
       }
     }
-    $stmt->close();
-  } else {
-    $proposals = [];
   }
 ?>
 <!DOCTYPE html>

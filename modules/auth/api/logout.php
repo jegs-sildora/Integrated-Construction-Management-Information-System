@@ -1,15 +1,11 @@
 <?php
 // logout.php
 require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../core/Logger.php';
 
 // Initialize session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-// Log logout before destroying session
-Logger::logout();
 
 // 1. Unset all session variables
 $_SESSION = array();

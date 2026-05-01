@@ -1,13 +1,29 @@
 <?php
 // assignments.php
 include __DIR__ . '/../../config/config.php';
-include __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 include __DIR__ . '/project_context.php';
 
+$conn = getWorkforceConnection();
+
 // Initial Data for Dropdowns (SSR for speed)
-$employees = $conn->query("SELECT employee_id, first_name, last_name, employee_code FROM workforce_employees WHERE status = 'Active' ORDER BY last_name ASC");
-$projects = $conn->query("SELECT project_id, project_name FROM icmis_projects ORDER BY project_id DESC");
-$groups = $conn->query("SELECT group_id, group_name FROM workforce_employee_groups ORDER BY group_name ASC");
+$employees = [];
+$res_employees = ApiHelper::get('workforce/employees?status=Active');
+if ($res_employees['status'] === 200) {
+    $employees = $res_employees['data']['data'] ?? $res_employees['data'];
+}
+
+$projects = [];
+$res_projects = ApiHelper::get('project/projects');
+if ($res_projects['status'] === 200) {
+    $projects = $res_projects['data'];
+}
+
+$groups = [];
+$res_groups = ApiHelper::get('workforce/employee-groups');
+if ($res_groups['status'] === 200) {
+    $groups = $res_groups['data']['data'] ?? $res_groups['data'];
+}
 
 $pageSection = "Labor & Workforce";
 $pageTitle = "Workforce Assignments";

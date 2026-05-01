@@ -6,57 +6,29 @@
  * - Supports optional `project_id` filter via query string.
  */
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "index.php");
     exit();
 }
-require_once __DIR__ . '/../../config/database.php';
-
-// Fetch all projects for filter dropdown
-$projectsResult = $conn->query("SELECT project_id, project_name, project_code FROM icmis_projects ORDER BY project_name ASC");
-$allProjects = [];
-while ($row = $projectsResult->fetch_assoc()) {
-    $allProjects[] = $row;
-}
 
 // Get selected project filter
 $selectedProjectId = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+$queryParams = $selectedProjectId > 0 ? ['project_id' => $selectedProjectId] : [];
+$queryString = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
 
-// Build WHERE clause for project filter
-$projectFilter = $selectedProjectId > 0 ? " WHERE p.project_id = $selectedProjectId" : "";
-$projectFilterPhases = $selectedProjectId > 0 ? " WHERE ph.project_id = $selectedProjectId" : "";
-$projectFilterTasks = $selectedProjectId > 0 ? " AND t.project_id = $selectedProjectId" : "";
+// Fetch all projects for filter dropdown
+$projRes = ApiHelper::get('project/projects');
+$allProjects = $projRes['data']['projects'] ?? [];
 
 // Fetch phases for Gantt chart
-$phasesSql = "SELECT ph.phase_id, ph.phase_name, ph.start_date, ph.end_date, 
-                     p.project_name, p.project_id
-              FROM icmis_project_phases ph
-              LEFT JOIN icmis_projects p ON ph.project_id = p.project_id
-              $projectFilterPhases
-              ORDER BY ph.start_date ASC, ph.phase_id ASC";
-$phasesResult = $conn->query($phasesSql);
+$phaseRes = ApiHelper::get('project/phases' . $queryString);
+$phases = $phaseRes['data']['phases'] ?? [];
 
-$phases = [];
-while ($row = $phasesResult->fetch_assoc()) {
-    $phases[] = $row;
-}
-
-// Fetch ALL tasks for Gantt chart (including those without dates)
-$tasksSql = "SELECT t.task_id, t.task_name, t.start_date, t.due_date, t.status, t.priority,
-                    p.project_name, p.project_id, p.start_date as project_start, p.end_date as project_end,
-                    ph.phase_name, ph.start_date as phase_start, ph.end_date as phase_end
-             FROM icmis_tasks t
-             LEFT JOIN icmis_projects p ON t.project_id = p.project_id
-             LEFT JOIN icmis_project_phases ph ON t.phase_id = ph.phase_id
-             WHERE 1=1
-             $projectFilterTasks
-             ORDER BY COALESCE(t.start_date, ph.start_date, p.start_date, CURDATE()) ASC, t.task_id ASC";
-$tasksResult = $conn->query($tasksSql);
-
-$tasks = [];
-while ($row = $tasksResult->fetch_assoc()) {
-    $tasks[] = $row;
-}
+// Fetch ALL tasks for Gantt chart
+$taskRes = ApiHelper::get('project/tasks' . $queryString);
+$tasks = $taskRes['data']['tasks'] ?? [];
 
 // Prepare Gantt data in JSON format
 $ganttData = [];

@@ -6,6 +6,7 @@
  * - Renders a responsive Tailwind UI for filtering and managing phases.
  */
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
 // enforce authentication
 if (!isset($_SESSION['user_id'])) {
@@ -13,25 +14,9 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-require_once __DIR__ . '/../../config/database.php';
-
-// Default phase templates for new projects
-$defaultPhases = [
-    'Phase 1: Mobilization',
-    'Phase 2: Structural',
-    'Phase 3: MEPFS (Mechanical, Electrical, Plumbing, Fire Protection, and Sanitary)',
-    'Phase 4: Finishing'
-];
-
-// Load phases with approved budget totals (grouped by phase)
-$sql = "SELECT ph.*, p.project_name, p.project_code,
-           COALESCE(SUM(CASE WHEN bp.status = 'APPROVED' THEN bp.total_amount ELSE 0 END), 0) AS phase_budget
-    FROM icmis_project_phases ph
-    LEFT JOIN icmis_projects p ON ph.project_id = p.project_id
-    LEFT JOIN budget_proposals bp ON bp.phase_id = ph.phase_id AND bp.status = 'APPROVED'
-    GROUP BY ph.phase_id
-    ORDER BY ph.phase_id DESC, ph.start_date DESC";
-$result = $conn->query($sql);
+// Fetch phases from Project Service
+$phaseRes = ApiHelper::get('project/phases');
+$phasesData = $phaseRes['data']['phases'] ?? [];
 
 $phases = [];
 $totalPhases = 0;
@@ -39,23 +24,18 @@ $activeCount = 0;
 $completedCount = 0;
 $upcomingCount = 0;
 
-if ($result && $result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $phases[] = $row;
-        $totalPhases++;
-        $status = strtolower($row['status'] ?? '');
-        if ($status === 'in progress') $activeCount++;
-        if ($status === 'completed') $completedCount++;
-        if ($status === 'not started') $upcomingCount++;
-    }
+foreach ($phasesData as $row) {
+    $phases[] = $row;
+    $totalPhases++;
+    $status = strtolower($row['status'] ?? '');
+    if ($status === 'in progress') $activeCount++;
+    if ($status === 'completed') $completedCount++;
+    if ($status === 'not started') $upcomingCount++;
 }
 
 // Projects for selector (used by filters)
-$projectsResult = $conn->query("SELECT project_id, project_name, project_code FROM icmis_projects ORDER BY project_name ASC");
-$allProjects = [];
-while ($row = $projectsResult->fetch_assoc()) {
-    $allProjects[] = $row;
-}
+$projRes = ApiHelper::get('project/projects');
+$allProjects = $projRes['data']['projects'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">

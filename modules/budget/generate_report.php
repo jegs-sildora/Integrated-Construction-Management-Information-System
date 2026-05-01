@@ -46,7 +46,6 @@ if ($json === false) {
         $json = curl_exec($ch);
         $curlErr = curl_error($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($json === false || $json === '') {
             echo "<h2>Error</h2><p>Failed to fetch report data from server via HTTP.</p>";

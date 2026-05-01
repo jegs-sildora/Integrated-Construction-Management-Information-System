@@ -1,39 +1,34 @@
 <?php 
   // 1. Connection & Context - using centralized config
   include __DIR__ . '/project_context.php';
+  require_once __DIR__ . '/../../core/ApiHelper.php';
+  
   $conn = getBudgetConnection();
   
   // Get selected project ID
   $selected_project_id = getProjectContext($conn);
   
-    // Fetch all projects for dropdown
-    $sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-    $result_projects = $conn->query($sql_projects);
-    $projects = [];
-    
-    if ($result_projects && $result_projects->num_rows > 0) {
-      while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-      }
-    }
+  // Fetch all projects for dropdown from Project Service
+  $projectRes = ApiHelper::get('project/projects');
+  $projects = $projectRes['data']['projects'] ?? [];
 
-    // Build breadcrumb navigation with dropdown
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
-    
-    // Project Dropdown
-    $breadcrumbHTML .= '<div class="relative inline-block">';
-    $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
-    
-    foreach ($projects as $proj) {
-      $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
-      $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
-    }
-    
-    $breadcrumbHTML .= '</select>';
-    $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
-    $breadcrumbHTML .= '</div>';
-    $breadcrumbHTML .= '</div>';
+  // Build breadcrumb navigation with dropdown
+  $current_page = basename($_SERVER['PHP_SELF']);
+  $breadcrumbHTML = '<div class="flex items-center gap-2 text-sm">';
+  
+  // Project Dropdown
+  $breadcrumbHTML .= '<div class="relative inline-block">';
+  $breadcrumbHTML .= '<select id="projectSelector" onchange="window.location.href=\'' . $current_page . '?project_id=\' + this.value" class="appearance-none bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-[#e9922c] focus:border-[#e9922c] pl-3 pr-8 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer font-medium">';
+  
+  foreach ($projects as $proj) {
+    $selected = ($proj['project_id'] == $selected_project_id) ? 'selected' : '';
+    $breadcrumbHTML .= '<option value="' . $proj['project_id'] . '" ' . $selected . '>' . htmlspecialchars($proj['project_name']) . '</option>';
+  }
+  
+  $breadcrumbHTML .= '</select>';
+  $breadcrumbHTML .= '<svg class="w-3 h-3 text-gray-500 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>';
+  $breadcrumbHTML .= '</div>';
+  $breadcrumbHTML .= '</div>';
 
   // 4. Set Header Variables
   $pageSection = "Budget & Cost Control";
@@ -50,24 +45,14 @@
   $alert_message = '';
 
   if ($selected_project_id > 0) {
-    // ... (Your existing budget calculation logic) ...
-    // Use the project's canonical total_budget column; approved expenses still aggregated
-    $sql_project = "SELECT p.project_id, p.project_code, p.project_name, p.total_budget,
-            (SELECT COALESCE(SUM(e.amount), 0) 
-             FROM budget_expenses e 
-             WHERE e.project_id = p.project_id AND e.status = 'APPROVED') as actual_spending
-            FROM icmis_projects p
-            WHERE p.project_id = ?";
-    $stmt = $conn->prepare($sql_project);
-    $stmt->bind_param("i", $selected_project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result && $result->num_rows > 0) {
-      $project = $result->fetch_assoc();
-      $project_name = $project['project_name'];
-      $total_budget = floatval($project['total_budget']);
-      $actual_spending = floatval($project['actual_spending']);
+    // Fetch project summary from Budget Service
+    $summaryRes = ApiHelper::get('budget/summary?project_id=' . $selected_project_id);
+    $projectSummary = $summaryRes['data'] ?? [];
+
+    if (!empty($projectSummary)) {
+      $project_name = $projectSummary['project_name'] ?? 'N/A';
+      $total_budget = floatval($projectSummary['total_budget'] ?? 0);
+      $actual_spending = floatval($projectSummary['actual_spending'] ?? 0);
       $remaining_budget = $total_budget - $actual_spending;
       $budget_utilization = $total_budget > 0 ? ($actual_spending / $total_budget) * 100 : 0;
 
@@ -82,138 +67,23 @@
         $alert_message = "$project_name is under budget at " . number_format($budget_utilization, 1) . "% utilization. Good progress.";
       }
     }
-    $stmt->close();
 
-    // Phase Calculation Logic
-    $phases_data = [];
-    $phase_definitions = [
-      'Phase 1: Mobilization' => ['color' => 'blue', 'icon' => 'truck'],
-      'Phase 2: Structural' => ['color' => 'purple', 'icon' => 'building-2'],
-      'Phase 3: MEPFS' => ['color' => 'orange', 'icon' => 'zap'],
-      'Phase 4: Finishing' => ['color' => 'green', 'icon' => 'check-circle-2']
-    ];
+    // Fetch phases data from Budget Service
+    $phaseRes = ApiHelper::get('budget/phases?project_id=' . $selected_project_id);
+    $phases_data = $phaseRes['data']['phases'] ?? [];
 
-    // REFACTORED QUERY: Joins Budget Proposals with Project Phases
-    $sql_phases = "SELECT 
-                    pp.phase_name as phase, 
-                    COALESCE(SUM(bp.total_amount), 0) as allocated, 
-                    -- We now pull dates from the Master Phase table, ensuring consistency
-                    MIN(pp.start_date) as phase_start_date, 
-                    MAX(pp.end_date) as phase_end_date 
-                  FROM budget_proposals bp 
-                  -- JOIN connects the budget to the phase info
-                  LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
-                  WHERE bp.project_id = ? AND bp.status = 'APPROVED' 
-                  GROUP BY pp.phase_id 
-                  ORDER BY pp.start_date ASC";
-
-    $stmt_phases = $conn->prepare($sql_phases);
-    $stmt_phases->bind_param("i", $selected_project_id);
-    $stmt_phases->execute();
-    $result_phases = $stmt_phases->get_result();
-
-    while ($row = $result_phases->fetch_assoc()) {
-        $phase_name = $row['phase'];
-        
-        // Safety check: ensure phase name exists (handles proposals with no phase assigned)
-        if ($phase_name && isset($phase_definitions[$phase_name])) {
-            
-            // Date formatting logic
-            $start_date = $row['phase_start_date'] ? new DateTime($row['phase_start_date']) : null;
-            $end_date = $row['phase_end_date'] ? new DateTime($row['phase_end_date']) : null;
-            
-            $date_range = ($start_date && $end_date) 
-                ? $start_date->format('M j') . ' - ' . $end_date->format('M j, Y') 
-                : 'No dates set';
-                
-            $phases_data[$phase_name] = [
-              'phase' => $phase_name,
-              'color' => $phase_definitions[$phase_name]['color'],
-              'icon' => $phase_definitions[$phase_name]['icon'],
-              'date_range' => $date_range,
-              'allocated' => floatval($row['allocated']),
-              'spent' => 0, 
-              'remaining' => floatval($row['allocated']), 
-              'utilization' => 0, 
-              'expense_count' => 0, 
-              'status' => 'Active'
-            ];
-        }
-    }
-    $stmt_phases->close();
-
-      // REFACTORED QUERY: Join Expenses with Master Phases
-      $sql_expenses = "SELECT 
-                          pp.phase_name as phase, 
-                          COALESCE(SUM(CASE WHEN e.status = 'APPROVED' THEN e.amount ELSE 0 END), 0) as spent, 
-                          COUNT(e.expense_id) as expense_count 
-                      FROM budget_expenses e
-                      -- JOIN connects the expense to the master phase info
-                      LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
-                      WHERE e.project_id = ? 
-                      GROUP BY pp.phase_id"; // We group by ID to be precise
-
-      $stmt_expenses = $conn->prepare($sql_expenses);
-      $stmt_expenses->bind_param("i", $selected_project_id);
-      $stmt_expenses->execute();
-      $result_expenses = $stmt_expenses->get_result();
-
-      while ($row = $result_expenses->fetch_assoc()) {
-          $phase_name = $row['phase'];
-          
-          // Safety Check: Ensure the phase exists in our definitions array
-          if ($phase_name && isset($phases_data[$phase_name])) {
-              $spent = floatval($row['spent']);
-              
-              // Update the array we built in the previous loop
-              $phases_data[$phase_name]['spent'] = $spent;
-              $phases_data[$phase_name]['remaining'] = $phases_data[$phase_name]['allocated'] - $spent;
-              
-              // Prevent division by zero
-              $phases_data[$phase_name]['utilization'] = ($phases_data[$phase_name]['allocated'] > 0) 
-                  ? ($spent / $phases_data[$phase_name]['allocated']) * 100 
-                  : 0;
-                  
-              $phases_data[$phase_name]['expense_count'] = intval($row['expense_count']);
-              
-              // Set Status based on spending
-              if ($phases_data[$phase_name]['utilization'] > 100) {
-                  $phases_data[$phase_name]['status'] = 'Over Budget';
-              } elseif ($phases_data[$phase_name]['utilization'] >= 99) {
-                  $phases_data[$phase_name]['status'] = 'Completed';
-              }
-          }
-      }
-      $stmt_expenses->close();
-
-    // Fill missing phases
-    foreach ($phase_definitions as $phase_name => $phase_info) {
-      if (!isset($phases_data[$phase_name])) {
-        $phases_data[$phase_name] = [
-          'phase' => $phase_name, 'color' => $phase_info['color'], 'icon' => $phase_info['icon'],
-          'date_range' => 'No dates set', 'allocated' => 0, 'spent' => 0, 'remaining' => 0, 'utilization' => 0, 'expense_count' => 0, 'status' => 'Upcoming'
-        ];
-      }
-    }
-    
     $active_phases_count = 0;
     foreach ($phases_data as $phase) {
       if ($phase['status'] === 'Active' || $phase['status'] === 'Over Budget') $active_phases_count++;
     }
-  }
 
-  // Check for approved proposals
-  $has_approved_proposals = false;
-  if ($selected_project_id > 0) {
-    $sql_check_proposals = "SELECT COUNT(*) as proposal_count FROM budget_proposals WHERE project_id = ? AND status = 'APPROVED'";
-    $stmt_check = $conn->prepare($sql_check_proposals);
-    $stmt_check->bind_param("i", $selected_project_id);
-    $stmt_check->execute();
-    $result_check = $stmt_check->get_result();
-    if ($result_check && $row_check = $result_check->fetch_assoc()) {
-      $has_approved_proposals = intval($row_check['proposal_count']) > 0;
-    }
-    $stmt_check->close();
+    // Check for approved proposals
+    $proposalsCheckRes = ApiHelper::get('budget/proposals?project_id=' . $selected_project_id . '&status=APPROVED&count_only=true');
+    $has_approved_proposals = ($proposalsCheckRes['data']['count'] ?? 0) > 0;
+  } else {
+    $phases_data = [];
+    $active_phases_count = 0;
+    $has_approved_proposals = false;
   }
 ?>
 

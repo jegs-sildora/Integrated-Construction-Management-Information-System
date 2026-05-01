@@ -5,14 +5,12 @@ require_once '../../config/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
 
-// Connect to Main DB (centralized config)
-require_once '../../config/database.php'; 
+require_once '../../core/ApiHelper.php';
 
 // Prefer procurement project context if available
 if (file_exists(__DIR__ . '/project_context.php')) {
     require_once __DIR__ . '/project_context.php';
-    $__proc_conn = getProcurementConnection();
-    $__ctx_project = getProjectContext($__proc_conn);
+    $__ctx_project = getProjectContext();
     if ($__ctx_project && $__ctx_project > 0) {
         $_SESSION['current_project_id'] = $__ctx_project;
     }
@@ -32,34 +30,25 @@ elseif (isset($_SESSION['current_project_id'])) {
 }
 
 // ==========================================================================
-// 4. FETCH PROJECT DATA
+// 4. FETCH PROJECT DATA VIA GATEWAY
 // ==========================================================================
 $project_name = 'Select Project';
 
 if ($project_id > 0) {
-    // Use Main DB Connection ($conn)
-    $stmt = $conn->prepare("SELECT project_name FROM icmis_projects WHERE project_id = ?");
-    $stmt->bind_param("i", $project_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) $project_name = $row['project_name'];
+    $projRes = ApiHelper::get("project/projects/$project_id");
+    if ($projRes['status'] === 200 && !empty($projRes['data'])) {
+        $project_name = $projRes['data']['project_name'];
+    }
 }
 
 // ==========================================================================
-// 5. CHECK FOR PURCHASE ORDERS (EMPTY STATE LOGIC)
+// 5. CHECK FOR PURCHASE ORDERS (EMPTY STATE LOGIC) VIA GATEWAY
 // ==========================================================================
 $has_orders = false;
 if ($project_id > 0) {
-    // Check for approved POs in procurement_purchase_orders
-    $check_sql = "SELECT COUNT(*) as count FROM procurement_purchase_orders WHERE project_id = ?";
-    if ($stmt = $conn->prepare($check_sql)) {
-        $stmt->bind_param("i", $project_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        $row = $res->fetch_assoc();
-        if ($row['count'] > 0) {
-            $has_orders = true;
-        }
+    $checkRes = ApiHelper::get("procurement/orders/count?project_id=$project_id");
+    if ($checkRes['status'] === 200 && isset($checkRes['data']['count'])) {
+        $has_orders = ($checkRes['data']['count'] > 0);
     }
 }
 

@@ -29,29 +29,11 @@ if (!isset($pageTitle) || $pageTitle === null) {
     $pageTitle = 'Dashboard';
 }
 
-// Attempt to hydrate missing user info from DB (safe, optional step)
+// Attempt to hydrate missing user info from session
 if (($userName === 'Guest User' || empty($userName)) && !empty($_SESSION['user_id'])) {
-    $uid = intval($_SESSION['user_id']);
-    if (!(isset($conn) && $conn instanceof mysqli && !$conn->connect_error)) {
-        $db_path = __DIR__ . '/../config/database.php';
-        if (file_exists($db_path)) require_once $db_path;
-    }
-    if (isset($conn) && $conn instanceof mysqli && !$conn->connect_error) {
-        $q = $conn->prepare("SELECT full_name, role FROM icmis_users WHERE user_id = ? LIMIT 1");
-        if ($q) {
-            $q->bind_param('i', $uid);
-            if ($q->execute()) {
-                $r = $q->get_result();
-                if ($row = $r->fetch_assoc()) {
-                    $userName = $row['full_name'] ?? $userName;
-                    $userRole = $row['role'] ?? $userRole;
-                    $_SESSION['user_name'] = $userName;
-                    $_SESSION['user_role'] = $userRole;
-                }
-            }
-            $q->close();
-        }
-    }
+    // Info should already be in session from login_process.php
+    $userName = $_SESSION['user_name'] ?? $userName;
+    $userRole = $_SESSION['user_role'] ?? $userRole;
 }
 
 $nameParts = explode(' ', $userName);
@@ -74,30 +56,27 @@ if (strpos($current_uri, '/modules/project/') !== false) {
     $show_project_selector = false;
 }
 
-// If selector is enabled, load projects (optional, requires DB connection)
+// If selector is enabled, load projects via API Gateway
 $header_projects = [];
 $header_project_id = 0;
 if ($show_project_selector) {
-    if (!(isset($conn) && $conn instanceof mysqli && !$conn->connect_error)) {
-        $db_path = __DIR__ . '/../config/database.php';
-        if (file_exists($db_path)) require_once $db_path;
-    }
+    require_once __DIR__ . '/../core/ApiHelper.php';
+    
     if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
         $_SESSION['selected_project_id'] = intval($_GET['project_id']);
     }
-    $header_project_id = $_SESSION['selected_project_id'] ?? 0;
-    if (isset($conn) && $conn instanceof mysqli) {
-        $h_sql = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-        $h_result = $conn->query($h_sql);
-        if ($h_result && $h_result->num_rows > 0) {
-            while ($row = $h_result->fetch_assoc()) {
-                $header_projects[] = $row;
-                if ($header_project_id == 0) {
-                    $header_project_id = $row['project_id'];
-                    $_SESSION['selected_project_id'] = $header_project_id;
-                }
-            }
+    
+    try {
+        $projRes = ApiHelper::get('project/projects');
+        $header_projects = $projRes['data']['projects'] ?? [];
+        $header_project_id = $_SESSION['selected_project_id'] ?? 0;
+
+        if ($header_project_id == 0 && !empty($header_projects)) {
+            $header_project_id = $header_projects[0]['project_id'];
+            $_SESSION['selected_project_id'] = $header_project_id;
         }
+    } catch (Exception $e) {
+        error_log("Header Project Fetch Error: " . $e->getMessage());
     }
 }
 ?>

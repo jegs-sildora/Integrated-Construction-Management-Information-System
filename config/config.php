@@ -7,6 +7,7 @@ define('BASE_PATH', realpath(dirname(__FILE__) . '/../'));
 // 2. Web URL Path (Used for links, CSS, JS in HTML)
 // Update 'http://localhost/icmis/' if your URL is different
 define('BASE_URL', 'http://localhost/icmis/');
+define('GATEWAY_URL', 'http://localhost:8000/api/v1/');
 
 // 3. Database Credentials
 define('DB_HOST', 'localhost');

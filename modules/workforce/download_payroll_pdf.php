@@ -1,15 +1,11 @@
 <?php
 // download_payroll_pdf.php
 // Accepts a POSTed JSON payload with payroll data and renders a printable HTML report.
+// Refactored to use ApiHelper for microservices communication.
 
 session_start();
 
-// Include config + DB
-if (file_exists(__DIR__ . '/../../config/config.php')) include_once __DIR__ . '/../../config/config.php';
-if (file_exists(__DIR__ . '/../../config/database.php')) include_once __DIR__ . '/../../config/database.php';
-
-// Include logger if present
-if (file_exists(__DIR__ . '/../../core/Logger.php')) include_once __DIR__ . '/../../core/Logger.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
 // Basic auth: require logged-in user
 if (!isset($_SESSION['user_id'])) {
@@ -51,101 +47,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['payload'])) {
   $period_id = intval($_GET['period_id']);
   $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 
-  // Build DB connection if not available
-  if (!isset($conn) || !$conn instanceof mysqli) {
-    if (defined('DB_HOST')) {
-      $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    } else {
-      echo 'Database configuration missing'; exit;
-    }
-  }
+  try {
+      $apiRes = ApiHelper::get("workforce/payroll?action=get_payroll_by_period&period_id=$period_id&project_id=$project_id");
+      
+      if ($apiRes['status'] === 200 && $apiRes['data']['success']) {
+          $resData = $apiRes['data']['data'];
+          $pres = $resData['period'];
+          $period = date('M j', strtotime($pres['start_date'])) . ' - ' . date('M j, Y', strtotime($pres['end_date']));
+          $dateGen = date('F j, Y g:i A');
 
-  // Fetch period info
-  $pstmt = $conn->prepare("SELECT start_date, end_date, pay_date, status FROM workforce_payroll_periods WHERE period_id = ? LIMIT 1");
-  $pstmt->bind_param('i', $period_id);
-  $pstmt->execute();
-  $pres = $pstmt->get_result()->fetch_assoc();
-  $pstmt->close();
-
-  if ($pres) {
-    $period = date('M j', strtotime($pres['start_date'])) . ' - ' . date('M j, Y', strtotime($pres['end_date']));
-    $dateGen = date('F j, Y g:i A');
-
-    // Fetch payroll rows
-    $sql = "SELECT wp.*, CONCAT(e.first_name, ' ', e.last_name) AS fullname, e.employee_code, COALESCE(e.daily_rate, 0) as daily_rate, e.monthly_salary
-        FROM workforce_payroll wp
-        JOIN workforce_employees e ON wp.employee_id = e.employee_id
-        " . ($project_id > 0 ? 'JOIN workforce_assignments wa ON e.employee_id = wa.employee_id' : '') . "
-        WHERE wp.period_id = ? " . ($project_id > 0 ? 'AND wa.project_id = ?' : '') . "
-        ORDER BY fullname ASC";
-
-    $stmt = $conn->prepare($sql);
-    if ($project_id > 0) $stmt->bind_param('ii', $period_id, $project_id); else $stmt->bind_param('i', $period_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    while ($r = $res->fetch_assoc()) {
-      $rows[] = [
-        'code' => $r['employee_code'],
-        'fullname' => $r['fullname'],
-        'days_worked' => isset($r['hours_worked']) ? round($r['hours_worked']/8,2) : '-',
-        'ot_hours' => $r['ot_hours'] ?? '-',
-        'daily_rate' => $r['daily_rate'] ?? 0,
-        'gross_pay' => $r['gross_pay'] ?? 0,
-        'deductions' => ($r['gross_pay'] ?? 0) - ($r['net_pay'] ?? 0),
-        'net_pay' => $r['net_pay'] ?? 0
-      ];
-      $totals['gross'] += floatval($r['gross_pay'] ?? 0);
-      $totals['net'] += floatval($r['net_pay'] ?? 0);
-      $totals['deductions'] += (($r['gross_pay'] ?? 0) - ($r['net_pay'] ?? 0));
-      $totals['count']++;
-    }
-    $stmt->close();
-  } else {
-    echo 'Period not found'; exit;
+          foreach ($resData['rows'] as $r) {
+              $rows[] = [
+                'code' => $r['employee_code'],
+                'fullname' => $r['fullname'],
+                'days_worked' => isset($r['hours_worked']) ? round($r['hours_worked']/8,2) : '-',
+                'ot_hours' => $r['ot_hours'] ?? '-',
+                'daily_rate' => $r['daily_rate'] ?? 0,
+                'gross_pay' => $r['gross_pay'] ?? 0,
+                'deductions' => ($r['gross_pay'] ?? 0) - ($r['net_pay'] ?? 0),
+                'net_pay' => $r['net_pay'] ?? 0
+              ];
+              $totals['gross'] += floatval($r['gross_pay'] ?? 0);
+              $totals['net'] += floatval($r['net_pay'] ?? 0);
+              $totals['deductions'] += (($r['gross_pay'] ?? 0) - ($r['net_pay'] ?? 0));
+              $totals['count']++;
+          }
+      } else {
+          echo 'Failed to fetch payroll data: ' . ($apiRes['data']['message'] ?? 'Unknown error');
+          exit;
+      }
+  } catch (Exception $e) {
+      echo 'API Error: ' . $e->getMessage();
+      exit;
   }
 
 } else {
   echo 'No printable data provided'; exit;
 }
 
-// Audit log: record export/view action
-if (class_exists('Logger')) {
-  try {
-    Logger::init($conn ?? null);
-    $logDetails = 'Payroll report viewed/exported';
-    if (!empty($period_id)) {
-      Logger::export('Workforce', $logDetails . ' for period_id=' . intval($period_id), intval($period_id));
-    } else {
-      Logger::export('Workforce', $logDetails, null);
-    }
-  } catch (Throwable $e) {
-    // Fail silently for logging
-  }
-}
-
-?>
-<?php
-// Determine Prepared By
-$prepared_by = 'System Generated';
-if (!empty($_SESSION['user_name'])) {
-  $prepared_by = $_SESSION['user_name'];
-} elseif (!empty($_SESSION['user_id'])) {
-  $uid = intval($_SESSION['user_id']);
-  if (defined('DB_HOST')) {
-    $uconn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    if (!$uconn->connect_error) {
-      $s = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
-      if ($s) {
-        $s->bind_param('i', $uid);
-        $s->execute();
-        $r = $s->get_result()->fetch_assoc();
-        if (!empty($r['full_name'])) $prepared_by = $r['full_name'];
-        $s->close();
-      }
-      $uconn->close();
-    }
-  }
-}
+// Prepared By
+$prepared_by = $_SESSION['user_name'] ?? 'System Generated';
 ?>
 <!DOCTYPE html>
 <html lang="en">

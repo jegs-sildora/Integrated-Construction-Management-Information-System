@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # --- PHP MICROSERVICES ---
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "8000:80"
+    networks:
+      - icmis_network
+
+  auth-service:
+    build: ./services/auth
+    environment:
+      - DATABASE_URL=pgsql://postgres:postgres@db_auth:5432/auth
+    networks:
+      - icmis_network
+
+  project-service:
+    build: ./services/project
+    environment:
+      - DATABASE_URL=pgsql://postgres:postgres@db_project:5432/project
+    networks:
+      - icmis_network
+
+  budget-service:
+    build: ./services/budget
+    environment:
+      - DATABASE_URL=pgsql://postgres:postgres@db_budget:5432/budget
+    networks:
+      - icmis_network
+
+  procurement-service:
+    build: ./services/procurement
+    environment:
+      - DATABASE_URL=pgsql://postgres:postgres@db_procurement:5432/procurement
+    networks:
+      - icmis_network
+
+  workforce-service:
+    build: ./services/workforce
+    environment:
+      - DATABASE_URL=pgsql://postgres:postgres@db_workforce:5432/workforce
+    networks:
+      - icmis_network
+
+  # --- POSTGRESQL DATABASES ---
+  db_auth:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./db/init/auth.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - icmis_network
+
+  db_project:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: project
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./db/init/project.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - icmis_network
+
+  db_budget:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: budget
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./db/init/budget.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - icmis_network
+
+  db_procurement:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: procurement
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./db/init/procurement.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - icmis_network
+
+  db_workforce:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: workforce
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./db/init/workforce.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - icmis_network
+
+networks:
+  icmis_network:
+    driver: bridge
