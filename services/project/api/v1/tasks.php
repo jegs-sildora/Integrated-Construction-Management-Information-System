@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 header('Content-Type: application/json');
 
 $db = Database::getConnection();
@@ -29,9 +30,14 @@ try {
         $stmt = $db->prepare("DELETE FROM tasks WHERE task_id = ?");
         $stmt->execute([$task_id]);
 
+        $success = $stmt->rowCount() > 0;
+        if ($success) {
+            Logger::delete('Project', "Deleted task ID #$task_id", $task_id);
+        }
+
         echo json_encode([
-            'success' => $stmt->rowCount() > 0,
-            'message' => $stmt->rowCount() > 0 ? 'Task deleted successfully' : 'Task not found'
+            'success' => $success,
+            'message' => $success ? 'Task deleted successfully' : 'Task not found'
         ]);
         exit;
     }
@@ -105,6 +111,7 @@ try {
             $stmt = $db->prepare($sql);
             $stmt->execute([$task_name, $project_id, $phase_id, $description, $assigned_to, $start_date, $due_date, $priority, $status, $task_id]);
             $msg = "Task updated successfully";
+            Logger::update('Project', "Updated task: $task_name", $task_id);
         } else {
             // INSERT
             $sql = "INSERT INTO tasks 
@@ -113,10 +120,12 @@ try {
             
             $stmt = $db->prepare($sql);
             $stmt->execute([$task_name, $project_id, $phase_id, $description, $assigned_to, $start_date, $due_date, $priority, $status]);
+            $task_id = intval($db->lastInsertId());
             $msg = "Task added successfully";
+            Logger::create('Project', "Created new task: $task_name", $task_id);
         }
 
-        echo json_encode(['success' => true, 'message' => $msg]);
+        echo json_encode(['success' => true, 'message' => $msg, 'task_id' => $task_id]);
         exit;
     }
 

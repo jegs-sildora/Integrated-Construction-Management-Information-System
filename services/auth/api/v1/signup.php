@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 
 header('Content-Type: application/json');
 
@@ -36,6 +37,8 @@ $role = 'Admin'; // Default role as per monolithic logic
 
 $stmt = $db->prepare("INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)");
 if ($stmt->execute([$full_name, $email, $hashed_password, $role])) {
+    $new_user_id = $db->lastInsertId();
+    Logger::create('Auth', "New user registered: $full_name ($email)", $new_user_id);
     http_response_code(201);
     echo json_encode(['message' => 'Account created successfully']);
 } else {

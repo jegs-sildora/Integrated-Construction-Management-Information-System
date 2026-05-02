@@ -21,7 +21,7 @@ if (empty($_POST)) {
     }
 }
 
-$action = $_GET['action'] ?? $_POST['action'] ?? $_REQUEST['action'] ?? '';
+$action = $_GET['action'] ?? $_POST['action'] ?? $_REQUEST['action'] ?? 'list';
 $action = trim($action);
 
 if ($action === 'update' && empty($_POST['employee_id'])) {
@@ -47,7 +47,12 @@ try {
             deleteEmployee($db, $idToDelete);
             break;
         default:
-            echo json_encode(['success' => false, 'message' => "Invalid action: '{$action}'"]);
+            // Default to list if action is unknown but present? No, let's keep it strict if provided.
+            if (empty($action)) {
+                listEmployees($db);
+            } else {
+                echo json_encode(['success' => false, 'message' => "Invalid action: '{$action}'"]);
+            }
     }
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);

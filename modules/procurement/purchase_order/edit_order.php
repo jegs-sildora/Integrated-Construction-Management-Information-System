@@ -1,13 +1,8 @@
 <?php
 // modules/procurement/purchase_order/edit_order.php
 
-// 1. Use centralized config for single database connection
 require_once __DIR__ . '/../../../config/config.php';
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
-}
-$conn->set_charset("utf8mb4");
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 
 // 2. Validate ID
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -15,81 +10,69 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 $po_id = intval($_GET['id']);
 
-// 3. Fetch Existing Purchase Order Data
-$stmt = $conn->prepare("SELECT po.*, s.supplier_name FROM procurement_purchase_orders po LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id WHERE po.po_id = ?");
-$stmt->bind_param("i", $po_id);
-$stmt->execute();
-$result_po = $stmt->get_result();
-if ($result_po->num_rows === 0) {
-    die("Purchase Order not found.");
+// 3. Fetch Existing Purchase Order Data via Microservice
+$res = ApiHelper::get("procurement/orders?id=$po_id");
+if ($res['status'] !== 200 || !($res['data']['success'] ?? false)) {
+    die("Purchase Order not found via API.");
 }
-$po_data = $result_po->fetch_assoc();
-$stmt->close();
 
-// 4. Fetch Existing Items for this PO
-$stmt_items = $conn->prepare("SELECT * FROM procurement_purchase_order_items WHERE po_id = ?");
-$stmt_items->bind_param("i", $po_id);
-$stmt_items->execute();
-$result_items = $stmt_items->get_result();
+$po_data = $res['data']['order'];
 $existing_items = [];
-while ($row = $result_items->fetch_assoc()) {
+foreach ($po_data['items'] as $item) {
     $existing_items[] = [
-        'id' => $row['po_item_id'], // Use DB ID to distinguish saved items
-        'name' => $row['item_name'],
-        'qty' => floatval($row['quantity']),
-        'price' => floatval($row['unit_cost']),
-        'total' => floatval($row['total_cost'])
+        'id' => $item['po_item_id'],
+        'name' => $item['item_name'],
+        'qty' => floatval($item['quantity']),
+        'price' => floatval($item['unit_cost']),
+        'total' => floatval($item['total_cost'])
     ];
 }
-$stmt_items->close();
 
-// 5. Fetch Dropdown Data
-$result_projects = $conn->query("SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_name ASC");
+// 4. Fetch Cross-Service Project Data
+$po_project_id = $po_data['project_id'];
+$po_project_name = 'N/A';
+$res_proj = ApiHelper::get("project/projects/$po_project_id");
+if ($res_proj['status'] === 200 && !empty($res_proj['data'])) {
+    $po_project_name = ($res_proj['data']['project_code'] ?? 'N/A') . ' - ' . $res_proj['data']['project_name'];
+}
 
-// Fetch the phase_name for this PO's phase_id (display-only)
-$po_phase_name = '';
+// 5. Fetch Phase Name (display-only)
+$po_phase_name = 'N/A';
 $po_phase_id = $po_data['phase_id'] ?? 0;
 if ($po_phase_id > 0) {
-    $stmt_phase = $conn->prepare("SELECT phase_name FROM icmis_project_phases WHERE phase_id = ? LIMIT 1");
-    if ($stmt_phase) {
-        $stmt_phase->bind_param('i', $po_phase_id);
-        $stmt_phase->execute();
-        $res_phase = $stmt_phase->get_result();
-        if ($r = $res_phase->fetch_assoc()) {
-            $po_phase_name = $r['phase_name'];
+    $res_phases = ApiHelper::get("project/phases?project_id=$po_project_id");
+    if ($res_phases['status'] === 200) {
+        foreach ($res_phases['data']['phases'] as $p) {
+            if (intval($p['phase_id']) === intval($po_phase_id)) {
+                $po_phase_name = $p['phase_name'];
+                break;
+            }
         }
-        $stmt_phase->close();
     }
 }
 
-// Fetch the project display name for this PO's project_id (read-only)
-$po_project_name = '';
-$po_project_id = $po_data['project_id'] ?? 0;
-if ($po_project_id > 0) {
-    $stmt_proj_name = $conn->prepare("SELECT project_code, project_name FROM icmis_projects WHERE project_id = ? LIMIT 1");
-    if ($stmt_proj_name) {
-        $stmt_proj_name->bind_param('i', $po_project_id);
-        $stmt_proj_name->execute();
-        $res_proj = $stmt_proj_name->get_result();
-        if ($rp = $res_proj->fetch_assoc()) {
-            $po_project_name = $rp['project_code'] . ' - ' . $rp['project_name'];
-        }
-        $stmt_proj_name->close();
-    }
+// 6. Fetch Suppliers for dropdown
+$suppliers = [];
+$res_sup = ApiHelper::get("procurement/suppliers");
+if ($res_sup['status'] === 200) {
+    $suppliers = $res_sup['data'];
 }
 
-// Fetch Suppliers
-$result_suppliers = $conn->query("SELECT supplier_id, supplier_name FROM procurement_suppliers ORDER BY supplier_name ASC");
-
-// Fetch Budget Items (optionally filter by proposal_id)
-$selected_proposal_id = isset($_GET['proposal_id']) ? intval($_GET['proposal_id']) : 0;
-if ($selected_proposal_id > 0) {
-    $stmt_bli = $conn->prepare("SELECT line_item_id, item_name, quantity, unit_cost FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id ASC");
-    $stmt_bli->bind_param('i', $selected_proposal_id);
-    $stmt_bli->execute();
-    $result_budget_items = $stmt_bli->get_result();
-} else {
-    $result_budget_items = $conn->query("SELECT bli.item_name, bli.quantity, bli.unit_cost FROM budget_line_items bli JOIN budget_proposals bp ON bli.proposal_id = bp.proposal_id WHERE bp.status = 'APPROVED' ORDER BY bli.item_name ASC");
+// 7. Fetch Approved Budget Items for dropdown
+$budget_items = [];
+$res_budget = ApiHelper::get("budget/proposals?project_id=$po_project_id&status=APPROVED");
+if ($res_budget['status'] === 200) {
+    // Note: In a real system we might want to fetch line items for each approved proposal
+    // For now, we'll try to get all approved line items for the project
+    // Actually, budget/proposals?id=X returns items.
+    foreach ($res_budget['data']['proposals'] as $prop) {
+        $res_items = ApiHelper::get("budget/proposals?id=" . $prop['proposal_id']);
+        if ($res_items['status'] === 200 && isset($res_items['data']['items'])) {
+            foreach ($res_items['data']['items'] as $bi) {
+                $budget_items[] = $bi;
+            }
+        }
+    }
 }
 
 ?>
@@ -155,11 +138,9 @@ if ($selected_proposal_id > 0) {
                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                         
                         <datalist id="suppliers-list">
-                            <?php if ($result_suppliers): 
-                                $result_suppliers->data_seek(0); 
-                                while($sup = $result_suppliers->fetch_assoc()): ?>
-                                    <option value="<?= htmlspecialchars($sup['supplier_name']) ?>">
-                            <?php endwhile; endif; ?>
+                            <?php foreach($suppliers as $sup): ?>
+                                <option value="<?= htmlspecialchars($sup['supplier_name']) ?>">
+                            <?php endforeach; ?>
                         </datalist>
                     </div>
 
@@ -196,11 +177,9 @@ if ($selected_proposal_id > 0) {
                                 <label class="block text-sm text-gray-600 mb-1">Approved Budget Item</label>
                                     <input id="item-name" list="item-name-list" placeholder="-- Select Approved Item --" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white">
                                     <datalist id="item-name-list">
-                                        <?php if ($result_budget_items): 
-                                            $result_budget_items->data_seek(0); 
-                                            while($item = $result_budget_items->fetch_assoc()): ?>
-                                                <option value="<?= htmlspecialchars($item['item_name']) ?>" data-qty="<?= $item['quantity'] ?>" data-price="<?= $item['unit_cost'] ?>"></option>
-                                        <?php endwhile; endif; ?>
+                                        <?php foreach($budget_items as $item): ?>
+                                            <option value="<?= htmlspecialchars($item['item_name']) ?>" data-qty="<?= $item['quantity'] ?>" data-price="<?= $item['unit_cost'] ?>"></option>
+                                        <?php endforeach; ?>
                                     </datalist>
                             </div>
 
@@ -243,7 +222,7 @@ if ($selected_proposal_id > 0) {
                         <div class="bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500 rounded-lg p-4">
                             <span class="text-xs font-bold text-purple-700 uppercase tracking-widest">Target Milestone</span>
                                 <p id="preview-phase" class="text-sm font-bold text-gray-900 mt-1 italic">
-                                <?= htmlspecialchars($po_data['phase'] ?? '') ?>
+                                <?= htmlspecialchars($po_phase_name) ?>
                             </p>
                         </div>
                         <div class="bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg p-4">

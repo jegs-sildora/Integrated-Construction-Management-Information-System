@@ -1,45 +1,33 @@
 <?php
-/**
- * ========================= API: Employees (for dropdowns) =========================
- * Purpose: Fetch employees for project manager and assignment dropdowns.
- * Table: workforce_employees
- * ============================================================================ 
- */
+// /modules/project/api/employees.php
+// Returns employees available for task assignment via microservice
 
-// Use centralized config
-require_once __DIR__ . '/../../../config/config.php';
 header('Content-Type: application/json');
 
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
-    exit;
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
-$conn->set_charset("utf8mb4");
 
-try {
-    // Fetch all active employees
-    $sql = "SELECT employee_id, employee_code, first_name, last_name, status 
-            FROM workforce_employees 
-            WHERE status = 'Active'
-            ORDER BY first_name, last_name ASC";
-    $result = $conn->query($sql);
-    
-    $employees = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $employees[] = $row;
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
+
+// Fetch employees from Workforce Microservice
+$res = ApiHelper::get("workforce/employees");
+$employees = [];
+
+if ($res['status'] === 200 && isset($res['data']['employees'])) {
+    foreach ($res['data']['employees'] as $emp) {
+        if (($emp['status'] ?? 'Active') === 'Active') {
+            $employees[] = [
+                'employee_id' => $emp['employee_id'],
+                'full_name' => $emp['first_name'] . ' ' . $emp['last_name'],
+                // Fallback to title name from joined data if available
+                'position' => $emp['job_title_name'] ?? 'Staff',
+                'department' => $emp['department'] ?? 'General'
+            ];
         }
     }
-
-    echo json_encode([
-        'success' => true,
-        'employees' => $employees
-    ]);
-
-} catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
 
-$conn->close();
+echo json_encode($employees);
 ?>

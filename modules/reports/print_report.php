@@ -19,13 +19,7 @@
 session_start();
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/Logger.php';
-
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-$conn->set_charset("utf8mb4");
+require_once __DIR__ . '/../../config/database.php';
 
 // Get request parameters
 $report_type = $_GET['type'] ?? '';
@@ -35,130 +29,123 @@ if (empty($report_type)) {
     die('Report type is required. Usage: print_report.php?type=budget-summary');
 }
 
-// Get project info if specified
+// Get project info if specified from API
 $project = null;
 $project_name = 'All Projects';
 $project_code = 'N/A';
 
 if ($project_id > 0) {
-    $stmt = $conn->prepare("SELECT project_id, project_name, project_code, location, total_budget FROM icmis_projects WHERE project_id = ?");
-    $stmt->bind_param("i", $project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $project = $row;
-        $project_name = $row['project_name'];
-        $project_code = $row['project_code'];
-    }
-    $stmt->close();
-}
-
-$userName = 'Admin';
-if (!empty($_SESSION['user_name'])) {
-    $userName = $_SESSION['user_name'];
-} elseif (!empty($_SESSION['user_id'])) {
-    $uid = intval($_SESSION['user_id']);
-    if (defined('DB_HOST')) {
-        $uconn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-        if ($uconn && !$uconn->connect_error) {
-            $q = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
-            if ($q) {
-                $q->bind_param('i', $uid);
-                $q->execute();
-                $res = $q->get_result();
-                if ($res && $res->num_rows > 0) {
-                    $r = $res->fetch_assoc();
-                    if (!empty($r['full_name'])) $userName = $r['full_name'];
-                }
-                $q->close();
+    $res_proj = ApiHelper::get('project/projects');
+    if ($res_proj['status'] === 200) {
+        foreach ($res_proj['data']['projects'] as $p) {
+            if (intval($p['project_id']) === $project_id) {
+                $project = $p;
+                $project_name = $p['project_name'];
+                $project_code = $p['project_code'];
+                break;
             }
-            $uconn->close();
         }
     }
 }
+// User Info
+$userName = $_SESSION['user_name'] ?? 'Admin';
 
 // Report configuration
 $report_config = [
     // Budget & Cost Reports
     'budget-summary' => [
         'title' => 'Budget Summary Report',
-        'category' => 'Budget & Cost Control',
+        'category' => 'Budget',
         'icon_color' => 'blue',
         'headers' => ['Category', 'Allocated', 'Spent', 'Remaining', 'Utilization']
     ],
     'expense-log' => [
         'title' => 'Expense Log Report',
-        'category' => 'Budget & Cost Control',
+        'category' => 'Budget',
         'icon_color' => 'green',
         'headers' => ['Date', 'Category', 'Description', 'Supplier', 'Status', 'Amount']
     ],
     'cash-flow' => [
         'title' => 'Cash Flow Analysis',
-        'category' => 'Budget & Cost Control',
+        'category' => 'Budget',
         'icon_color' => 'teal',
         'headers' => ['Month', 'Inflow', 'Outflow', 'Net Cash Flow', 'Cumulative']
     ],
-    
-    // Procurement Reports
     'inventory-status' => [
         'title' => 'Inventory Status Report',
-        'category' => 'Procurement & Inventory',
+        'category' => 'Procurement',
         'icon_color' => 'purple',
-        'headers' => ['Item ID', 'Item Name', 'Category', 'In Stock', 'Unit', 'Status']
+        'headers' => ['Item Code', 'Item Name', 'Category', 'In Stock', 'Unit', 'Valuation']
     ],
     'purchase-orders' => [
         'title' => 'Purchase Orders Report',
-        'category' => 'Procurement & Inventory',
+        'category' => 'Procurement',
         'icon_color' => 'indigo',
-        'headers' => ['PO Number', 'Supplier', 'Date', 'Items', 'Total Amount', 'Status']
+        'headers' => ['PO #', 'Date', 'Supplier', 'Status', 'Items', 'Total Amount']
     ],
     'stock-movement' => [
         'title' => 'Stock Movement Report',
-        'category' => 'Procurement & Inventory',
+        'category' => 'Procurement',
         'icon_color' => 'pink',
-        'headers' => ['Date', 'Item', 'Type', 'Quantity', 'Reference', 'Handler']
+        'headers' => ['Date', 'Type', 'Item Name', 'Qty', 'Reference', 'Handled By']
     ],
-    
-    // Project Management Reports
     'project-summary' => [
         'title' => 'Project Summary Report',
-        'category' => 'Project Management',
+        'category' => 'Project',
         'icon_color' => 'orange',
-        'headers' => ['Project Name', 'Code', 'Location', 'Budget', 'Completion', 'Status']
+        'headers' => ['Metric', 'Current Value', 'Target', 'Variance', 'Status']
     ],
     'phase-progress' => [
         'title' => 'Phase Progress Report',
-        'category' => 'Project Management',
+        'category' => 'Project',
         'icon_color' => 'amber',
-        'headers' => ['Phase', 'Project', 'Start Date', 'End Date', 'Duration', 'Status']
+        'headers' => ['Phase Name', 'Start Date', 'End Date', 'Duration', 'Progress']
     ],
     'task-status' => [
         'title' => 'Task Status Report',
-        'category' => 'Project Management',
+        'category' => 'Project',
         'icon_color' => 'yellow',
-        'headers' => ['Task', 'Phase', 'Assignee', 'Due Date', 'Priority', 'Status']
+        'headers' => ['Task Name', 'Assignee', 'Due Date', 'Priority', 'Status']
     ],
-    
-    // Workforce Reports
     'employee-roster' => [
         'title' => 'Employee Roster',
-        'category' => 'Labor & Workforce',
+        'category' => 'Workforce',
         'icon_color' => 'cyan',
-        'headers' => ['Employee ID', 'Name', 'Position', 'Department', 'Contact', 'Status']
+        'headers' => ['Code', 'Full Name', 'Position', 'Dept', 'Status', 'Hired Date']
     ],
     'attendance-summary' => [
-        'title' => 'Attendance Summary Report',
-        'category' => 'Labor & Workforce',
+        'title' => 'Attendance Summary',
+        'category' => 'Workforce',
         'icon_color' => 'emerald',
-        'headers' => ['Employee', 'Date', 'Time In', 'Time Out', 'Hours Worked', 'Status']
+        'headers' => ['Employee', 'Present', 'Absent', 'Late', 'Leave', 'Reliability']
     ],
     'payroll-report' => [
         'title' => 'Payroll Report',
-        'category' => 'Labor & Workforce',
+        'category' => 'Workforce',
         'icon_color' => 'rose',
-        'headers' => ['Employee', 'Period', 'Hours Worked', 'Gross Pay', 'Deductions', 'Net Pay']
+        'headers' => ['Employee', 'Basic Pay', 'Overtime', 'Deductions', 'Net Pay']
     ]
 ];
+
+if (!isset($report_config[$report_type])) {
+    die('Invalid report type.');
+}
+
+$config = $report_config[$report_type];
+$report_title = $config['title'];
+$report_category = $config['category'];
+
+// --- SAVE REPORT METADATA TO MICROSERVICE ---
+$report_data = [
+    'project_id' => $project_id > 0 ? $project_id : null,
+    'report_type' => $report_type,
+    'category' => $report_category,
+    'report_name' => $report_title,
+    'generated_by' => $userName
+];
+
+ApiHelper::post('reports/reports', $report_data);
+// ---------------------------------------------
 
 // Validate report type
 if (!isset($report_config[$report_type])) {
@@ -200,12 +187,18 @@ switch ($report_type) {
                     COUNT(*) as expense_count
                 FROM budget_expenses e
                 WHERE 1=1";
+        
         if ($project_id > 0) {
-            $sql .= " AND e.project_id = $project_id";
+            $sql .= " AND e.project_id = ?";
         }
         $sql .= " GROUP BY e.category ORDER BY spent DESC";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $total_spent = 0;
         $category_data = [];
         
@@ -256,11 +249,16 @@ switch ($report_type) {
                 LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
                 WHERE 1=1";
         if ($project_id > 0) {
-            $sql .= " AND e.project_id = $project_id";
+            $sql .= " AND e.project_id = ?";
         }
         $sql .= " ORDER BY e.expense_date DESC LIMIT 100";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $total_amount = 0;
         
         if ($result) {
@@ -296,11 +294,16 @@ switch ($report_type) {
                 FROM budget_expenses 
                 WHERE 1=1";
         if ($project_id > 0) {
-            $sql .= " AND project_id = $project_id";
+            $sql .= " AND project_id = ?";
         }
         $sql .= " GROUP BY DATE_FORMAT(expense_date, '%Y-%m') ORDER BY month_year ASC LIMIT 12";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $cumulative = 0;
         $total_outflow = 0;
         
@@ -364,11 +367,16 @@ switch ($report_type) {
         
         $sql = "SELECT $selectCols FROM procurement_inventory WHERE 1=1";
         if ($project_id > 0 && $hasProjectId) {
-            $sql .= " AND project_id = $project_id";
+            $sql .= " AND project_id = ?";
         }
         $sql .= " ORDER BY category, item_name";
 
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0 && $hasProjectId) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $low_stock_count = 0;
         $total_items = 0;
         $total_value = 0;
@@ -429,11 +437,16 @@ switch ($report_type) {
                 LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
                 WHERE 1=1";
         if ($project_id > 0 && $hasProjectId) {
-            $sql .= " AND po.project_id = $project_id";
+            $sql .= " AND po.project_id = ?";
         }
         $sql .= " ORDER BY po.order_date DESC LIMIT 50";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0 && $hasProjectId) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $total_amount = 0;
         $pending_count = 0;
         $delivered_count = 0;
@@ -476,11 +489,16 @@ switch ($report_type) {
                 LEFT JOIN procurement_inventory i ON si.item_id = i.item_id
                 WHERE 1=1";
         if ($project_id > 0 && $hasProjectIdIn) {
-            $sql .= " AND si.project_id = $project_id";
+            $sql .= " AND si.project_id = ?";
         }
         $sql .= " ORDER BY si.date_received DESC LIMIT 50";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0 && $hasProjectIdIn) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $movements[] = $row;
@@ -505,11 +523,16 @@ switch ($report_type) {
                 LEFT JOIN workforce_employees emp ON so.issued_to_employee_id = emp.employee_id
                 WHERE 1=1";
         if ($project_id > 0 && $hasProjectIdOut) {
-            $sql .= " AND so.project_id = $project_id";
+            $sql .= " AND so.project_id = ?";
         }
         $sql .= " ORDER BY so.date_issued DESC LIMIT 50";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0 && $hasProjectIdOut) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $movements[] = $row;
@@ -547,11 +570,16 @@ switch ($report_type) {
                        p.status, COALESCE(p.completion_rate, 0) as completion_rate
                 FROM icmis_projects p";
         if ($project_id > 0) {
-            $sql .= " WHERE p.project_id = $project_id";
+            $sql .= " WHERE p.project_id = ?";
         }
         $sql .= " ORDER BY p.project_id DESC";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $total_budget = 0;
         $active_count = 0;
         
@@ -579,11 +607,16 @@ switch ($report_type) {
                 LEFT JOIN icmis_projects p ON pp.project_id = p.project_id
                 WHERE 1=1";
         if ($project_id > 0) {
-            $sql .= " AND pp.project_id = $project_id";
+            $sql .= " AND pp.project_id = ?";
         }
         $sql .= " ORDER BY pp.start_date";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $completed_count = 0;
         
         if ($result) {
@@ -609,11 +642,16 @@ switch ($report_type) {
                 LEFT JOIN workforce_employees e ON t.assigned_to_employee_id = e.employee_id
                 WHERE 1=1";
         if ($project_id > 0) {
-            $sql .= " AND t.project_id = $project_id";
+            $sql .= " AND t.project_id = ?";
         }
         $sql .= " ORDER BY t.due_date LIMIT 100";
         
-        $result = $conn->query($sql);
+        $stmt = $conn->prepare($sql);
+        if ($project_id > 0) {
+            $stmt->bind_param("i", $project_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         $completed_count = 0;
         $overdue_count = 0;
         $today = date('Y-m-d');

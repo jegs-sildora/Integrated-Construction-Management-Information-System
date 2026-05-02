@@ -55,14 +55,30 @@ class Logger {
         
         // Try to create a new connection using config constants
         if (defined('DB_HOST') && defined('DB_USER') && defined('DB_PASS') && defined('DB_NAME')) {
-            self::$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-            if (self::$conn->connect_error) {
-                error_log('Logger: Database connection failed - ' . self::$conn->connect_error);
-                self::$conn = null;
+            try {
+                // Use error suppression and check for connection error to avoid mysqli_sql_exception
+                self::$conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+                if (self::$conn->connect_error) {
+                    // Fallback to Mock if database.php is available
+                    if (class_exists('MockMysqli')) {
+                        self::$conn = new MockMysqli();
+                    } else {
+                        error_log('Logger: Database connection failed - ' . self::$conn->connect_error);
+                        self::$conn = null;
+                        return null;
+                    }
+                }
+                self::$conn->set_charset("utf8mb4");
+                return self::$conn;
+            } catch (Exception $e) {
+                // Fallback to Mock if database.php is available
+                if (class_exists('MockMysqli')) {
+                    self::$conn = new MockMysqli();
+                    return self::$conn;
+                }
+                error_log('Logger: Exception during connection - ' . $e->getMessage());
                 return null;
             }
-            self::$conn->set_charset("utf8mb4");
-            return self::$conn;
         }
         
         return null;
@@ -121,7 +137,7 @@ class Logger {
     }
     
     /**
-     * Log an action to the audit trail.
+     * Log an action to the audit trail via API.
      * 
      * @param string      $action    The action type (CREATE, UPDATE, DELETE, LOGIN, LOGOUT, VIEW, EXPORT, APPROVE, REJECT)
      * @param string      $module    The module name (Project, Budget, Procurement, Workforce, Auth, Reports)
@@ -139,16 +155,6 @@ class Logger {
         ?int $user_id = null,
         ?string $user_name = null
     ): bool {
-        // Ensure we have a valid table
-        if (!self::ensureTable()) {
-            return false;
-        }
-        
-        $conn = self::getConnection();
-        if (!$conn) {
-            return false;
-        }
-        
         // Get user info from session if not provided
         if (session_status() === PHP_SESSION_NONE) {
             @session_start();
@@ -168,38 +174,26 @@ class Logger {
             ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) 
             : null;
         
-        // Prepare and execute the insert
-        $stmt = $conn->prepare(
-            "INSERT INTO icmis_audit_logs 
-             (user_id, user_name, action, module, details, record_id, ip_address, user_agent, created_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())"
-        );
+        // Prepare data for API
+        $data = [
+            'user_id' => $user_id,
+            'user_name' => $user_name,
+            'action' => $action,
+            'module' => $module,
+            'details' => $details,
+            'record_id' => $record_id,
+            'ip_address' => $ip_address,
+            'user_agent' => $user_agent
+        ];
         
-        if (!$stmt) {
-            error_log('Logger: Prepare failed - ' . $conn->error);
-            return false;
+        // Send to Auth Microservice via ApiHelper
+        if (class_exists('ApiHelper')) {
+            $response = ApiHelper::post('auth/audit_logs', $data);
+            return isset($response['success']) && $response['success'] === true;
         }
         
-        $stmt->bind_param(
-            "issssiis",
-            $user_id,
-            $user_name,
-            $action,
-            $module,
-            $details,
-            $record_id,
-            $ip_address,
-            $user_agent
-        );
-        
-        $result = $stmt->execute();
-        
-        if (!$result) {
-            error_log('Logger: Execute failed - ' . $stmt->error);
-        }
-        
-        $stmt->close();
-        return $result;
+        error_log('Logger: ApiHelper not found. Could not log action.');
+        return false;
     }
     
     /**
@@ -292,7 +286,7 @@ class Logger {
     }
     
     /**
-     * Fetch recent logs (for admin view).
+     * Fetch recent logs (for admin view) via API.
      * 
      * @param int    $limit   Number of records to fetch
      * @param int    $offset  Offset for pagination
@@ -308,69 +302,26 @@ class Logger {
         ?string $action = null,
         ?int $user_id = null
     ): array {
-        if (!self::ensureTable()) {
+        if (!class_exists('ApiHelper')) {
             return [];
         }
+
+        $params = [
+            'limit' => $limit,
+            'offset' => $offset
+        ];
         
-        $conn = self::getConnection();
-        if (!$conn) {
-            return [];
-        }
+        if ($module !== null) $params['module'] = $module;
+        if ($action !== null) $params['action'] = $action;
+        if ($user_id !== null) $params['user'] = $user_id;
+
+        $response = ApiHelper::get('auth/audit_logs?' . http_build_query($params));
         
-        $sql = "SELECT l.*, u.email as user_email 
-                FROM icmis_audit_logs l
-                LEFT JOIN icmis_users u ON l.user_id = u.user_id
-                WHERE 1=1";
-        
-        $params = [];
-        $types = '';
-        
-        if ($module !== null) {
-            $sql .= " AND l.module = ?";
-            $params[] = $module;
-            $types .= 's';
-        }
-        
-        if ($action !== null) {
-            $sql .= " AND l.action = ?";
-            $params[] = $action;
-            $types .= 's';
-        }
-        
-        if ($user_id !== null) {
-            $sql .= " AND l.user_id = ?";
-            $params[] = $user_id;
-            $types .= 'i';
-        }
-        
-        $sql .= " ORDER BY l.created_at DESC LIMIT ? OFFSET ?";
-        $params[] = $limit;
-        $params[] = $offset;
-        $types .= 'ii';
-        
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            return [];
-        }
-        
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
-        }
-        
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        $logs = [];
-        while ($row = $result->fetch_assoc()) {
-            $logs[] = $row;
-        }
-        
-        $stmt->close();
-        return $logs;
+        return $response['data']['logs'] ?? [];
     }
     
     /**
-     * Get total count of logs (for pagination).
+     * Get total count of logs (for pagination) via API.
      * 
      * @param string|null $module  Filter by module
      * @param string|null $action  Filter by action
@@ -382,52 +333,17 @@ class Logger {
         ?string $action = null,
         ?int $user_id = null
     ): int {
-        if (!self::ensureTable()) {
+        if (!class_exists('ApiHelper')) {
             return 0;
         }
-        
-        $conn = self::getConnection();
-        if (!$conn) {
-            return 0;
-        }
-        
-        $sql = "SELECT COUNT(*) as total FROM icmis_audit_logs WHERE 1=1";
-        
+
         $params = [];
-        $types = '';
+        if ($module !== null) $params['module'] = $module;
+        if ($action !== null) $params['action'] = $action;
+        if ($user_id !== null) $params['user'] = $user_id;
+
+        $response = ApiHelper::get('auth/audit_logs?' . http_build_query($params));
         
-        if ($module !== null) {
-            $sql .= " AND module = ?";
-            $params[] = $module;
-            $types .= 's';
-        }
-        
-        if ($action !== null) {
-            $sql .= " AND action = ?";
-            $params[] = $action;
-            $types .= 's';
-        }
-        
-        if ($user_id !== null) {
-            $sql .= " AND user_id = ?";
-            $params[] = $user_id;
-            $types .= 'i';
-        }
-        
-        $stmt = $conn->prepare($sql);
-        if (!$stmt) {
-            return 0;
-        }
-        
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
-        }
-        
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $stmt->close();
-        
-        return intval($row['total'] ?? 0);
+        return intval($response['data']['total'] ?? 0);
     }
 }

@@ -1,15 +1,9 @@
 <?php
 // download_phase_pdf.php
-// Include config for database connection
 require_once __DIR__ . '/../../config/config.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-$conn->set_charset("utf8mb4");
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_GET['project_id']) || !isset($_GET['phase']) || empty($_GET['project_id']) || empty($_GET['phase'])) {
     die('Project ID and Phase are required');
@@ -18,137 +12,95 @@ if (!isset($_GET['project_id']) || !isset($_GET['phase']) || empty($_GET['projec
 $project_id = intval($_GET['project_id']);
 $phase_name = urldecode($_GET['phase']);
 
-// Fetch project details
-$sql_project = "SELECT project_id, project_code, project_name FROM icmis_projects WHERE project_id = ?";
-$stmt_project = $conn->prepare($sql_project);
-$stmt_project->bind_param("i", $project_id);
-$stmt_project->execute();
-$result_project = $stmt_project->get_result();
-
-if ($result_project->num_rows === 0) {
+// 1. Fetch project details via API
+$project = null;
+$res_proj = ApiHelper::get("project/projects/$project_id");
+if ($res_proj['status'] === 200 && !empty($res_proj['data'])) {
+    $project = $res_proj['data'];
+} else {
     die('Project not found');
 }
 
-$project = $result_project->fetch_assoc();
-
-// Fetch phase data
-$sql_phase = "SELECT
-                pp.phase_name as phase,
-                COALESCE(SUM(bp.total_amount), 0) as allocated,
-                MIN(pp.start_date) as phase_start_date,
-                MAX(pp.end_date) as phase_end_date
-             FROM budget_proposals bp
-             LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
-             WHERE bp.project_id = ? AND bp.status = 'APPROVED' AND pp.phase_name = ?
-             GROUP BY pp.phase_id";
-$stmt_phase = $conn->prepare($sql_phase);
-$stmt_phase->bind_param("is", $project_id, $phase_name);
-$stmt_phase->execute();
-$result_phase = $stmt_phase->get_result();
-
-$phase_data = null;
-$allocated = 0;
-$spent = 0;
-$remaining = 0;
-$utilization = 0;
-$status = 'Active';
+// 2. Fetch phase details via API
+$phase_id = 0;
 $date_range = 'No dates set';
-
-if ($result_phase->num_rows > 0) {
-    $phase_data = $result_phase->fetch_assoc();
-    $allocated = floatval($phase_data['allocated']);
-
-    // Format date range
-    if (!empty($phase_data['phase_start_date']) && !empty($phase_data['phase_end_date'])) {
-        $start_date = new DateTime($phase_data['phase_start_date']);
-        $end_date = new DateTime($phase_data['phase_end_date']);
-        $date_range = $start_date->format('M j') . ' - ' . $end_date->format('M j, Y');
-    }
-
-    // Get expenses for this phase
-    $sql_expenses = "SELECT COALESCE(SUM(CASE WHEN e.status = 'APPROVED' THEN e.amount ELSE 0 END), 0) as spent 
-                     FROM budget_expenses e
-                     LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
-                     WHERE e.project_id = ? AND pp.phase_name = ?";
-    $stmt_expenses = $conn->prepare($sql_expenses);
-    $stmt_expenses->bind_param("is", $project_id, $phase_name);
-    $stmt_expenses->execute();
-    $result_expenses = $stmt_expenses->get_result();
-    
-    if ($result_expenses->num_rows > 0) {
-        $expense_data = $result_expenses->fetch_assoc();
-        $spent = floatval($expense_data['spent']);
-    }
-
-    $remaining = $allocated - $spent;
-    $utilization = $allocated > 0 ? ($spent / $allocated) * 100 : 0;
-
-    // Determine status
-    if ($utilization > 100) {
-        $status = 'Over Budget';
-    } elseif ($utilization >= 99) {
-        $status = 'Completed';
+$res_phases = ApiHelper::get("project/phases?project_id=$project_id");
+if ($res_phases['status'] === 200) {
+    foreach ($res_phases['data']['phases'] as $p) {
+        if ($p['phase_name'] === $phase_name) {
+            $phase_id = $p['phase_id'];
+            if (!empty($p['start_date']) && !empty($p['end_date'])) {
+                $start_date = new DateTime($p['start_date']);
+                $end_date = new DateTime($p['end_date']);
+                $date_range = $start_date->format('M j') . ' - ' . $end_date->format('M j, Y');
+            }
+            break;
+        }
     }
 }
 
-// Fetch budget proposals for this phase with user info
-$sql_proposals = "SELECT bp.*, COALESCE(u.full_name, 'System') as user_name
-                  FROM budget_proposals bp
-                  LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
-                  LEFT JOIN icmis_users u ON bp.created_by = u.user_id
-                  WHERE bp.project_id = ? AND pp.phase_name = ? AND bp.status = 'APPROVED'
-                  ORDER BY bp.created_at DESC";
-$stmt_proposals = $conn->prepare($sql_proposals);
-$stmt_proposals->bind_param("is", $project_id, $phase_name);
-$stmt_proposals->execute();
-$result_proposals = $stmt_proposals->get_result();
-
+// 3. Fetch budget proposals for this phase via API
+$allocated = 0;
 $proposals = [];
-while ($row = $result_proposals->fetch_assoc()) {
-    $proposals[] = $row;
-}
-
-// Fetch expenses for this phase
-$sql_expenses_list = "SELECT e.*, s.supplier_name
-                      FROM budget_expenses e
-                      LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
-                      LEFT JOIN icmis_project_phases pp ON e.phase_id = pp.phase_id
-                      WHERE e.project_id = ? AND pp.phase_name = ?
-                      ORDER BY e.expense_date DESC";
-$stmt_expenses_list = $conn->prepare($sql_expenses_list);
-$stmt_expenses_list->bind_param("is", $project_id, $phase_name);
-$stmt_expenses_list->execute();
-$result_expenses_list = $stmt_expenses_list->get_result();
-
-$expenses = [];
-while ($row = $result_expenses_list->fetch_assoc()) {
-    $expenses[] = $row;
-}
-
-if (!$phase_data) {
-    die('Phase data not found');
-}
-
-// Determine the "Prepared By" name from session; fall back to DB or default text
-$prepared_by = 'System Generated';
-if (!empty($_SESSION['user_name'])) {
-    $prepared_by = $_SESSION['user_name'];
-} elseif (!empty($_SESSION['user_id'])) {
-    $uid = intval($_SESSION['user_id']);
-    $sql_user = "SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1";
-    if ($stmt_user = $conn->prepare($sql_user)) {
-        $stmt_user->bind_param('i', $uid);
-        $stmt_user->execute();
-        $res_user = $stmt_user->get_result();
-        if ($res_user && $res_user->num_rows > 0) {
-            $urow = $res_user->fetch_assoc();
-            if (!empty($urow['full_name'])) {
-                $prepared_by = $urow['full_name'];
+$res_props = ApiHelper::get("budget/proposals?project_id=$project_id&phase_id=$phase_id&status=APPROVED");
+if ($res_props['status'] === 200) {
+    $proposals = $res_props['data']['proposals'] ?? [];
+    foreach ($proposals as &$prop) {
+        $allocated += floatval($prop['total_amount']);
+        
+        // Fetch user name (cross-service)
+        $prop['user_name'] = 'System';
+        $res_users = ApiHelper::get("auth/users");
+        if ($res_users['status'] === 200) {
+            foreach ($res_users['data'] as $u) {
+                if (intval($u['user_id']) === intval($prop['created_by'])) {
+                    $prop['user_name'] = $u['full_name'];
+                    break;
+                }
             }
         }
-        $stmt_user->close();
     }
 }
+
+// 4. Fetch expenses for this phase via API
+$spent = 0;
+$expenses = [];
+$res_exp = ApiHelper::get("budget/expenses?project_id=$project_id&phase_id=$phase_id");
+if ($res_exp['status'] === 200) {
+    $expenses = $res_exp['data']['expenses'] ?? [];
+    foreach ($expenses as &$exp) {
+        if ($exp['status'] === 'APPROVED') {
+            $spent += floatval($exp['amount']);
+        }
+        
+        // Fetch supplier name (cross-service)
+        $exp['supplier_name'] = 'N/A';
+        if (!empty($exp['supplier_id'])) {
+            $res_sup = ApiHelper::get("procurement/suppliers");
+            if ($res_sup['status'] === 200) {
+                foreach ($res_sup['data'] as $s) {
+                    if (intval($s['supplier_id']) === intval($exp['supplier_id'])) {
+                        $exp['supplier_name'] = $s['supplier_name'];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+$remaining = $allocated - $spent;
+$utilization = $allocated > 0 ? ($spent / $allocated) * 100 : 0;
+
+// Determine status
+$status = 'Active';
+if ($utilization > 100) {
+    $status = 'Over Budget';
+} elseif ($utilization >= 99) {
+    $status = 'Completed';
+}
+
+$prepared_by = $_SESSION['user_name'] ?? 'System Generated';
 
 // Helper for status badge color
 $statusColor = match($status) {
@@ -252,7 +204,7 @@ if ($utilization > 100) {
     <div class="report-container">
         
         <div class="text-center border-b-2 border-slate-800 pb-6 mb-8">
-            <img src="../../assets/images/nobg_logo.png" alt="ICMIS Logo" class="print-logo">
+            <img src="../../assets/images/nobg_logo.png" alt="ICMIS Logo" class="print-logo" onerror="this.style.display='none';">
             
             <h1 class="text-2xl font-black uppercase tracking-wide text-slate-900 mt-2">Phase Budget Report</h1>
             <p class="text-sm font-medium text-slate-500 uppercase tracking-widest">Integrated Construction Management Information System</p>
@@ -434,6 +386,3 @@ if ($utilization > 100) {
     </script>
 </body>
 </html>
-<?php
-$conn->close();
-?>

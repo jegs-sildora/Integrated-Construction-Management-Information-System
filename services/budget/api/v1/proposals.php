@@ -5,6 +5,7 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 
 use Budget\Database;
 
@@ -43,9 +44,33 @@ switch ($method) {
 
 function listProposals($conn) {
     try {
-        $sql = "SELECT * FROM budget_proposals ORDER BY created_at DESC";
-        $stmt = $conn->query($sql);
+        $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+        $phase_id = isset($_GET['phase_id']) ? intval($_GET['phase_id']) : 0;
+        $status = $_GET['status'] ?? '';
+        
+        $where = [];
+        $params = [];
+        
+        if ($project_id > 0) {
+            $where[] = "project_id = ?";
+            $params[] = $project_id;
+        }
+        if ($phase_id > 0) {
+            $where[] = "phase_id = ?";
+            $params[] = $phase_id;
+        }
+        if (!empty($status)) {
+            $where[] = "status = ?";
+            $params[] = $status;
+        }
+        
+        $whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+        $sql = "SELECT * FROM budget_proposals $whereSql ORDER BY created_at DESC";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
         $proposals = $stmt->fetchAll();
+        
         echo json_encode(['success' => true, 'proposals' => $proposals]);
     } catch (Exception $e) {
         http_response_code(500);
@@ -95,7 +120,10 @@ function saveProposal($conn) {
         $description = trim($data['description'] ?? $data['scope_description'] ?? '');
         $total_amount = floatval($data['total_amount'] ?? 0);
         $status = strtoupper($data['status'] ?? 'DRAFT');
-        $created_by = isset($data['created_by']) ? intval($data['created_by']) : null;
+        
+        // Use User ID from Gateway header if available
+        $created_by = isset($_SERVER['HTTP_X_USER_ID']) ? intval($_SERVER['HTTP_X_USER_ID']) : (isset($data['created_by']) ? intval($data['created_by']) : null);
+
         $items = $data['items'] ?? [];
 
         if ($project_id <= 0 || empty($title) || empty($items)) {
@@ -136,6 +164,8 @@ function saveProposal($conn) {
         }
 
         $conn->commit();
+        
+        Logger::create('Budget', "Created budget proposal: $code - $title", $proposal_id);
 
         echo json_encode([
             'success' => true,
@@ -191,6 +221,9 @@ function updateProposal($conn) {
         }
 
         $conn->commit();
+        
+        Logger::update('Budget', "Updated budget proposal ID #$proposal_id: $title (Status: $status)", $proposal_id);
+        
         echo json_encode(['success' => true, 'message' => 'Proposal updated successfully']);
     } catch (Exception $e) {
         if ($conn->inTransaction()) $conn->rollBack();
@@ -210,6 +243,8 @@ function deleteProposal($conn) {
         $conn->prepare("DELETE FROM budget_line_items WHERE proposal_id = ?")->execute([$proposal_id]);
         $conn->prepare("DELETE FROM budget_proposals WHERE proposal_id = ?")->execute([$proposal_id]);
         $conn->commit();
+
+        Logger::delete('Budget', "Deleted budget proposal ID #$proposal_id", $proposal_id);
 
         echo json_encode(['success' => true, 'message' => 'Proposal deleted successfully']);
     } catch (Exception $e) {

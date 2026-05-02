@@ -8,6 +8,7 @@ header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 
 $db = Database::getConnection();
 
@@ -95,7 +96,7 @@ function getGroup($db, $idOrCode) {
 
 function saveGroup($db, $action) {
     $name = $_POST['group_name'] ?? '';
-    $leader = !empty($_POST['leader_id']) ? $_POST['leader_id'] : null;
+    $leader = !empty($_POST['leader_id']) ? intval($_POST['leader_id']) : null;
     $desc = $_POST['description'] ?? '';
     $members = $_POST['members'] ?? [];
 
@@ -107,14 +108,16 @@ function saveGroup($db, $action) {
         if ($action === 'create') {
             $stmt = $db->prepare("INSERT INTO employee_groups (group_name, group_leader_id, description) VALUES (?, ?, ?)");
             $stmt->execute([$name, $leader, $desc]);
-            $group_id = $db->lastInsertId();
+            $group_id = intval($db->lastInsertId());
 
             $year = date('Y');
             $custom_code = sprintf('GRP-%s-%03d', $year, $group_id);
             $db->prepare("UPDATE employee_groups SET group_code = ? WHERE group_id = ?")->execute([$custom_code, $group_id]);
+            
+            Logger::create('Workforce', "Created employee group: $name ($custom_code)", $group_id);
 
         } else {
-            $group_id = $_POST['group_id'] ?? 0;
+            $group_id = intval($_POST['group_id'] ?? 0);
             if (!$group_id) throw new Exception("Group ID required");
             
             $stmt = $db->prepare("UPDATE employee_groups SET group_name=?, group_leader_id=?, description=? WHERE group_id=?");
@@ -130,6 +133,8 @@ function saveGroup($db, $action) {
                 $custom_code = sprintf('GRP-%s-%03d', $year, $group_id);
                 $db->prepare("UPDATE employee_groups SET group_code = ? WHERE group_id = ?")->execute([$custom_code, $group_id]);
             }
+            
+            Logger::update('Workforce', "Updated employee group: $name", $group_id);
         }
 
         if (!empty($members)) {
@@ -155,12 +160,23 @@ function saveGroup($db, $action) {
 }
 
 function deleteGroup($db, $id) {
+    $id = intval($id);
     if (!$id) throw new Exception("ID required");
     
+    // Get name for logging
+    $stmtName = $db->prepare("SELECT group_name FROM employee_groups WHERE group_id = ?");
+    $stmtName->execute([$id]);
+    $name = $stmtName->fetchColumn();
+
     $db->beginTransaction();
     try {
         $db->prepare("DELETE FROM group_memberships WHERE group_id = ?")->execute([$id]);
         $db->prepare("DELETE FROM employee_groups WHERE group_id = ?")->execute([$id]);
+        
+        if ($name) {
+            Logger::delete('Workforce', "Deleted employee group: $name", $id);
+        }
+        
         $db->commit();
         echo json_encode(['success' => true, 'message' => 'Group deleted successfully']);
     } catch (Exception $e) {

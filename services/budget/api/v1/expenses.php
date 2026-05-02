@@ -5,6 +5,7 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 
 use Budget\Database;
 
@@ -51,7 +52,6 @@ function listExpenses($conn) {
 
 function getExpenseDetails($conn, $id) {
     try {
-        // No cross-boundary joins
         $sql = "SELECT * FROM budget_expenses WHERE expense_id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$id]);
@@ -105,7 +105,6 @@ function saveExpense($conn) {
         $data = json_decode(file_get_contents('php://input'), true);
         if (!$data) throw new Exception('Invalid JSON data');
 
-        // Logic for saving expense (can be used for sync from Procurement)
         $project_id = intval($data['project_id'] ?? 0);
         $phase_id = isset($data['phase_id']) ? intval($data['phase_id']) : null;
         $supplier_id = isset($data['supplier_id']) ? intval($data['supplier_id']) : null;
@@ -114,13 +113,17 @@ function saveExpense($conn) {
         $amount = floatval($data['amount'] ?? 0);
         $expense_date = $data['expense_date'] ?? date('Y-m-d');
         $status = strtoupper($data['status'] ?? 'PENDING');
-        $created_by = isset($data['created_by']) ? intval($data['created_by']) : null;
+        
+        // Use User ID from Gateway header if available
+        $created_by = isset($_SERVER['HTTP_X_USER_ID']) ? intval($_SERVER['HTTP_X_USER_ID']) : (isset($data['created_by']) ? intval($data['created_by']) : null);
 
         $sql = "INSERT INTO budget_expenses (project_id, phase_id, supplier_id, category, description, amount, expense_date, status, created_by) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING expense_id";
         $stmt = $conn->prepare($sql);
         $stmt->execute([$project_id, $phase_id, $supplier_id, $category, $description, $amount, $expense_date, $status, $created_by]);
-        $expense_id = $stmt->fetchColumn();
+        $expense_id = intval($stmt->fetchColumn());
+        
+        Logger::create('Budget', "Created expense: $description (₱" . number_format($amount, 2) . ")", $expense_id);
 
         echo json_encode([
             'success' => true,

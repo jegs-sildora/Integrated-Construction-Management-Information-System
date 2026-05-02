@@ -22,9 +22,9 @@ $current_uri = $_SERVER['REQUEST_URI'];
 $active_project_id = 0;
 if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
     $active_project_id = intval($_GET['project_id']);
-    $_SESSION['current_project_id'] = $active_project_id;
-} elseif (isset($_SESSION['current_project_id']) && !empty($_SESSION['current_project_id'])) {
-    $active_project_id = $_SESSION['current_project_id'];
+    $_SESSION['selected_project_id'] = $active_project_id;
+} elseif (isset($_SESSION['selected_project_id']) && !empty($_SESSION['selected_project_id'])) {
+    $active_project_id = $_SESSION['selected_project_id'];
 }
 
 $project_qs = ($active_project_id > 0) ? '?project_id=' . $active_project_id : '';
@@ -40,19 +40,32 @@ $logs_path = '/icmis/modules/admin/';
 $admin_path = '/icmis/modules/admin/';
 
 // Active-state booleans used to style current section
-$is_main_dashboard = ($current_page === 'dashboard.php' && 
-    strpos($current_uri, '/modules/budget/') === false && 
-    strpos($current_uri, '/modules/procurement/') === false && 
-    strpos($current_uri, '/modules/workforce/') === false && 
-    strpos($current_uri, '/modules/project/') === false);
+$is_main_dashboard = ($current_page === 'dashboard.php' && strpos($current_uri, '/modules/') === false);
 $is_projects = (strpos($current_uri, '/modules/project/') !== false);
 $is_budget = strpos($current_uri, '/modules/budget/') !== false;
-$is_proposals = in_array($current_page, ['proposals.php', 'create_proposal.php', 'edit_proposal.php']);
-$is_expenses  = in_array($current_page, ['expenses.php', 'payroll_expenses.php', 'create_expense.php', 'edit_expense.php']);
+$is_budget_dashboard = ($is_budget && $current_page === 'dashboard.php');
+$is_proposals = ($is_budget && in_array($current_page, ['proposals.php', 'create_proposal.php', 'edit_proposal.php', 'save_proposal.php', 'update_proposal.php']));
+$is_expenses  = ($is_budget && in_array($current_page, ['expenses.php', 'payroll_expenses.php', 'create_expense.php', 'edit_expense.php', 'save_expense.php']));
+$is_budget_reports = ($is_budget && $current_page === 'reports.php');
+
 $is_procurement = strpos($current_uri, '/modules/procurement/') !== false;
+$is_inventory = ($is_procurement && $current_page === 'inventory.php');
+$is_po = ($is_procurement && (in_array($current_page, ['orders.php', 'create_order.php', 'edit_order.php']) || strpos($current_uri, '/purchase_order/') !== false));
+$is_stock_in = ($is_procurement && $current_page === 'stock_in.php');
+$is_stock_out = ($is_procurement && $current_page === 'stock_out.php');
+$is_suppliers = ($is_procurement && $current_page === 'suppliers.php');
+$is_procurement_reports = ($is_procurement && $current_page === 'reports.php');
+
 $is_workforce = strpos($current_uri, '/modules/workforce/') !== false;
+$is_workforce_dashboard = ($is_workforce && $current_page === 'dashboard.php');
+$is_employees = ($is_workforce && in_array($current_page, ['employees.php', 'employee_profile.php']));
+$is_assignments = ($is_workforce && $current_page === 'assignments.php');
+$is_attendance = ($is_workforce && $current_page === 'attendance.php');
+$is_workforce_payroll = ($is_workforce && $current_page === 'payroll.php');
+$is_workforce_reports = ($is_workforce && $current_page === 'reports.php');
+
 $is_reports = strpos($current_uri, '/modules/reports/') !== false;
-$is_audit_logs = (strpos($current_uri, '/modules/logs/') !== false || strpos($current_uri, '/modules/admin/audit_logs') !== false);
+$is_audit_logs = (strpos($current_uri, '/modules/admin/audit_logs.php') !== false);
 ?>
 <aside id="appSidebar" class="md:flex sidebar-closed w-56 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 overflow-hidden z-50 font-sans">
     <div class="px-4 py-[1.1rem] border-b border-gray-200 ml-10">

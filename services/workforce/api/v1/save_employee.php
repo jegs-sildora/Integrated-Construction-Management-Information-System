@@ -8,6 +8,7 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 
 $db = Database::getConnection();
 
@@ -86,6 +87,8 @@ try{
         exit;
     }
     $newId = $db->lastInsertId();
+
+    Logger::create('Workforce', "New employee registered: $first_name $last_name ($employee_code)", $newId);
 
     echo json_encode(['success'=>true,'employee_id'=>$newId, 'avatar_path' => $avatar_path]);
 } catch(Exception $e){

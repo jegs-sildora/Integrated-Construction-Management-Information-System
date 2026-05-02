@@ -11,12 +11,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../includes/report_print_layout.php';
 
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-$conn->set_charset("utf8mb4");
+// Centralized connection logic (provides MockMysqli during microservices migration)
+require_once __DIR__ . '/../../config/database.php';
 
 // Use centralized project context when available
 $selected_project_id = 0;
@@ -27,13 +23,13 @@ if (file_exists(__DIR__ . '/../budget/project_context.php')) {
     // Fallback to URL/session behavior if context helper missing
     if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
         $selected_project_id = intval($_GET['project_id']);
-        $_SESSION['current_project_id'] = $selected_project_id;
-    } elseif (isset($_SESSION['current_project_id'])) {
-        $selected_project_id = $_SESSION['current_project_id'];
+        $_SESSION['selected_project_id'] = $selected_project_id;
+    } elseif (isset($_SESSION['selected_project_id'])) {
+        $selected_project_id = $_SESSION['selected_project_id'];
     }
 }
 
-// Fetch current project info (enhanced with status and more details)
+// Fetch current project info from API
 $current_project_name = "All Projects";
 $current_project_code = "";
 $current_project_status = "";
@@ -41,52 +37,48 @@ $current_project_location = "";
 $current_project_budget = 0;
 $current_project_completion = 0;
 
-if ($selected_project_id) {
-    $stmt = $conn->prepare("SELECT project_name, project_code, status, location, total_budget, completion_rate FROM icmis_projects WHERE project_id = ?");
-    $stmt->bind_param("i", $selected_project_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) {
-        $current_project_name = $row['project_name'];
-        $current_project_code = $row['project_code'];
-        $current_project_status = $row['status'] ?? 'Active';
-        $current_project_location = $row['location'] ?? 'N/A';
-        $current_project_budget = floatval($row['total_budget']);
-        $current_project_completion = floatval($row['completion_rate']);
-    }
-    $stmt->close();
-}
-
-// Fetch all projects for dropdown
 $projects = [];
-$result_projects = $conn->query("SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC");
-if ($result_projects && $result_projects->num_rows > 0) {
-    while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
+$res_projects = ApiHelper::get('project/projects');
+if ($res_projects['status'] === 200) {
+    $projects = $res_projects['data']['projects'] ?? [];
+    
+    if ($selected_project_id > 0) {
+        foreach ($projects as $proj) {
+            if (intval($proj['project_id']) === $selected_project_id) {
+                $current_project_name = $proj['project_name'];
+                $current_project_code = $proj['project_code'];
+                $current_project_status = $proj['status'] ?? 'Active';
+                $current_project_location = $proj['location'] ?? 'N/A';
+                $current_project_budget = floatval($proj['total_budget'] ?? 0);
+                $current_project_completion = floatval($proj['completion_rate'] ?? 0);
+                break;
+            }
+        }
     }
 }
 
-// Fetch recent generated reports (if table exists) and respect current project context
+// Fetch recent generated reports via API
 $recent_reports = [];
-$tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
-if ($tableExists && $tableExists->num_rows > 0) {
-    if ($selected_project_id) {
-        $stmt = $conn->prepare("SELECT r.report_id AS id, r.report_type AS category, r.report_name, r.project_id, COALESCE(p.project_name, 'All') AS project_name, r.generated_by, r.created_at FROM budget_generated_reports r LEFT JOIN icmis_projects p ON r.project_id = p.project_id WHERE r.project_id = ? ORDER BY r.created_at DESC LIMIT 20");
-        if ($stmt) {
-            $stmt->bind_param("i", $selected_project_id);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            while ($row = $res->fetch_assoc()) {
-                $recent_reports[] = $row;
-            }
-            $stmt->close();
-        }
-    } else {
-        $report_sql = "SELECT r.report_id AS id, r.report_type AS category, r.report_name, r.project_id, COALESCE(p.project_name, 'All') AS project_name, r.generated_by, r.created_at FROM budget_generated_reports r LEFT JOIN icmis_projects p ON r.project_id = p.project_id ORDER BY r.created_at DESC LIMIT 20";
-        $result = $conn->query($report_sql);
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $recent_reports[] = $row;
+$report_params = [];
+if ($selected_project_id > 0) {
+    $report_params['project_id'] = $selected_project_id;
+}
+$report_params['per_page'] = 20;
+
+$res_reports = ApiHelper::get('reports/reports?' . http_build_query($report_params));
+if ($res_reports['status'] === 200) {
+    $recent_reports = $res_reports['data']['reports'] ?? [];
+    
+    // Enhance reports with project names from our already fetched projects array
+    foreach ($recent_reports as &$rep) {
+        $rep['id'] = $rep['report_id']; // for UI compatibility
+        $rep['project_name'] = 'All';
+        if (intval($rep['project_id'] ?? 0) > 0) {
+            foreach ($projects as $p) {
+                if (intval($p['project_id']) === intval($rep['project_id'])) {
+                    $rep['project_name'] = $p['project_name'];
+                    break;
+                }
             }
         }
     }

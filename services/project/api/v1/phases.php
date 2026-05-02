@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 header('Content-Type: application/json');
 
 $db = Database::getConnection();
@@ -47,9 +48,14 @@ try {
         $stmt = $db->prepare("DELETE FROM project_phases WHERE phase_id = ?");
         $stmt->execute([$phase_id]);
 
+        $success = $stmt->rowCount() > 0;
+        if ($success) {
+            Logger::delete('Project', "Deleted phase ID #$phase_id", $phase_id);
+        }
+
         echo json_encode([
-            'success' => $stmt->rowCount() > 0,
-            'message' => $stmt->rowCount() > 0 ? 'Phase deleted successfully' : 'Phase not found'
+            'success' => $success,
+            'message' => $success ? 'Phase deleted successfully' : 'Phase not found'
         ]);
         exit;
     }
@@ -126,6 +132,7 @@ try {
             $stmt = $db->prepare($sql);
             $stmt->execute([$phase_name, $project_id, $description, $start_date, $end_date, $duration, $status, $phase_id]);
             $msg = "Phase updated successfully";
+            Logger::update('Project', "Updated phase: $phase_name", $phase_id);
         } else {
             // INSERT
             $sql = "INSERT INTO project_phases 
@@ -133,10 +140,12 @@ try {
                     VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $db->prepare($sql);
             $stmt->execute([$project_id, $phase_name, $description, $start_date, $end_date, $duration, $status]);
+            $phase_id = intval($db->lastInsertId());
             $msg = "Phase added successfully";
+            Logger::create('Project', "Created new phase: $phase_name", $phase_id);
         }
 
-        echo json_encode(['success' => true, 'message' => $msg]);
+        echo json_encode(['success' => true, 'message' => $msg, 'phase_id' => $phase_id]);
         exit;
     }
 

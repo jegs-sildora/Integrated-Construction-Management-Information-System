@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../Database.php';
 require_once __DIR__ . '/../../JwtUtils.php';
+require_once __DIR__ . '/../../Logger.php';
 
 header('Content-Type: application/json');
 
@@ -39,9 +40,8 @@ $payload = [
 
 $token = JwtUtils::generate($payload);
 
-// Optional: Log successful login
-// $stmt = $db->prepare("INSERT INTO audit_logs (user_id, user_name, action, module, details) VALUES (?, ?, ?, ?, ?)");
-// $stmt->execute([$user['user_id'], $user['full_name'], 'LOGIN', 'Auth', 'User logged in via v1 API']);
+// Log successful login
+Logger::login('User logged in successfully via API', $user['user_id'], $user['full_name']);
 
 echo json_encode([
     'message' => 'Login successful',

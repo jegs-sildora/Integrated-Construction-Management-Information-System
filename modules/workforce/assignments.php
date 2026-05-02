@@ -16,7 +16,7 @@ if ($res_employees['status'] === 200) {
 $projects = [];
 $res_projects = ApiHelper::get('project/projects');
 if ($res_projects['status'] === 200) {
-    $projects = $res_projects['data'];
+    $projects = $res_projects['data']['projects'] ?? [];
 }
 
 $groups = [];

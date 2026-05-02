@@ -1,38 +1,20 @@
 <?php
 // modules/procurement/purchase_order/save_order.php
 
-// 1. Start Session & Output Buffering
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 ob_start();
 
-// Setup Headers & Error Reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 0); 
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Content-Type: application/json');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-// 2. Use centralized config
 require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 require_once __DIR__ . '/../../../core/Logger.php';
 
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    ob_clean();
-    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
-    exit;
-}
-$conn->set_charset("utf8mb4");
-
-// 3. Process the Request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $input = file_get_contents('php://input');
@@ -51,104 +33,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $project_id = intval($data['project_id']);
+        $supplier_input = $data['supplier'];
+        $phase_input = $data['phase'];
 
-        // Resolve phase_id: accept numeric `phase_id`, numeric `phase`, or lookup by `phase` name
-        $phase_id = 0;
-        if (isset($data['phase_id']) && is_numeric($data['phase_id'])) {
-            $phase_id = intval($data['phase_id']);
-        } elseif (isset($data['phase']) && is_numeric($data['phase'])) {
-            $phase_id = intval($data['phase']);
-        } elseif (isset($data['phase']) && !empty($data['phase'])) {
-            $phase_name = trim($data['phase']);
-            $stmt_phase = $conn->prepare("SELECT phase_id FROM icmis_project_phases WHERE phase_name = ? AND project_id = ? LIMIT 1");
-            if ($stmt_phase) {
-                $stmt_phase->bind_param("si", $phase_name, $project_id);
-                $stmt_phase->execute();
-                $res_phase = $stmt_phase->get_result();
-                if ($row_phase = $res_phase->fetch_assoc()) {
-                    $phase_id = intval($row_phase['phase_id']);
-                }
-                $stmt_phase->close();
-            }
-        }
-        $supplier_input = trim($data['supplier']); 
-        $order_title = isset($data['title']) ? trim($data['title']) : 'Untitled Order';
-        $items = $data['items'];
-        
-        // Use Logged-in User ID from Session
-        $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null; 
-
-        // --- Resolve Supplier ID ---
+        // --- RESOLVE SUPPLIER ID ---
         $supplier_id = 0;
         if (is_numeric($supplier_input)) {
             $supplier_id = intval($supplier_input);
         } else {
-            $stmt_sup = $conn->prepare("SELECT supplier_id FROM procurement_suppliers WHERE supplier_name = ? LIMIT 1");
-            $stmt_sup->bind_param("s", $supplier_input);
-            $stmt_sup->execute();
-            $res_sup = $stmt_sup->get_result();
-            if ($row_sup = $res_sup->fetch_assoc()) {
-                $supplier_id = $row_sup['supplier_id'];
-            } else {
-                throw new Exception("Supplier '$supplier_input' not found in database.");
+            $res_sup = ApiHelper::get("procurement/suppliers");
+            if ($res_sup['status'] === 200) {
+                foreach ($res_sup['data'] as $s) {
+                    if ($s['supplier_name'] === $supplier_input) {
+                        $supplier_id = $s['supplier_id'];
+                        break;
+                    }
+                }
             }
-            $stmt_sup->close();
+            if ($supplier_id === 0) throw new Exception("Supplier '$supplier_input' not found.");
         }
 
-        // --- Generate PO Reference ---
-        $year = date('Y');
-        $stmt_count = $conn->query("SELECT COUNT(*) as total FROM procurement_purchase_orders WHERE YEAR(order_date) = '$year'");
-        $row_count = $stmt_count->fetch_assoc();
-        $next_num = $row_count['total'] + 1;
-        $po_reference = sprintf("PO-%s-%04d", $year, $next_num);
-
-        // --- Calculate Total ---
-        $grand_total = 0;
-        foreach ($items as $item) {
-            $grand_total += (floatval($item['qty']) * floatval($item['price']));
-        }
-
-        // --- Begin Transaction ---
-        $conn->begin_transaction();
-
-        // A. Insert Header
-        $sql_header = "INSERT INTO procurement_purchase_orders 
-                       (po_reference, project_id, supplier_id, phase_id, order_title, order_date, total_amount, status, created_by_user_id) 
-                       VALUES (?, ?, ?, ?, ?, CURDATE(), ?, 'PENDING', ?)";
-        
-        $stmt = $conn->prepare($sql_header);
-        $stmt->bind_param("siissdi", $po_reference, $project_id, $supplier_id, $phase_id, $order_title, $grand_total, $created_by);
-        
-        if (!$stmt->execute()) {
-            throw new Exception("Header Error: " . $stmt->error);
-        }
-        $new_po_id = $conn->insert_id;
-        $stmt->close();
-
-        // B. Insert Items
-        $sql_item = "INSERT INTO procurement_purchase_order_items (po_id, item_name, quantity, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)";
-        $stmt_item = $conn->prepare($sql_item);
-
-        foreach ($items as $item) {
-            $i_name = trim($item['name']);
-            $i_qty = floatval($item['qty']);
-            $i_price = floatval($item['price']);
-            $i_total = $i_qty * $i_price;
-
-            $stmt_item->bind_param("isddd", $new_po_id, $i_name, $i_qty, $i_price, $i_total);
-            
-            if (!$stmt_item->execute()) {
-                throw new Exception("Item Error: " . $stmt_item->error);
+        // --- RESOLVE PHASE ID ---
+        $phase_id = 0;
+        if (is_numeric($phase_input)) {
+            $phase_id = intval($phase_input);
+        } else {
+            $res_phase = ApiHelper::get("project/phases?project_id=$project_id");
+            if ($res_phase['status'] === 200) {
+                foreach ($res_phase['data']['phases'] as $p) {
+                    if ($p['phase_name'] === $phase_input) {
+                        $phase_id = $p['phase_id'];
+                        break;
+                    }
+                }
             }
         }
-        $stmt_item->close();
 
-        // --- Commit ---
-        $conn->commit();
+        // --- PREPARE DATA FOR MICROSERVICE ---
+        $api_data = [
+            'project_id' => $project_id,
+            'phase_id' => $phase_id,
+            'supplier_id' => $supplier_id,
+            'order_title' => $data['title'] ?? 'Untitled Order',
+            'status' => 'PENDING',
+            'items' => $data['items'],
+            'user_id' => $_SESSION['user_id'] ?? null
+        ];
 
-        // Log the audit trail
-        Logger::init($conn);
-        Logger::create('Procurement', "Purchase Order Created: $po_reference - $order_title (₱" . number_format($grand_total, 2) . ")", $new_po_id);
+        // --- SEND TO MICROSERVICE ---
+        $response = ApiHelper::post('procurement/orders', $api_data);
+
+        if ($response['status'] !== 200 || !($response['data']['success'] ?? false)) {
+            throw new Exception($response['data']['message'] ?? 'Failed to save order via API');
+        }
+
+        $new_po_id = $response['data']['po_id'];
+        $po_reference = $response['data']['po_reference'];
+
+        // Log the audit trail (Logger is now API-based)
+        Logger::log('CREATE', 'Procurement', "Purchase Order Created: $po_reference - " . ($data['title'] ?? ''), $new_po_id);
 
         ob_clean(); 
         echo json_encode([
@@ -159,7 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
     } catch (Exception $e) {
-        if (isset($conn)) $conn->rollback();
         ob_clean(); 
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
@@ -167,6 +109,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ob_clean();
     echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
 }
-
-$conn->close();
-?>

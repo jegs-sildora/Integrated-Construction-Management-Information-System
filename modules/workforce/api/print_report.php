@@ -2,6 +2,7 @@
 // print_report.php
 // Handles HTML rendering and Printing for Workforce Reports
 session_start();
+require_once __DIR__ . '/../../../core/Logger.php';
 include __DIR__ . '/../project_context.php'; // Adjust path if this file is in api/ folder
 
 // Database Connection
@@ -19,21 +20,14 @@ if (!empty($_SESSION['user_name'])) {
     $generatedBy = $_SESSION['user_name'];
 } elseif (!empty($_SESSION['user_id'])) {
     $uid = intval($_SESSION['user_id']);
-    if (defined('DB_HOST')) {
-        $uconn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-        if ($uconn && !$uconn->connect_error) {
-            $q = $uconn->prepare('SELECT full_name FROM icmis_users WHERE user_id = ? LIMIT 1');
-            if ($q) {
-                $q->bind_param('i', $uid);
-                $q->execute();
-                $res = $q->get_result();
-                if ($res && $res->num_rows > 0) {
-                    $r = $res->fetch_assoc();
-                    if (!empty($r['full_name'])) $generatedBy = $r['full_name'];
-                }
-                $q->close();
+    // Try to get user name from project API instead of direct DB
+    $res_users = ApiHelper::get('auth/users');
+    if ($res_users['status'] === 200) {
+        foreach ($res_users['data'] as $u) {
+            if (intval($u['user_id']) === $uid) {
+                $generatedBy = $u['full_name'] ?? 'Admin';
+                break;
             }
-            $uconn->close();
         }
     }
 }
@@ -72,6 +66,10 @@ if ($checkTable && $checkTable->num_rows > 0) {
     $stmtLog->bind_param("isss", $project_id, $type, $reportName, $generatedBy);
     $stmtLog->execute();
     $stmtLog->close();
+    
+    // Log to Global Audit Trail
+    Logger::init($conn);
+    Logger::export('Workforce', "Generated Report: $reportName" . ($project_id > 0 ? " for $project_name" : ""), $project_id > 0 ? $project_id : null);
 }
 
 // 3. Fetch Data Based on Type

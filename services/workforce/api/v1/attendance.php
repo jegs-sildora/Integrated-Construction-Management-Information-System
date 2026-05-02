@@ -8,6 +8,7 @@ header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 
 $db = Database::getConnection();
 
@@ -18,7 +19,7 @@ if (is_array($input)) {
     $_REQUEST = array_merge($_REQUEST, $input);
 }
 
-$action = $_REQUEST['action'] ?? '';
+$action = $_REQUEST['action'] ?? 'list';
 
 try {
     switch ($action) {
@@ -38,7 +39,11 @@ try {
             deleteAttendance($db, $_REQUEST['id'] ?? 0);
             break;
         default:
-            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+            if (empty($action)) {
+                listAttendance($db);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Invalid action']);
+            }
     }
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -54,10 +59,9 @@ function listAttendance($db) {
     $params = [];
     $params[] = $date;
 
-    // Removed join with projects as it's a different bounded context
     $sql = "SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, 
                    jt.title_name as job_title,
-                   att.attendance_id, att.time_in, att.time_out, att.status, att.remarks,
+                   att.attendance_id, att.attendance_date, att.time_in, att.time_out, att.status, att.remarks,
                    att.project_id
             FROM employees e
             LEFT JOIN job_titles jt ON e.job_title_id = jt.job_title_id
@@ -118,14 +122,23 @@ function saveAttendance($db) {
     $stmt->execute([$data['employee_id'], $data['attendance_date']]);
     $existing = $stmt->fetch();
     
+    // Get name for logging
+    $stmtEmp = $db->prepare("SELECT first_name, last_name FROM employees WHERE employee_id = ?");
+    $stmtEmp->execute([$data['employee_id']]);
+    $emp = $stmtEmp->fetch();
+    $name = $emp ? ($emp['first_name'] . ' ' . $emp['last_name']) : "Employee #{$data['employee_id']}";
+
     if ($existing) {
         $sql = "UPDATE attendance SET project_id = ?, time_in = ?, time_out = ?, status = ?, remarks = ? WHERE attendance_id = ?";
         $stmt = $db->prepare($sql);
         $stmt->execute([$project_id, $time_in, $time_out, $status, $remarks, $existing['attendance_id']]);
+        Logger::update('Workforce', "Updated attendance for $name on {$data['attendance_date']}: $status", $existing['attendance_id']);
     } else {
         $sql = "INSERT INTO attendance (employee_id, project_id, attendance_date, time_in, time_out, status, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $db->prepare($sql);
         $stmt->execute([$data['employee_id'], $project_id, $data['attendance_date'], $time_in, $time_out, $status, $remarks]);
+        $new_id = intval($db->lastInsertId());
+        Logger::create('Workforce', "Logged attendance for $name on {$data['attendance_date']}: $status", $new_id);
     }
     
     echo json_encode(['success' => true, 'message' => 'Saved']);
@@ -170,6 +183,9 @@ function saveBulkAttendance($db) {
             }
             $saved++;
         }
+        
+        Logger::log('CREATE', 'Workforce', "Bulk attendance saved for $saved employees for date $date", null);
+        
         $db->commit();
         echo json_encode(['success' => true, 'message' => "$saved records saved"]);
     } catch (Exception $e) {
@@ -180,7 +196,18 @@ function saveBulkAttendance($db) {
 
 function deleteAttendance($db, $id) {
     if (!$id) throw new Exception('ID required');
+    
+    // Get info for logging
+    $stmtInf = $db->prepare("SELECT e.first_name, e.last_name, a.attendance_date FROM attendance a JOIN employees e ON a.employee_id = e.employee_id WHERE a.attendance_id = ?");
+    $stmtInf->execute([$id]);
+    $inf = $stmtInf->fetch();
+    
     $stmt = $db->prepare("DELETE FROM attendance WHERE attendance_id = ?");
     $stmt->execute([$id]);
+    
+    if ($inf) {
+        Logger::delete('Workforce', "Deleted attendance for {$inf['first_name']} {$inf['last_name']} on {$inf['attendance_date']}", intval($id));
+    }
+    
     echo json_encode(['success' => true, 'message' => 'Deleted']);
 }

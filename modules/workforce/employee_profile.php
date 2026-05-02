@@ -1,25 +1,34 @@
 <?php
 /**
  * Employee Profile View
- * Displays full details of a specific employee in a read-only format.
+ * Displays full details of a specific employee in a read-only format via microservice.
  */
-include __DIR__ . '/project_context.php';
+if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
-$conn = getWorkforceConnection();
 $id = $_GET['id'] ?? 0;
 $employee = null;
 
 if ($id) {
-    // Fetch employee data with job title name
-    $stmt = $conn->prepare("SELECT e.*, jt.title_name as position_name, jt.department 
-                            FROM workforce_employees e 
-                            LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-                            WHERE e.employee_id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $employee = $result->fetch_assoc();
-    $stmt->close();
+    // Fetch employee data via microservice
+    $res = ApiHelper::get("workforce/employees?id=$id");
+    if ($res['status'] === 200 && isset($res['data']['employee'])) {
+        $employee = $res['data']['employee'];
+        // Enhance with position info if not already there
+        if (empty($employee['position_name']) && !empty($employee['job_title_id'])) {
+            $res_opt = ApiHelper::get("workforce/form-options");
+            if ($res_opt['status'] === 200) {
+                foreach ($res_opt['data']['job_titles'] as $jt) {
+                    if ($jt['job_title_id'] == $employee['job_title_id']) {
+                        $employee['position_name'] = $jt['title_name'];
+                        $employee['department'] = $jt['department'];
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 // Helper for currency formatting
@@ -73,7 +82,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         <p class="text-gray-500 mb-6">The employee with ID #<?php echo htmlspecialchars($id); ?> does not exist or has been removed.</p>
                         <a href="employees.php" class="px-6 py-3 bg-[#d17f1f] text-white rounded-xl font-bold hover:bg-[#b56b17] transition-all inline-flex items-center gap-2">
                             <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                            Back to  Directory
+                            Back to Directory
                         </a>
                     </div>
                 </div>
@@ -119,12 +128,12 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         </div>
 
                         <div class="flex gap-3">
-                            <?php if($employee['phone']): ?>
+                            <?php if(!empty($employee['phone'])): ?>
                             <a href="tel:<?php echo $employee['phone']; ?>" class="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-white" title="Call">
                                 <i data-lucide="phone" class="w-5 h-5"></i>
                             </a>
                             <?php endif; ?>
-                            <?php if($employee['email']): ?>
+                            <?php if(!empty($employee['email'])): ?>
                             <a href="mailto:<?php echo $employee['email']; ?>" class="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-white" title="Email">
                                 <i data-lucide="mail" class="w-5 h-5"></i>
                             </a>
@@ -209,7 +218,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                     <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Tenure</label>
                                     <p class="text-gray-700 font-medium">
                                         <?php 
-                                            if ($employee['hire_date']) {
+                                            if (!empty($employee['hire_date'])) {
                                                 $diff = date_diff(date_create($employee['hire_date']), date_create('today'));
                                                 echo $diff->y . ' yrs, ' . $diff->m . ' mos';
                                             } else { echo 'N/A'; }
@@ -235,7 +244,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                 <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Supervisor</label>
                                 <p class="text-gray-700 font-medium flex items-center gap-2">
                                     <i data-lucide="user-check" class="w-4 h-4 text-gray-400"></i>
-                                    <?php echo $employee['supervisor_id'] ? 'ID #' . $employee['supervisor_id'] : 'None'; ?>
+                                    <?php echo !empty($employee['supervisor_id']) ? 'ID #' . $employee['supervisor_id'] : 'None'; ?>
                                 </p>
                             </div>
 
@@ -261,12 +270,12 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                         <div class="space-y-5">
                             <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
                                 <label class="block text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Monthly Salary</label>
-                                <p class="text-2xl font-bold text-green-800"><?php echo formatMoney($employee['monthly_salary']); ?></p>
+                                <p class="text-2xl font-bold text-green-800"><?php echo formatMoney($employee['monthly_salary'] ?? 0); ?></p>
                             </div>
 
                             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                                 <label class="text-sm font-semibold text-gray-600">Daily Rate</label>
-                                <p class="text-lg font-bold text-gray-800"><?php echo formatMoney($employee['daily_rate']); ?></p>
+                                <p class="text-lg font-bold text-gray-800"><?php echo formatMoney($employee['daily_rate'] ?? 0); ?></p>
                             </div>
                         </div>
                     </div>
@@ -305,8 +314,6 @@ $userName = $_SESSION['user_name'] ?? "Admin";
         lucide.createIcons();
 
         function openEditModal(id) {
-            // Since the modal is not included in this page, redirect to the main directory
-            // In a full implementation, you would include the modal component and trigger it here
             if(confirm("To edit this profile, you will be redirected to the main directory. Continue?")) {
                 window.location.href = 'employees.php'; 
             }

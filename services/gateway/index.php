@@ -1,11 +1,62 @@
 <?php
-// --- API Gateway Configuration (v1) ---
+/**
+ * --- API Gateway Configuration (v1.1 - Hardened) ---
+ */
+
+// 1. Strict CORS Policy
+header('Access-Control-Allow-Origin: *'); // In production, replace * with the actual domain
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
+header('Access-Control-Max-Age: 86400'); // 24 hours cache
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// 2. Payload Size Restriction (e.g., 5MB limit)
+$maxPayloadSize = 5 * 1024 * 1024;
+$contentLength = $_SERVER['CONTENT_LENGTH'] ?? 0;
+if ($contentLength > $maxPayloadSize) {
+    http_response_code(413);
+    echo json_encode(['error' => 'Payload too large. Maximum size is 5MB.']);
+    exit;
+}
+
+// 3. Basic Rate Limiting (Simple File-Based Implementation)
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$rateLimitFile = sys_get_temp_dir() . '/ratelimit_' . md5($ip);
+$limit = 100; // requests
+$window = 60; // seconds
+
+$requests = [];
+if (file_exists($rateLimitFile)) {
+    $requests = json_decode(file_get_contents($rateLimitFile), true) ?: [];
+}
+
+// Filter requests within the window
+$now = time();
+$requests = array_filter($requests, function($timestamp) use ($now, $window) {
+    return $timestamp > ($now - $window);
+});
+
+if (count($requests) >= $limit) {
+    http_response_code(429);
+    header('Retry-After: ' . ($window - ($now - reset($requests))));
+    echo json_encode(['error' => 'Too many requests. Please try again later.']);
+    exit;
+}
+
+$requests[] = $now;
+file_put_contents($rateLimitFile, json_encode($requests));
+
 $services = [
     'auth' => 'http://auth-service',
     'project' => 'http://project-service',
     'budget' => 'http://budget-service',
     'procurement' => 'http://procurement-service',
-    'workforce' => 'http://workforce-service'
+    'workforce' => 'http://workforce-service',
+    'reports' => 'http://reports-service'
 ];
 
 $requestUri = $_SERVER['REQUEST_URI'];

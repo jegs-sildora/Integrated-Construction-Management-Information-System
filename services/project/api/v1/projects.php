@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 header('Content-Type: application/json');
 
 $db = Database::getConnection();
@@ -45,6 +46,9 @@ try {
         $stmt->execute([$project_id]);
 
         $label = trim(($project['project_name'] ?? '') . ($project['project_code'] ? " ({$project['project_code']})" : ''));
+        
+        // Log the action
+        Logger::delete('Project', "Deleted project: $label", $project_id);
         
         echo json_encode([
             'success' => true,
@@ -117,6 +121,8 @@ try {
             $stmt = $db->prepare($sql);
             $stmt->execute([$project_code, $project_name, $project_manager, $description, $location, $start_date, $end_date, $status, $total_budget, $project_id]);
             
+            Logger::update('Project', "Updated project: $project_name ($project_code)", $project_id);
+            
             echo json_encode(['success' => true, 'message' => 'Project updated successfully']);
         } else {
             // INSERT
@@ -125,7 +131,9 @@ try {
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $db->prepare($sql);
             $stmt->execute([$project_code, $project_name, $project_manager, $description, $location, $start_date, $end_date, $status, $total_budget]);
-            $new_id = $db->lastInsertId();
+            $new_id = intval($db->lastInsertId());
+
+            Logger::create('Project', "Created new project: $project_name ($project_code)", $new_id);
 
             echo json_encode(['success' => true, 'message' => 'Project added successfully', 'project_id' => $new_id]);
         }

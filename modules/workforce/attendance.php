@@ -13,7 +13,7 @@ $selected_project_id = getProjectContext($conn);
 $projects = [];
 $res_projects = ApiHelper::get('project/projects');
 if ($res_projects['status'] === 200) {
-    $projects = $res_projects['data'];
+    $projects = $res_projects['data']['projects'] ?? [];
 }
 
 // Determine Current Project Name
@@ -170,8 +170,8 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($individual_employees as $emp): 
-                                    $initials = strtoupper(substr($emp['first_name'], 0, 1) . substr($emp['last_name'], 0, 1));
-                                    $status = $emp['attendance_status'];
+                                    $initials = strtoupper(substr($emp['first_name'] ?? 'U', 0, 1) . substr($emp['last_name'] ?? 'N', 0, 1));
+                                    $status = $emp['status'] ?? 'Absent';
                                     $rowClass = $status === 'Absent' ? 'bg-red-50/50' : ($status === 'Present' ? 'bg-green-50/30' : '');
                                 ?>
                                 <tr class="hover:bg-gray-50 transition-colors attendance-row <?php echo $rowClass; ?>" data-id="<?php echo $emp['employee_id']; ?>">
@@ -261,7 +261,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                         <tr><th class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase text-left">Member</th><th class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase text-left w-32">Status</th><th class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase text-left w-28">Time In</th><th class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase text-left w-28">Time Out</th><th class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase text-left">Remarks</th></tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
-                                        <?php foreach ($group['members'] as $m): $mStatus = $m['attendance_status']; ?>
+                                        <?php foreach ($group['members'] as $m): $mStatus = $m['status'] ?? 'Absent'; ?>
                                         <tr class="attendance-row group-row-<?php echo $gid; ?>" data-id="<?php echo $m['employee_id']; ?>">
                                             <td class="px-4 py-2 text-sm font-medium text-gray-700"><?php echo htmlspecialchars($m['first_name'] . ' ' . $m['last_name']); ?></td>
                                             <td class="px-4 py-2"><?php echo renderStatusSelect($mStatus); ?></td>

@@ -1,6 +1,6 @@
 <?php
 class JwtUtils {
-    private static $secret = 'your_jwt_secret_key_change_me'; // Should be from ENV in production
+    private static $secret = '7424cc33bed68689ad81c6bd3a7cafc4c5572a3d7ef30ce6c0875033944d99d1'; // Should be from ENV in production
 
     public static function generate($payload) {
         $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);

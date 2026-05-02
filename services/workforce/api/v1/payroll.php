@@ -381,7 +381,7 @@ function lockPayrollPeriod($db, $project_id, $month, $period) {
 
         if ($ex) {
             $period_id = $ex['period_id'];
-            $db->query("UPDATE payroll_periods SET status='Closed' WHERE period_id=$period_id");
+            $db->prepare("UPDATE payroll_periods SET status='Closed' WHERE period_id=?")->execute([$period_id]);
         } else {
             $ins = $db->prepare("INSERT INTO payroll_periods (start_date, end_date, pay_date, status, created_at) VALUES (?, ?, ?, 'Closed', CURRENT_TIMESTAMP)");
             $ins->execute([$start, $end, $pay_date]);

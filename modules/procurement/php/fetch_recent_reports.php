@@ -98,11 +98,16 @@ try {
                    WHERE r.report_type IN ('inventory-status', 'purchase-orders', 'stock-movement')";
             
             if ($project_id > 0) {
-                $report_sql .= " AND (r.project_id = $project_id OR r.project_id IS NULL)";
+                $report_sql .= " AND (r.project_id = ? OR r.project_id IS NULL)";
             }
             $report_sql .= " ORDER BY r.created_at DESC LIMIT 20";
             
-            $result = $conn->query($report_sql);
+            $stmt = $conn->prepare($report_sql);
+            if ($project_id > 0) {
+                $stmt->bind_param("i", $project_id);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
             $reports = [];
             
             if ($result) {
@@ -112,6 +117,7 @@ try {
                     $reports[] = $row;
                 }
             }
+            $stmt->close();
             
             $response['success'] = true;
             $response['message'] = 'Reports fetched successfully';

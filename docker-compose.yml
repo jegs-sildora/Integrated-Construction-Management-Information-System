@@ -1,11 +1,40 @@
-version: '3.8'
-
 services:
+  # --- MAIN FRONTEND ---
+  frontend:
+    build: 
+      context: .
+      dockerfile: ./services/gateway/Dockerfile # Reusing gateway Dockerfile as it has the same PHP/Apache setup
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
+    networks:
+      - icmis_network
+
+  # --- LIVE RELOAD PROXY ---
+  browser-sync:
+    image: node:alpine
+    working_dir: /source
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - .:/source
+    command: npx browser-sync start --proxy "frontend" --files "**/*.php, **/*.css, **/*.js"
+    depends_on:
+      - frontend
+    networks:
+      - icmis_network
+
   # --- PHP MICROSERVICES ---
   gateway:
     build: ./services/gateway
     ports:
       - "8000:80"
+    volumes:
+      - ./services/gateway:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
@@ -13,6 +42,9 @@ services:
     build: ./services/auth
     environment:
       - DATABASE_URL=pgsql://postgres:postgres@db_auth:5432/auth
+    volumes:
+      - ./services/auth:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
@@ -20,6 +52,9 @@ services:
     build: ./services/project
     environment:
       - DATABASE_URL=pgsql://postgres:postgres@db_project:5432/project
+    volumes:
+      - ./services/project:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
@@ -27,6 +62,9 @@ services:
     build: ./services/budget
     environment:
       - DATABASE_URL=pgsql://postgres:postgres@db_budget:5432/budget
+    volumes:
+      - ./services/budget:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
@@ -34,6 +72,9 @@ services:
     build: ./services/procurement
     environment:
       - DATABASE_URL=pgsql://postgres:postgres@db_procurement:5432/procurement
+    volumes:
+      - ./services/procurement:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
@@ -41,64 +82,109 @@ services:
     build: ./services/workforce
     environment:
       - DATABASE_URL=pgsql://postgres:postgres@db_workforce:5432/workforce
+    volumes:
+      - ./services/workforce:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
+    networks:
+      - icmis_network
+
+  reports-service:
+    build: ./services/reports
+    environment:
+      - DATABASE_URL=pgsql://postgres:postgres@db_reports:5432/reports
+    volumes:
+      - ./services/reports:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
   # --- POSTGRESQL DATABASES ---
   db_auth:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_DB: auth
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./db/init/auth.sql:/docker-entrypoint-initdb.d/init.sql
+      - auth_data:/var/lib/postgresql/data
     networks:
       - icmis_network
 
   db_project:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_DB: project
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./db/init/project.sql:/docker-entrypoint-initdb.d/init.sql
+      - project_data:/var/lib/postgresql/data
     networks:
       - icmis_network
 
   db_budget:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_DB: budget
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./db/init/budget.sql:/docker-entrypoint-initdb.d/init.sql
+      - budget_data:/var/lib/postgresql/data
     networks:
       - icmis_network
 
   db_procurement:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_DB: procurement
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./db/init/procurement.sql:/docker-entrypoint-initdb.d/init.sql
+      - procurement_data:/var/lib/postgresql/data
     networks:
       - icmis_network
 
   db_workforce:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_DB: workforce
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./db/init/workforce.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db/seed/workforce_seed.sql:/docker-entrypoint-initdb.d/seed.sql
+      - workforce_data:/var/lib/postgresql/data
     networks:
       - icmis_network
+
+  db_reports:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: reports
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./db/init/reports.sql:/docker-entrypoint-initdb.d/init.sql
+      - reports_data:/var/lib/postgresql/data
+    networks:
+      - icmis_network
+
+volumes:
+  auth_data:
+  project_data:
+  budget_data:
+  procurement_data:
+  workforce_data:
+  reports_data:
 
 networks:
   icmis_network:

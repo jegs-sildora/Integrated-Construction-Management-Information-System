@@ -8,6 +8,7 @@ header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 
 $db = Database::getConnection();
 
@@ -25,8 +26,7 @@ if (empty($_POST)) {
         $_REQUEST = array_merge($_REQUEST, $input);
     }
 }
-
-$action = $_REQUEST['action'] ?? '';
+$action = $_REQUEST['action'] ?? 'list';
 
 try {
     switch ($action) {
@@ -49,7 +49,11 @@ try {
             getAssignment($db);
             break;
         default:
-            jsonResponse(false, 'Invalid action');
+            if (empty($action)) {
+                listAssignments($db);
+            } else {
+                jsonResponse(false, 'Invalid action: ' . $action);
+            }
     }
 } catch (Exception $e) {
     jsonResponse(false, $e->getMessage());
@@ -78,7 +82,6 @@ function listAssignments($db) {
     $totalRows = $stmt->fetch()['total'];
 
     // 2. Get Data
-    // Removed joins with projects and project_phases (across bounded contexts)
     $sql = "SELECT wa.*, 
             e.first_name, e.last_name, e.employee_code
             FROM assignments wa
@@ -106,14 +109,14 @@ function listAssignments($db) {
 
 function createAssignment($db) {
     $mode = $_POST['mode'] ?? 'individual';
-    $project_id = $_POST['project_id'];
-    $phase_id = !empty($_POST['phase_id']) ? $_POST['phase_id'] : null;
+    $project_id = intval($_POST['project_id']);
+    $phase_id = !empty($_POST['phase_id']) ? intval($_POST['phase_id']) : null;
     $start_date = $_POST['start_date'];
     $end_date = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
     $status = 'Active';
 
     if ($mode === 'group') {
-        $group_id = $_POST['group_id'];
+        $group_id = intval($_POST['group_id']);
         
         $mStmt = $db->prepare("SELECT employee_id, role_in_group FROM group_memberships WHERE group_id = ?");
         $mStmt->execute([$group_id]);
@@ -136,9 +139,11 @@ function createAssignment($db) {
                 }
             }
         }
+        
+        Logger::create('Workforce', "Assigned Group ID #$group_id to Project ID #$project_id ($count members assigned)", null);
         jsonResponse(true, "Group processed. $count members assigned.");
     } else {
-        $employee_id = $_POST['employee_id'];
+        $employee_id = intval($_POST['employee_id']);
         $role = $_POST['role'];
 
         $checkStmt = $db->prepare("SELECT assignment_id FROM assignments WHERE employee_id = ? AND project_id = ? AND status = 'Active'");
@@ -154,6 +159,8 @@ function createAssignment($db) {
 
         $stmt = $db->prepare("INSERT INTO assignments (employee_id, project_id, phase_id, role, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
         if ($stmt->execute([$employee_id, $project_id, $phase_id, $role, $start_date, $end_date, $status])) {
+            $new_id = intval($db->lastInsertId());
+            Logger::create('Workforce', "Created assignment for Employee #$employee_id to Project #$project_id", $new_id);
             jsonResponse(true, "Assignment created.");
         } else {
             jsonResponse(false, "Failed to create assignment.");
@@ -162,15 +169,16 @@ function createAssignment($db) {
 }
 
 function updateAssignment($db) {
-    $id = $_POST['assignment_id'];
+    $id = intval($_POST['assignment_id']);
     $role = $_POST['role'];
-    $phase_id = !empty($_POST['phase_id']) ? $_POST['phase_id'] : null;
+    $phase_id = !empty($_POST['phase_id']) ? intval($_POST['phase_id']) : null;
     $start_date = $_POST['start_date'];
     $end_date = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
     $status = $_POST['status'];
 
     $stmt = $db->prepare("UPDATE assignments SET role=?, phase_id=?, start_date=?, end_date=?, status=? WHERE assignment_id=?");
     if ($stmt->execute([$role, $phase_id, $start_date, $end_date, $status, $id])) {
+        Logger::update('Workforce', "Updated assignment ID #$id (Status: $status)", $id);
         jsonResponse(true, "Updated successfully.");
     } else {
         jsonResponse(false, "Update failed.");
@@ -178,9 +186,17 @@ function updateAssignment($db) {
 }
 
 function deleteAssignment($db) {
-    $id = $_POST['id'];
+    $id = intval($_POST['id']);
+    
+    $stmtInf = $db->prepare("SELECT employee_id, project_id FROM assignments WHERE assignment_id = ?");
+    $stmtInf->execute([$id]);
+    $inf = $stmtInf->fetch();
+
     $stmt = $db->prepare("DELETE FROM assignments WHERE assignment_id = ?");
     if ($stmt->execute([$id])) {
+        if ($inf) {
+            Logger::delete('Workforce', "Deleted assignment for Employee #{$inf['employee_id']} from Project #{$inf['project_id']}", $id);
+        }
         jsonResponse(true, "Deleted successfully.");
     } else {
         jsonResponse(false, "Delete failed.");
@@ -188,11 +204,8 @@ function deleteAssignment($db) {
 }
 
 function getPhases($db) {
-    // Note: This table project_phases might be in another service.
-    // If it's across bounded contexts, this function should be moved to Project Service.
-    // For now, we attempt to fetch from local if it exists, or return empty.
     try {
-        $pid = $_REQUEST['project_id'];
+        $pid = intval($_REQUEST['project_id']);
         $stmt = $db->prepare("SELECT phase_id, phase_name FROM project_phases WHERE project_id = ?");
         $stmt->execute([$pid]);
         jsonResponse(true, "Loaded", $stmt->fetchAll());
@@ -202,7 +215,7 @@ function getPhases($db) {
 }
 
 function getAssignment($db) {
-    $id = $_REQUEST['id'];
+    $id = intval($_REQUEST['id']);
     $stmt = $db->prepare("SELECT * FROM assignments WHERE assignment_id = ?");
     $stmt->execute([$id]);
     jsonResponse(true, "Loaded", $stmt->fetch());

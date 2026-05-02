@@ -15,7 +15,16 @@ include __DIR__ . '/api/job_titles_include.php';
 // --- HELPER FUNCTION FOR STATS ---
 function getEmployeeStats() {
     $res = ApiHelper::get('workforce/employees/stats');
-    return $res['status'] === 200 ? $res['data'] : [ 'total' => 0, 'active' => 0, 'inactive' => 0, 'new_this_month' => 0 ];
+    if ($res['status'] === 200 && isset($res['data']['data'])) {
+        $apiStats = $res['data']['data'];
+        return [
+            'total' => $apiStats['total_employees'] ?? 0,
+            'active' => $apiStats['active_employees'] ?? 0,
+            'inactive' => $apiStats['inactive_employees'] ?? 0,
+            'new_this_month' => $apiStats['new_this_month'] ?? 0
+        ];
+    }
+    return [ 'total' => 0, 'active' => 0, 'inactive' => 0, 'new_this_month' => 0 ];
 }
 
 // --- PAGINATION & DATA FETCH LOGIC ---
@@ -152,7 +161,7 @@ if (isset($_GET['fetch_updates'])) {
 $projects = [];
 $res_projects = ApiHelper::get('project/projects');
 if ($res_projects['status'] === 200) {
-    $projects = $res_projects['data'];
+    $projects = $res_projects['data']['projects'] ?? [];
 }
 
 // Build breadcrumb

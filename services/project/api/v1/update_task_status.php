@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/../../Database.php';
+require_once __DIR__ . '/../../Logger.php';
 header('Content-Type: application/json');
 
 $db = Database::getConnection();
@@ -43,10 +44,17 @@ try {
         exit;
     }
 
+    // Get task name for logging
+    $stmtTask = $db->prepare("SELECT task_name FROM tasks WHERE task_id = ?");
+    $stmtTask->execute([$task_id]);
+    $taskName = $stmtTask->fetchColumn();
+
     $stmt = $db->prepare("UPDATE tasks SET status = ? WHERE task_id = ?");
     $stmt->execute([$status, $task_id]);
 
     if ($stmt->rowCount() > 0) {
+        Logger::update('Project', "Updated task status: $taskName to $status", $task_id);
+        
         echo json_encode([
             'success' => true, 
             'message' => 'Task status updated successfully',

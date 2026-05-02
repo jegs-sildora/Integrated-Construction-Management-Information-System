@@ -1,13 +1,7 @@
 <?php
 // modules/budget/budget_proposal/download_proposal_pdf.php
 require_once __DIR__ . '/../../../config/config.php';
-
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-$conn->set_charset("utf8mb4");
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     die('Proposal ID is required');
@@ -15,42 +9,52 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $proposal_id = intval($_GET['id']);
 
-// Fetch proposal details with user info
-$sql = "SELECT bp.*, p.project_name, p.project_code, p.location,
-        pp.phase_name, pp.start_date as phase_start_date, pp.end_date as phase_end_date,
-        COALESCE(u.full_name, 'Authorized Staff') as creator_name
-        FROM budget_proposals bp 
-        LEFT JOIN icmis_projects p ON bp.project_id = p.project_id 
-        LEFT JOIN icmis_project_phases pp ON bp.phase_id = pp.phase_id
-        LEFT JOIN icmis_users u ON bp.created_by = u.user_id
-        WHERE bp.proposal_id = ?";
-
-$stmt = $conn->prepare($sql);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
+// 1. Fetch proposal details via API
+$res = ApiHelper::get("budget/proposals?id=$proposal_id");
+if ($res['status'] !== 200 || !($res['data']['success'] ?? false)) {
+    die('Proposal not found via API');
 }
 
-$stmt->bind_param("i", $proposal_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$proposal_data = $res['data']['proposal'];
+$items = $res['data']['items'] ?? [];
 
-if ($result->num_rows === 0) {
-    die('Proposal not found');
+// 2. Fetch project info via API (cross-service lookup)
+$project_id = intval($proposal_data['project_id']);
+$project_name = 'Unknown Project';
+$project_code = 'N/A';
+$location = 'N/A';
+
+$res_proj = ApiHelper::get("project/projects/$project_id");
+if ($res_proj['status'] === 200 && !empty($res_proj['data'])) {
+    $project_name = $res_proj['data']['project_name'];
+    $project_code = $res_proj['data']['project_code'];
+    $location = $res_proj['data']['location'] ?? 'N/A';
 }
 
-$proposal = $result->fetch_assoc();
+// 3. Fetch user info for creator name via API
+$creator_id = intval($proposal_data['created_by']);
+$creator_name = 'Authorized Staff';
 
-// Fetch line items
-$sql_items = "SELECT * FROM budget_line_items WHERE proposal_id = ? ORDER BY line_item_id ASC";
-$stmt_items = $conn->prepare($sql_items);
-$stmt_items->bind_param("i", $proposal_id);
-$stmt_items->execute();
-$result_items = $stmt_items->get_result();
-
-$items = [];
-while ($row = $result_items->fetch_assoc()) {
-    $items[] = $row;
+$res_users = ApiHelper::get("auth/users");
+if ($res_users['status'] === 200) {
+    foreach ($res_users['data'] as $u) {
+        if (intval($u['user_id']) === $creator_id) {
+            $creator_name = $u['full_name'];
+            break;
+        }
+    }
 }
+
+// Map data to expected variables for existing template
+$proposal = [
+    'project_name' => $project_name,
+    'location' => $location,
+    'code' => $proposal_data['code'],
+    'title' => $proposal_data['title'],
+    'status' => $proposal_data['status'],
+    'description' => $proposal_data['description'],
+    'creator_name' => $creator_name
+];
 
 // Helper for status badge color in print
 $statusColor = match($proposal['status']) {
@@ -145,7 +149,7 @@ $statusColor = match($proposal['status']) {
     <div class="report-container">
         
         <div class="text-center border-b-2 border-slate-800 pb-6 mb-8">
-            <img src="../../../assets/images/nobg_logo.png" alt="ICMIS Logo" class="print-logo">
+            <img src="../../../assets/images/nobg_logo.png" alt="ICMIS Logo" class="print-logo" onerror="this.style.display='none';">
             
             <h1 class="text-2xl font-black uppercase tracking-wide text-slate-900 mt-2">Budget Proposal Report</h1>
             <p class="text-sm font-medium text-slate-500 uppercase tracking-widest">Integrated Construction Management Information System</p>
@@ -209,7 +213,8 @@ $statusColor = match($proposal['status']) {
                     $grand_total = 0;
                     if (count($items) > 0): 
                         foreach ($items as $index => $item): 
-                            $grand_total += $item['subtotal'];
+                            $st = floatval($item['subtotal'] ?? 0);
+                            $grand_total += $st;
                     ?>
                     <tr>
                         <td class="px-4 py-2 text-sm border border-slate-200 text-center text-slate-500"><?php echo $index + 1; ?></td>
@@ -217,7 +222,7 @@ $statusColor = match($proposal['status']) {
                         <td class="px-4 py-2 text-sm border border-slate-200 text-slate-800"><?php echo htmlspecialchars($item['item_name']); ?></td>
                         <td class="px-4 py-2 text-sm border border-slate-200 text-center text-slate-700"><?php echo $item['quantity']; ?></td>
                         <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono text-slate-700">₱<?php echo number_format($item['unit_cost'], 2); ?></td>
-                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono font-bold text-slate-900">₱<?php echo number_format($item['subtotal'], 2); ?></td>
+                        <td class="px-4 py-2 text-sm border border-slate-200 text-right font-mono font-bold text-slate-900">₱<?php echo number_format($st, 2); ?></td>
                     </tr>
                     <?php endforeach; else: ?>
                     <tr>
@@ -278,6 +283,3 @@ $statusColor = match($proposal['status']) {
     </script>
 </body>
 </html>
-<?php
-$conn->close();
-?>

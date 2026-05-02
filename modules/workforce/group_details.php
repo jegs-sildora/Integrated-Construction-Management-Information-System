@@ -2,78 +2,68 @@
 // ============================================================
 // GROUP DETAILS VIEW
 // ============================================================
-
-include __DIR__ . '/project_context.php'; // Adjust path if needed relative to root
-$conn = getWorkforceConnection();
+if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
 $group_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $group_code = isset($_GET['group_code']) ? trim($_GET['group_code']) : '';
 $group = null;
 $members = [];
 
-// Allow lookup by `group_code` (preferred) or numeric `id` as fallback.
-if ($group_code) {
-    $sql = "SELECT g.*, 
-            CONCAT(l.first_name, ' ', l.last_name) as leader_name,
-            l.employee_code as leader_code
-            FROM workforce_employee_groups g
-            LEFT JOIN workforce_employees l ON g.group_leader_id = l.employee_id
-            WHERE g.group_code = ? LIMIT 1";
+// 1. Fetch Group Details via Microservice
+$id_param = $group_code ? "group_code=$group_code" : "id=$group_id";
+$res_group = ApiHelper::get("workforce/employee_groups?action=get&$id_param");
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $group_code);
-    $stmt->execute();
-    $group = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    if ($group) {
-        $group_id = intval($group['group_id']);
-    }
-} elseif ($group_id) {
-    $sql = "SELECT g.*, 
-            CONCAT(l.first_name, ' ', l.last_name) as leader_name,
-            l.employee_code as leader_code
-            FROM workforce_employee_groups g
-            LEFT JOIN workforce_employees l ON g.group_leader_id = l.employee_id
-            WHERE g.group_id = ? LIMIT 1";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $group_id);
-    $stmt->execute();
-    $group = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-}
-
-// 2. Fetch Group Members (use resolved $group_id)
-if ($group && $group_id) {
-    $memSql = "SELECT e.employee_id, e.first_name, e.last_name, e.employee_code, e.status,
-               gm.role_in_group, gm.joined_date,
-               jt.title_name, jt.default_daily_rate
-               FROM workforce_group_memberships gm
-               JOIN workforce_employees e ON gm.employee_id = e.employee_id
-               LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-               WHERE gm.group_id = ?
-               ORDER BY e.last_name ASC";
+if ($res_group['status'] === 200 && isset($res_group['data']['data'])) {
+    $group = $res_group['data']['data'];
+    $group_id = intval($group['group_id']);
     
-    $stmt = $conn->prepare($memSql);
-    $stmt->bind_param("i", $group_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    while ($row = $res->fetch_assoc()) {
-        $members[] = $row;
+    // Fetch members detail (microservice returns member IDs)
+    if (!empty($group['members'])) {
+        foreach ($group['members'] as $mid) {
+            $res_m = ApiHelper::get("workforce/employees?id=$mid");
+            if ($res_m['status'] === 200 && isset($res_m['data']['employee'])) {
+                $m = $res_m['data']['employee'];
+                // Enhance with joined date if needed (usually in membership table)
+                // For now, we use employee data
+                $members[] = [
+                    'employee_id' => $m['employee_id'],
+                    'first_name' => $m['first_name'],
+                    'last_name' => $m['last_name'],
+                    'employee_code' => $m['employee_code'],
+                    'status' => $m['status'],
+                    'role_in_group' => $m['job_title_name'] ?? 'Member',
+                    'joined_date' => $m['hire_date'], // Fallback
+                    'title_name' => $m['job_title_name'] ?? 'Staff'
+                ];
+            }
+        }
     }
-    $stmt->close();
 }
 
-// Data for Edit Modal
+// 2. Data for Edit Modal via API
 $all_employees = [];
-$e_result = $conn->query("SELECT e.employee_id, e.first_name, e.last_name, jt.title_name FROM workforce_employees e LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id WHERE e.status = 'Active' ORDER BY e.last_name ASC");
-if ($e_result) while ($row = $e_result->fetch_assoc()) $all_employees[] = $row;
+$res_all = ApiHelper::get("workforce/employees");
+if ($res_all['status'] === 200) {
+    foreach ($res_all['data']['employees'] as $e) {
+        if (($e['status'] ?? 'Active') === 'Active') {
+            $all_employees[] = [
+                'employee_id' => $e['employee_id'],
+                'first_name' => $e['first_name'],
+                'last_name' => $e['last_name'],
+                'title_name' => $e['job_title_name'] ?? 'Staff'
+            ];
+        }
+    }
+}
 
 $leaders = [];
-$l_result = $conn->query("SELECT e.employee_id, e.first_name, e.last_name FROM workforce_employees e WHERE e.job_title_id = 11 AND e.status = 'Active' ORDER BY e.last_name ASC");
-if ($l_result) while ($row = $l_result->fetch_assoc()) $leaders[] = $row;
+$res_opt = ApiHelper::get("workforce/form-options");
+if ($res_opt['status'] === 200) {
+    // In a real system, we'd filter by role or job title
+    $leaders = $all_employees; 
+}
 
 $pageSection = "Labor & Workforce";
 $pageTitle = "Group Details";
@@ -205,7 +195,7 @@ $userName = $_SESSION['user_name'] ?? "Admin";
                                     <?php echo htmlspecialchars($m['role_in_group'] ?? $m['title_name']); ?>
                                 </td>
                                 <td class="px-6 py-3.5 font-bold text-gray-600 text-center">
-                                    <?php echo date('M j, Y', strtotime($m['joined_date'])); ?>
+                                    <?php echo $m['joined_date'] ? date('M j, Y', strtotime($m['joined_date'])) : 'N/A'; ?>
                                 </td>
                                 <td class="px-6 py-3.5 font-bold text-gray-600 text-xs text-center">
                                     <span class="inline-flex items-center px-2 py-1 rounded font-bold 

@@ -10,14 +10,7 @@ header('Content-Type: application/json');
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../../../config/config.php';
-
-// Create database connection
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
-    exit;
-}
-$conn->set_charset("utf8mb4");
+require_once __DIR__ . '/../../../config/database.php';
 
 // Get request data
 $input = json_decode(file_get_contents('php://input'), true);
@@ -29,26 +22,25 @@ if (empty($template)) {
     exit;
 }
 
-// Get project info if specified
+// Get project info if specified from API
 $project = null;
 if ($project_id > 0) {
-    $stmt = $conn->prepare("SELECT p.project_id, p.project_name, p.project_code, p.location, p.total_budget,
-                                   COALESCE((SELECT SUM(e.amount) FROM budget_expenses e WHERE e.project_id = p.project_id AND e.status = 'APPROVED'), 0) as actual_spending
-                            FROM icmis_projects p WHERE p.project_id = ?");
-    $stmt->bind_param("i", $project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $project = [
-            'id' => $row['project_id'],
-            'name' => $row['project_name'],
-            'code' => $row['project_code'],
-            'location' => $row['location'],
-            'total_budget' => floatval($row['total_budget']),
-            'actual_spending' => floatval($row['actual_spending'])
-        ];
+    $res_proj = ApiHelper::get('project/projects');
+    if ($res_proj['status'] === 200) {
+        foreach ($res_proj['data']['projects'] as $p) {
+            if (intval($p['project_id']) === $project_id) {
+                $project = [
+                    'id' => $p['project_id'],
+                    'name' => $p['project_name'],
+                    'code' => $p['project_code'],
+                    'location' => $p['location'],
+                    'total_budget' => floatval($p['total_budget']),
+                    'actual_spending' => floatval($p['actual_spending'] ?? 0)
+                ];
+                break;
+            }
+        }
     }
-    $stmt->close();
 }
 
 $data = [
@@ -71,11 +63,16 @@ try {
                     FROM budget_expenses 
                     WHERE 1=1";
             if ($project_id > 0) {
-                $sql .= " AND project_id = $project_id";
+                $sql .= " AND project_id = ?";
             }
             $sql .= " GROUP BY category ORDER BY category";
             
-            $result = $conn->query($sql);
+            $stmt = $conn->prepare($sql);
+            if ($project_id > 0) {
+                $stmt->bind_param("i", $project_id);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $spent = floatval($row['total_spent']);
@@ -102,11 +99,16 @@ try {
                     LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
                     WHERE 1=1";
             if ($project_id > 0) {
-                $sql .= " AND e.project_id = $project_id";
+                $sql .= " AND e.project_id = ?";
             }
             $sql .= " ORDER BY e.expense_date DESC LIMIT 100";
-            
-            $result = $conn->query($sql);
+
+            $stmt = $conn->prepare($sql);
+            if ($project_id > 0) {
+                $stmt->bind_param("i", $project_id);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $data['rows'][] = [
@@ -129,11 +131,16 @@ try {
                     FROM budget_expenses 
                     WHERE 1=1";
             if ($project_id > 0) {
-                $sql .= " AND project_id = $project_id";
+                $sql .= " AND project_id = ?";
             }
             $sql .= " GROUP BY DATE_FORMAT(expense_date, '%Y-%m') ORDER BY month_year DESC LIMIT 12";
             
-            $result = $conn->query($sql);
+            $stmt = $conn->prepare($sql);
+            if ($project_id > 0) {
+                $stmt->bind_param("i", $project_id);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $outflow = floatval($row['monthly_total']);
@@ -263,11 +270,16 @@ try {
             $sql = "SELECT project_name, project_code, location, total_budget, status 
                     FROM icmis_projects";
             if ($project_id > 0) {
-                $sql .= " WHERE project_id = $project_id";
+                $sql .= " WHERE project_id = ?";
             }
             $sql .= " ORDER BY project_id DESC";
             
-            $result = $conn->query($sql);
+            $stmt = $conn->prepare($sql);
+            if ($project_id > 0) {
+                $stmt->bind_param("i", $project_id);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $data['rows'][] = [
@@ -289,11 +301,16 @@ try {
                     LEFT JOIN icmis_projects p ON pp.project_id = p.project_id
                     WHERE 1=1";
             if ($project_id > 0) {
-                $sql .= " AND pp.project_id = $project_id";
+                $sql .= " AND pp.project_id = ?";
             }
             $sql .= " ORDER BY pp.start_date";
             
-            $result = $conn->query($sql);
+            $stmt = $conn->prepare($sql);
+            if ($project_id > 0) {
+                $stmt->bind_param("i", $project_id);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $data['rows'][] = [
@@ -319,11 +336,16 @@ try {
                     LEFT JOIN workforce_employees e ON t.assigned_to_employee_id = e.employee_id
                     WHERE 1=1";
             if ($project_id > 0) {
-                $sql .= " AND t.project_id = $project_id";
+                $sql .= " AND t.project_id = ?";
             }
             $sql .= " ORDER BY t.due_date LIMIT 100";
             
-            $result = $conn->query($sql);
+            $stmt = $conn->prepare($sql);
+            if ($project_id > 0) {
+                $stmt->bind_param("i", $project_id);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $data['rows'][] = [

@@ -109,10 +109,10 @@ for ($i = 5; $i >= 0; $i--) {
     $trend_map[$m] = 0;
 }
 foreach ($all_expenses as $e) {
-    if (($e['status'] ?? '') === 'APPROVED') {
+    if (($e['status'] ?? '') === 'APPROVED' && !empty($e['expense_date'])) {
         $m = date('M Y', strtotime($e['expense_date']));
         if (isset($trend_map[$m])) {
-            $trend_map[$m] += floatval($e['amount']);
+            $trend_map[$m] += floatval($e['amount'] ?? 0);
         }
     }
 }
@@ -128,10 +128,11 @@ for ($i = 6; $i >= 0; $i--) {
     $att_map[$d] = ['present' => 0, 'late' => 0, 'absent' => 0, 'label' => date('M d', strtotime($d))];
 }
 foreach ($all_attendance as $a) {
-    $d = $a['attendance_date'];
-    if (isset($att_map[$d])) {
-        if ($a['status'] === 'Present') $att_map[$d]['present']++;
-        elseif ($a['status'] === 'Late') $att_map[$d]['late']++;
+    $d = $a['attendance_date'] ?? '';
+    if (!empty($d) && isset($att_map[$d])) {
+        $status = $a['status'] ?? '';
+        if ($status === 'Present') $att_map[$d]['present']++;
+        elseif ($status === 'Late') $att_map[$d]['late']++;
         else $att_map[$d]['absent']++;
     }
 }
@@ -313,8 +314,8 @@ $recent_projects = array_slice($all_projects, 0, 5);
                                 </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        <?php if ($recent_projects && $recent_projects->num_rows > 0): ?>
-                            <?php while($row = $recent_projects->fetch_assoc()): ?>
+                        <?php if (!empty($recent_projects)): ?>
+                            <?php foreach($recent_projects as $row): ?>
                             <tr class="hover:bg-orange-50/30 transition-colors duration-150">
                                 <td class="px-3 py-3 md:px-6 md:py-4">
                                     <div class="text-sm font-bold text-navy-dark"><?php echo htmlspecialchars($row['project_name']); ?></div>
@@ -344,7 +345,7 @@ $recent_projects = array_slice($all_projects, 0, 5);
                                     ₱<?php echo number_format($row['total_budget'], 2); ?>
                                 </td>
                             </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="4" class="px-6 py-12 text-center text-slate-400 text-sm italic">

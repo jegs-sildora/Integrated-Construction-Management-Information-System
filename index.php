@@ -4,6 +4,10 @@ require_once __DIR__ . '/config/config.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -15,6 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="icon" type="image/png" sizes="32x32" href="<?php echo BASE_URL; ?>assets/images/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="<?php echo BASE_URL; ?>assets/images/favicon/favicon-16x16.png">
     <link rel="manifest" href="<?php echo BASE_URL; ?>assets/images/favicon/site.webmanifest">
+    <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     
     <style>
         .login-bg {
@@ -72,6 +77,7 @@ if (session_status() === PHP_SESSION_NONE) {
             </div>
 
             <form id="login-form" action="modules/auth/api/login_process.php" method="POST" class="space-y-5">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <div>
                     <label class="block text-xs font-bold text-[#1e293b] uppercase tracking-wide mb-2">Work Email</label>
                     <div class="relative group">
@@ -108,6 +114,7 @@ if (session_status() === PHP_SESSION_NONE) {
             </form>
 
             <form id="signup-form" class="hidden space-y-5 animate-fade-in" action="modules/auth/api/signup_process.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                 <div>
                     <label class="block text-xs font-bold text-[#1e293b] uppercase tracking-wide mb-2">Full Name</label>
                     <div class="relative group">

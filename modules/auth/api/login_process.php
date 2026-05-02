@@ -13,6 +13,12 @@ if (session_status() === PHP_SESSION_NONE) {
 // 3. Handle Form Submission
 if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['login'])) {
     
+    // CSRF Validation
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+        header("Location: " . BASE_URL . "index.php?error=Invalid session token. Please refresh.");
+        exit();
+    }
+    
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 

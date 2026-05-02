@@ -4,24 +4,21 @@
  * Location: /modules/workforce/dashboard.php
  */
 
-// 1. Connection & Context
-include __DIR__ . '/project_context.php';
-$conn = getWorkforceConnection();
+if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
-// Get selected project ID from global context
-$selected_project_id = getProjectContext($conn);
+// 1. Project Context
+$selected_project_id = $_GET['project_id'] ?? $_SESSION['selected_project_id'] ?? 0;
 
 // Fetch all projects for dropdown
-$sql_projects = "SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC";
-$result_projects = $conn->query($sql_projects);
 $projects = [];
-if ($result_projects && $result_projects->num_rows > 0) {
-    while ($row = $result_projects->fetch_assoc()) {
-        $projects[] = $row;
-    }
+$res_projects = ApiHelper::get("project/projects");
+if ($res_projects['status'] === 200) {
+    $projects = $res_projects['data']['projects'] ?? [];
 }
 
-// 2. Fetch Dashboard Statistics
+// 2. Fetch Dashboard Statistics via API
 $stats = [
     'total_employees' => 0,
     'active_employees' => 0,
@@ -30,55 +27,27 @@ $stats = [
     'inactive_employees' => 0
 ];
 
-// Determine project filter clause
-$project_filter = ($selected_project_id > 0) ? "AND wa.project_id = $selected_project_id" : "";
-
-// A. Employee Counts
-$sql_emp = "
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN e.status = 'Active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN e.status = 'On Leave' THEN 1 ELSE 0 END) as on_leave,
-        SUM(CASE WHEN e.status = 'Terminated' OR e.status = 'Resigned' THEN 1 ELSE 0 END) as inactive
-    FROM workforce_employees e
-    LEFT JOIN workforce_assignments wa ON e.employee_id = wa.employee_id
-    WHERE 1=1 $project_filter
-";
-$res_emp = $conn->query($sql_emp);
-if ($row = $res_emp->fetch_assoc()) {
-    $stats['total_employees'] = $row['total'];
-    $stats['active_employees'] = $row['active'];
-    $stats['on_leave'] = $row['on_leave'];
-    $stats['inactive_employees'] = $row['inactive'];
+$res_stats = ApiHelper::get("workforce/employees/stats?project_id=$selected_project_id");
+if ($res_stats['status'] === 200 && isset($res_stats['data']['data'])) {
+    $stats = $res_stats['data']['data'];
 }
 
-// B. Attendance Rate (Today)
-$today = date('Y-m-d');
-$active_count = $stats['active_employees'] > 0 ? $stats['active_employees'] : 1; // Prevent div by zero
+// Ensure all expected keys exist to prevent warnings
+$stats = array_merge([
+    'total_employees' => 0,
+    'active_employees' => 0,
+    'on_leave' => 0,
+    'attendance_rate' => 0,
+    'inactive_employees' => 0
+], (array)$stats);
 
-$sql_att = "
-    SELECT COUNT(DISTINCT employee_id) as present 
-    FROM workforce_attendance 
-    WHERE attendance_date = '$today' AND status = 'Present' 
-    " . ($selected_project_id > 0 ? "AND project_id = $selected_project_id" : "");
-    
-$res_att = $conn->query($sql_att);
-$present_count = ($res_att->fetch_assoc())['present'] ?? 0;
-$stats['attendance_rate'] = round(($present_count / $active_count) * 100, 1);
-
-// C. Recent Activity Logs
+// 3. Recent Activity Logs via API
 $logs = [];
-$log_sql = "
-    SELECT al.action, al.details, al.created_at, u.full_name as username
-    FROM icmis_audit_logs al
-    LEFT JOIN icmis_users u ON al.user_id = u.user_id
-    WHERE al.module = 'WORKFORCE'
-    ORDER BY al.created_at DESC LIMIT 5
-";
-$log_res = $conn->query($log_sql);
-if ($log_res) {
-    while($r = $log_res->fetch_assoc()) $logs[] = $r;
+$res_logs = ApiHelper::get("auth/audit_logs?module=Workforce&per_page=5");
+if ($res_logs['status'] === 200) {
+    $logs = $res_logs['data']['logs'] ?? [];
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -166,7 +135,7 @@ if ($log_res) {
                     <div class="space-y-1">
                         <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Attendance Rate</p>
                         <div class="flex items-baseline gap-2">
-                            <h3 class="text-3xl font-black text-gray-900"><?= $stats['attendance_rate'] ?>%</h3>
+                            <h3 class="text-3xl font-black text-gray-900"><?= ($stats['attendance_rate'] ?? 0) ?>%</h3>
                             <span class="text-sm text-gray-400">Present</span>
                         </div>
                     </div>
@@ -254,7 +223,6 @@ if ($log_res) {
                             <tr>
                                 <th class="px-6 py-3">Action</th>
                                 <th class="px-6 py-3">User</th>
-                                <th class="px-6 py-3">Details</th>
                                 <th class="px-6 py-3 text-right">Time</th>
                             </tr>
                         </thead>
@@ -273,10 +241,7 @@ if ($log_res) {
                                         </span>
                                     </td>
                                     <td class="px-6 py-3 font-medium text-gray-900">
-                                        <?= htmlspecialchars($log['username'] ?? 'System') ?>
-                                    </td>
-                                    <td class="px-6 py-3 text-gray-500 font-mono text-xs truncate max-w-xs">
-                                        <?= htmlspecialchars(mb_strimwidth($log['details'], 0, 50, "...")) ?>
+                                        <?= htmlspecialchars($log['user_name'] ?? 'System') ?>
                                     </td>
                                     <td class="px-6 py-3 text-right text-gray-400 text-xs">
                                         <?= date('M d, H:i', strtotime($log['created_at'])) ?>

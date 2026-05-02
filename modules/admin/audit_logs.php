@@ -172,10 +172,10 @@ $filter_date   = $_GET['date'] ?? '';
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
                                             <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xs font-bold border border-gray-200">
-                                                <?= strtoupper(substr($row['username'] ?? 'S', 0, 2)) ?>
+                                                <?= strtoupper(substr($row['user_name'] ?? 'S', 0, 2)) ?>
                                             </div>
                                             <div>
-                                                <p class="text-sm font-bold text-gray-800"><?= htmlspecialchars($row['username'] ?? 'System') ?></p>
+                                                <p class="text-sm font-bold text-gray-800"><?= htmlspecialchars($row['user_name'] ?? 'System') ?></p>
                                                 <p class="text-xs text-gray-500"><?= ucfirst(strtolower($row['role'] ?? 'System')) ?></p>
                                             </div>
                                         </div>
