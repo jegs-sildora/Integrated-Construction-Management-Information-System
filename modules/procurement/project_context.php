@@ -1,34 +1,17 @@
 <?php
-/**
- * modules/procurement/project_context.php
- * 
- * Module-specific wrapper for ProjectContext.
- */
+// /modules/procurement/project_context.php
+// Bridging legacy context to Project Microservice
 
-require_once __DIR__ . '/../../core/ProjectContext.php';
+if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
-/**
- * Get the current project context
- */
-function getProjectContext($conn = null) {
-    return ProjectContext::getProjectId();
-}
-
-/**
- * Get the database connection (Legacy Mock support)
- */
-function getProcurementConnection() { 
-    global $conn;
-    if (!isset($conn)) {
-        require_once __DIR__ . '/../../config/database.php';
+class ProjectContext {
+    public static function getProjectId() {
+        return $_SESSION['current_project_id'] ?? 0;
     }
-    return $conn; 
+    
+    public static function getProjectDetails($id) {
+        $res = ApiHelper::get("project/projects/$id");
+        return $res['data']['project'] ?? null;
+    }
 }
-
-/**
- * Clear project context
- */
-function clearProjectContext() {
-    ProjectContext::clear();
-}
-?>

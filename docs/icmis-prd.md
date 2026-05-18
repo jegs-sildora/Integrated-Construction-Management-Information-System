@@ -58,7 +58,9 @@ The system is decomposed into five (5) independent functional modules, each acti
 
 ### 3.2 Architectural Requirements
 - **Independent Deployment:** Each service has its own codebase and is packaged as a Docker container.
-- **Database Isolation:** **Strict No-Shared-Database Rule.** Each service has its own dedicated PostgreSQL database.
+- **Database Architecture:**
+  - **Enterprise Design:** Isolated data management with dedicated databases per service.
+  - **MVP/Capstone Implementation:** Optimized for cost and simplicity on free-tier platforms using a **Shared Database Microservices** pattern. All services connect to a single PostgreSQL instance while maintaining logical domain boundaries.
 - **API Gateway:** A **Native PHP Gateway** serves as the single entry point, routing requests to the appropriate backend microservice via cURL.
 - **Inter-Service Communication:** Synchronous **REST APIs** are used for data exchange between services (e.g., Workforce Service querying Project Service for valid phase IDs).
 - **Authentication:** JWT (JSON Web Tokens) are used for secure, stateless communication between the frontend, gateway, and backend services.
@@ -77,13 +79,13 @@ The system is decomposed into five (5) independent functional modules, each acti
 ---
 
 ## 4. Database Design (PostgreSQL)
-Each service manages its own schema. Cross-service data is handled via API requests, ensuring strict boundary enforcement.
+Each service manages its own set of tables within the shared database. Cross-service data is still handled via API requests, ensuring architectural integrity.
 
-- **`db_auth`**: Users, roles, permissions, audit logs.
-- **`db_project`**: Projects, phases, tasks.
-- **`db_budget`**: Proposals, line items, expenses.
-- **`db_procurement`**: Suppliers, purchase orders, inventory, stock movements.
-- **`db_workforce`**: Employees, groups, assignments, attendance, payroll records.
+- **`auth_tables`**: Users, roles, permissions, audit logs.
+- **`project_tables`**: Projects, phases, tasks.
+- **`budget_tables`**: Proposals, line items, expenses.
+- **`procurement_tables`**: Suppliers, purchase orders, inventory, stock movements.
+- **`workforce_tables`**: Employees, groups, assignments, attendance, payroll records.
 
 ---
 
@@ -100,12 +102,12 @@ A `docker-compose.yml` will orchestrate the following:
 - 5x PostgreSQL containers (one for each service)
 
 ### 5.2 Production Deployment (Render)
-1. **Web Services:** Each PHP microservice is deployed as a Render Web Service using the `Dockerfile` from its respective directory.
-2. **Managed Databases:** Five independent Render PostgreSQL instances are provisioned to satisfy the isolation requirement.
+1. **Web Services:** Each PHP microservice is deployed as a Render Web Service using its respective `Dockerfile`.
+2. **Managed Database:** One central PostgreSQL instance is provisioned.
 3. **Environment Variables:**
-   - `DATABASE_URL`: Connection string for the service-specific DB.
-   - `JWT_SECRET`: Shared secret for token validation.
-   - `SERVICE_URLS`: Internal mapping for the Gateway to route requests.
+   - `DATABASE_URL`: Shared connection string for the central DB, used by all services.
+   - `JWT_SECRET`: Shared secret for token validation across the ecosystem.
+   - `SERVICE_URLS`: Internal Render hostnames for inter-service communication via the Gateway.
 
 ---
 

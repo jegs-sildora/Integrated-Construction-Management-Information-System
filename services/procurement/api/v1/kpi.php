@@ -1,47 +1,34 @@
 <?php
 /**
- * Procurement KPI API v1
- * Returns counts of purchase orders by status for a project.
+ * kpi.php - Procurement Analytics API v1
  */
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
+use Procurement\Database;
+
 $db = Database::getConnection();
 
 try {
-    $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
-
-    $where = '';
-    $params = [];
-    if ($project_id > 0) {
-        $where = 'WHERE project_id = ?';
-        $params[] = $project_id;
-    }
-
-    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM purchase_orders $where");
-    $stmtTotal->execute($params);
-    $total = intval($stmtTotal->fetchColumn());
-
-    $stmtPending = $db->prepare("SELECT COUNT(*) FROM purchase_orders $where" . ($where ? " AND status = 'PENDING'" : " WHERE status = 'PENDING'"));
-    $stmtPending->execute($params);
-    $pending = intval($stmtPending->fetchColumn());
-
-    $stmtApproved = $db->prepare("SELECT COUNT(*) FROM purchase_orders $where" . ($where ? " AND status = 'APPROVED'" : " WHERE status = 'APPROVED'"));
-    $stmtApproved->execute($params);
-    $approved = intval($stmtApproved->fetchColumn());
-
-    $stmtCompleted = $db->prepare("SELECT COUNT(*) FROM purchase_orders $where" . ($where ? " AND status = 'COMPLETED'" : " WHERE status = 'COMPLETED'"));
-    $stmtCompleted->execute($params);
-    $completed = intval($stmtCompleted->fetchColumn());
-
+    // Total Inventory Value
+    $stmtVal = $db->query("SELECT SUM(quantity * 0) as total_value FROM inventory_items"); // Placeholder calculation
+    
+    // Recent Activities
+    $stmtRec = $db->query("(SELECT 'Stock In' as type, item_id, quantity, received_date as date FROM stock_in)
+                          UNION ALL
+                          (SELECT 'Stock Out' as type, item_id, quantity, issue_date as date FROM stock_out)
+                          ORDER BY date DESC LIMIT 10");
+                          
     echo json_encode([
         'success' => true,
-        'total' => $total,
-        'pending' => $pending,
-        'approved' => $approved,
-        'completed' => $completed
+        'kpi' => [
+            'total_items' => $db->query("SELECT COUNT(*) FROM inventory_items")->fetchColumn(),
+            'active_suppliers' => $db->query("SELECT COUNT(*) FROM suppliers")->fetchColumn(),
+            'pending_orders' => $db->query("SELECT COUNT(*) FROM purchase_orders WHERE status = 'Pending'")->fetchColumn(),
+            'recent_activities' => $stmtRec->fetchAll()
+        ]
     ]);
 } catch (Exception $e) {
-    http_response_code(500);
+    http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

@@ -1,135 +1,87 @@
-# 🚀 Render Deployment Plan: ICMIS Microservices
+# 🚀 Deployment Guide: ICMIS on Render (Free Tier)
 
-This document outlines the strategy for deploying the ICMIS (Integrated Construction Management Information System) onto **Render.com**.
-
-## 🏗️ Architecture Overview on Render
-
-ICMIS will be deployed using a combination of **Web Services**, **Private Services**, and **Managed PostgreSQL** instances.
-
-- **Frontend (Web Service)**: The monolithic PHP UI.
-- **Gateway (Web Service)**: Public-facing API entry point.
-- **Microservices (Private Services)**: Internal-only PHP services (`auth`, `project`, etc.).
-- **Databases (Managed PostgreSQL)**: Isolated DB instances per service.
+This guide explains how to deploy the microservices-based ICMIS application to Render using a **Shared Database Architecture** to stay within the Free Tier limits.
 
 ---
 
-## 📋 Prerequisites
-1.  **GitHub Repository**: Ensure the codebase is pushed to a GitHub repo.
-2.  **Render Account**: A Render account (Team plan recommended for microservices).
-3.  **Environment Variables**: Prepare a list of production credentials.
+## 1. Local Development (Docker)
+
+To run the system locally, ensure you have **Docker Desktop** installed.
+
+1. Clone the repository.
+2. Open a terminal in the root directory.
+3. Start the environment:
+   ```bash
+   docker-compose up -d
+   ```
+4. Access the system at:
+   - **Frontend:** [http://localhost:8080](http://localhost:8080)
+   - **API Gateway:** [http://localhost:8000](http://localhost:8000)
 
 ---
 
-## 🛠️ Step 1: Database Provisioning
-Render offers managed PostgreSQL. For strict isolation, we will create one database instance per service.
+## 2. Production Deployment (Render.com)
 
-| Service | Database Name |
-| :--- | :--- |
-| Auth | `icmis_auth` |
-| Project | `icmis_project` |
-| Budget | `icmis_budget` |
-| Procurement | `icmis_procurement` |
-| Workforce | `icmis_workforce` |
-| Reports | `icmis_reports` |
+### Phase 1: Provision the Shared Database
+Create **ONE** database instance that all microservices will share.
 
-**Action**: For each database, note the **Internal Database URL** (e.g., `postgres://user:pass@dpg-xxx:5432/icmis_auth`).
+1. Go to **New +** -> **PostgreSQL**.
+2. **Name:** `icmis-db-main`
+3. **Region:** `Oregon (US West)` (⚠️ Crucial: All services must be in the same region).
+4. **PostgreSQL Version:** `16`.
+5. Click **Create Database**.
+6. Once ready, copy the **Internal Database URL**.
+   - *Example:* `postgresql://user:pass@dpg-xxx-a/icmis_db`
 
----
+### Phase 2: Deploy Backend Microservices
+Repeat these steps for each folder in `/services` (**except** `gateway`).
 
-## 🛠️ Step 2: Service Orchestration (`render.yaml`)
-The most efficient way to deploy ICMIS is using a **Blueprint Spec**. Create a `render.yaml` in the root directory.
+1. Go to **New +** -> **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the service:
+   - **Name:** `icmis-{service-name}` (e.g., `icmis-auth`, `icmis-project`).
+   - **Runtime:** `Docker`.
+   - **Region:** `Oregon (US West)`.
+   - **Root Directory:** `services/{name}` (e.g., `services/auth`).
+   - **Dockerfile Path:** `.` (Uses the Dockerfile inside that folder).
+   - **Instance Type:** `Free`.
+4. Add **Environment Variable**:
+   - **Key:** `DATABASE_URL`
+   - **Value:** (Paste the **Internal Database URL** from Phase 1).
+5. Click **Create Web Service**.
+6. **Note:** Once created, copy the **Internal Hostname** for each (e.g., `http://icmis-auth`).
 
-```yaml
-services:
-  # 1. API Gateway (Public)
-  - type: web
-    name: icmis-gateway
-    env: php
-    plan: starter
-    rootDir: services/gateway
-    envVars:
-      - key: AUTH_SERVICE_URL
-        value: http://icmis-auth:10000
-      - key: PROJECT_SERVICE_URL
-        value: http://icmis-project:10000
-      # ... other service URLs
+### Phase 3: Deploy the API Gateway
+1. Go to **New +** -> **Web Service**.
+2. **Name:** `icmis-gateway`.
+3. **Runtime:** `Docker`.
+4. **Root Directory:** `services/gateway`.
+5. Add **Environment Variables** for all services:
+   - `AUTH_SERVICE_URL`: `http://icmis-auth`
+   - `PROJECT_SERVICE_URL`: `http://icmis-project`
+   - `BUDGET_SERVICE_URL`: `http://icmis-budget`
+   - `PROCUREMENT_SERVICE_URL`: `http://icmis-procurement`
+   - `WORKFORCE_SERVICE_URL`: `http://icmis-workforce`
+   - `REPORTS_SERVICE_URL`: `http://icmis-reports`
+   - `ADMIN_SERVICE_URL`: `http://icmis-admin`
+6. Click **Create**.
+7. Copy the **Public URL** (e.g., `https://icmis-gateway.onrender.com`).
 
-  # 2. Auth Service (Private)
-  - type: web
-    name: icmis-auth
-    env: php
-    plan: starter
-    rootDir: services/auth
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: icmis-auth-db
-          property: connectionString
-
-  # 3. Project Service (Private)
-  - type: web
-    name: icmis-project
-    env: php
-    plan: starter
-    rootDir: services/project
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: icmis-project-db
-          property: connectionString
-
-  # 4. Frontend (Public)
-  - type: web
-    name: icmis-frontend
-    env: php
-    plan: starter
-    rootDir: .
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: GATEWAY_URL
-        fromService:
-          name: icmis-gateway
-          property: host
-```
+### Phase 4: Deploy the Frontend (Main UI)
+1. Go to **New +** -> **Web Service**.
+2. **Name:** `icmis-frontend`.
+3. **Runtime:** `Docker`.
+4. **Root Directory:** (Leave **EMPTY**).
+5. **Dockerfile Path:** `./services/gateway/Dockerfile`.
+6. Add **Environment Variable**:
+   - **Key:** `GATEWAY_HOST`
+   - **Value:** (Paste the **Public URL** of the gateway from Phase 3).
+7. Click **Create**.
 
 ---
 
-## 🛠️ Step 3: Environment Variable Mapping
-Configure the following sensitive variables in the Render Dashboard (or `render.yaml` secret files):
+## 3. Database Initialization (One-Time Setup)
+Since you are using a managed database on Render, you must run the SQL scripts manually once.
 
-| Service | Variable | Value/Description |
-| :--- | :--- | :--- |
-| Auth | `JWT_SECRET` | A long random string for token signing. |
-| All | `APP_DEBUG` | `false` in production. |
-| Frontend | `BASE_URL` | The public URL generated by Render for the frontend. |
-
----
-
-## 🛠️ Step 4: Database Initialization
-Since Render's managed PostgreSQL instances are empty by default, you must run the initialization scripts:
-
-1.  Connect to each database using a tool like `psql` or the Render Shell.
-2.  Execute the corresponding SQL script from `/db/init/*.sql`.
-    - *Example*: `psql $DATABASE_URL -f db/init/auth.sql`
-
----
-
-## 🛠️ Step 5: Health Checks & Verification
-Configure health check paths in the Render dashboard for each service:
-- **Gateway**: `/` (Should return 200)
-- **Services**: `/api/v1/validate.php` or similar stubs.
-
-### Verification Flow:
-1.  Access the **Frontend URL**.
-2.  Try to **Sign Up** (Verifies Frontend -> Gateway -> Auth Service -> Auth DB).
-3.  Navigate to **Projects** (Verifies Frontend -> Gateway -> Project Service).
-4.  Check **Audit Logs** (Verifies Cross-Service Logging).
-
----
-
-## ⚠️ Important Considerations for Render
-1.  **CORS**: The Gateway `index.php` must allow the Frontend's Render URL in its `Access-Control-Allow-Origin` header.
-2.  **Internal Networking**: Use internal URLs (e.g., `http://service-name:10000`) for communication between the Gateway and Backend services to save on latency and costs.
-3.  **PHP Version**: Render defaults to the latest stable PHP. Ensure `composer.json` (if used) or environment settings specify PHP 8.4+.
-4.  **Ephemeral Disk**: Remember that the local file system on Render is ephemeral. Any uploaded files (e.g., procurement receipts) should be stored in **Cloudinary** or **AWS S3**.
+1. Connect to your Render DB using a tool like **DBeaver** or **pgAdmin** using the **External Database URL**.
+2. Execute the scripts in `db/init/` and `db/seed/` in order.

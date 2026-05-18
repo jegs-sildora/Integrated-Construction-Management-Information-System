@@ -56,15 +56,24 @@ $services = [
     'budget' => getenv('BUDGET_SERVICE_URL') ?: 'http://budget-service',
     'procurement' => getenv('PROCUREMENT_SERVICE_URL') ?: 'http://procurement-service',
     'workforce' => getenv('WORKFORCE_SERVICE_URL') ?: 'http://workforce-service',
-    'reports' => getenv('REPORTS_SERVICE_URL') ?: 'http://reports-service'
+    'reports' => getenv('REPORTS_SERVICE_URL') ?: 'http://reports-service',
+    'admin' => getenv('ADMIN_SERVICE_URL') ?: 'http://admin-service'
 ];
 
 $requestUri = $_SERVER['REQUEST_URI'];
 $method = $_SERVER['REQUEST_METHOD'];
 $headers = apache_request_headers();
 
+// Normalize headers (case-insensitive keys)
+$normalizedHeaders = array_change_key_case($headers, CASE_LOWER);
+
 // Standardize path: /api/v1/{service}/{path}
 $path = parse_url($requestUri, PHP_URL_PATH);
+// Remove script name if accessing via index.php directly (e.g. in some Apache configs)
+$scriptName = $_SERVER['SCRIPT_NAME'];
+if (strpos($path, $scriptName) === 0) {
+    $path = substr($path, strlen($scriptName));
+}
 $pathParts = explode('/', ltrim($path, '/'));
 
 // Check for /api/v1/ prefix
@@ -93,7 +102,7 @@ $fileName = count($subPathParts) > 0 ? implode('/', $subPathParts) : 'index';
 $targetBaseUrl = $services[$serviceKey];
 
 // Map to v1 file structure: http://service/api/v1/{fileName}.php
-$targetUrl = $targetBaseUrl . '/api/v1/' . $fileName . '.php';
+$targetUrl = rtrim($targetBaseUrl, '/') . '/api/v1/' . $fileName . '.php';
 
 $queryParams = [];
 if (!empty($_SERVER['QUERY_STRING'])) {
@@ -118,7 +127,7 @@ $publicRoutes = [
 $isPublicRoute = isset($publicRoutes[$serviceKey]) && in_array($fileName, $publicRoutes[$serviceKey]);
 
 if (!$isPublicRoute) {
-    $authHeader = $headers['Authorization'] ?? '';
+    $authHeader = $normalizedHeaders['authorization'] ?? '';
     if (empty($authHeader)) {
         http_response_code(401);
         echo json_encode(['error' => 'Authorization header missing']);
@@ -126,7 +135,7 @@ if (!$isPublicRoute) {
     }
 
     // Call Auth Service internally to validate token (v1)
-    $ch = curl_init($services['auth'] . '/api/v1/validate.php');
+    $ch = curl_init(rtrim($services['auth'], '/') . '/api/v1/validate.php');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: $authHeader"]);
     $authResponse = curl_exec($ch);
@@ -139,7 +148,8 @@ if (!$isPublicRoute) {
     }
     
     // Token is valid. Inject user data into headers for downstream services.
-    $userData = json_decode($authResponse, true)['user'] ?? [];
+    $authData = json_decode($authResponse, true);
+    $userData = $authData['user'] ?? [];
     $headers['X-User-ID'] = $userData['user_id'] ?? '';
     $headers['X-User-Role'] = $userData['user_role'] ?? '';
     $headers['X-User-Name'] = $userData['user_name'] ?? '';
@@ -151,18 +161,28 @@ $ch = curl_init($targetUrl);
 // Prepare headers for forwarding
 $forwardHeaders = [];
 foreach ($headers as $key => $value) {
-    if (!in_array(strtolower($key), ['host', 'content-length', 'expect'])) {
+    $lowerKey = strtolower($key);
+    if (!in_array($lowerKey, ['host', 'content-length', 'expect', 'connection', 'transfer-encoding'])) {
         $forwardHeaders[] = "$key: $value";
     }
+}
+
+// Ensure Content-Type is set for POST/PUT
+if (!isset($normalizedHeaders['content-type']) && in_array($method, ['POST', 'PUT', 'PATCH'])) {
+    $forwardHeaders[] = "Content-Type: application/json";
 }
 
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $forwardHeaders);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HEADER, true);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
-if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH' || $method === 'DELETE') {
-    curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents('php://input'));
+if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
+    $input = file_get_contents('php://input');
+    if (!empty($input)) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
+    }
 }
 
 $response = curl_exec($ch);
@@ -170,7 +190,7 @@ $response = curl_exec($ch);
 if ($response === false) {
     $error = curl_error($ch);
     http_response_code(502);
-    echo json_encode(['error' => "Bad Gateway: Service '$serviceKey' unreachable", 'details' => $error]);
+    echo json_encode(['error' => "Bad Gateway: Service '$serviceKey' unreachable", 'details' => $error, 'url' => $targetUrl]);
     exit;
 }
 
@@ -183,7 +203,7 @@ $resBody = substr($response, $headerSize);
 // Forward response headers
 $headerLines = explode("\r\n", $resHeaders);
 foreach ($headerLines as $line) {
-    if (!empty($line) && !preg_match('/^(Transfer-Encoding|Connection|Content-Length):/i', $line)) {
+    if (!empty($line) && !preg_match('/^(Transfer-Encoding|Connection|Content-Length|HTTP\/)/i', $line)) {
         header($line);
     }
 }

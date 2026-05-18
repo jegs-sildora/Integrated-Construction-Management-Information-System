@@ -43,7 +43,7 @@ services:
   auth-service:
     build: ./services/auth
     environment:
-      - DATABASE_URL=pgsql://postgres:postgres@db_auth:5432/auth
+      - DATABASE_URL=pgsql://postgres:postgres@db_main:5432/icmis_db
     volumes:
       - ./services/auth:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
@@ -53,7 +53,7 @@ services:
   project-service:
     build: ./services/project
     environment:
-      - DATABASE_URL=pgsql://postgres:postgres@db_project:5432/project
+      - DATABASE_URL=pgsql://postgres:postgres@db_main:5432/icmis_db
     volumes:
       - ./services/project:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
@@ -63,7 +63,7 @@ services:
   budget-service:
     build: ./services/budget
     environment:
-      - DATABASE_URL=pgsql://postgres:postgres@db_budget:5432/budget
+      - DATABASE_URL=pgsql://postgres:postgres@db_main:5432/icmis_db
     volumes:
       - ./services/budget:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
@@ -73,7 +73,7 @@ services:
   procurement-service:
     build: ./services/procurement
     environment:
-      - DATABASE_URL=pgsql://postgres:postgres@db_procurement:5432/procurement
+      - DATABASE_URL=pgsql://postgres:postgres@db_main:5432/icmis_db
     volumes:
       - ./services/procurement:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
@@ -83,7 +83,7 @@ services:
   workforce-service:
     build: ./services/workforce
     environment:
-      - DATABASE_URL=pgsql://postgres:postgres@db_workforce:5432/workforce
+      - DATABASE_URL=pgsql://postgres:postgres@db_main:5432/icmis_db
     volumes:
       - ./services/workforce:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
@@ -93,100 +93,45 @@ services:
   reports-service:
     build: ./services/reports
     environment:
-      - DATABASE_URL=pgsql://postgres:postgres@db_reports:5432/reports
+      - DATABASE_URL=pgsql://postgres:postgres@db_main:5432/icmis_db
     volumes:
       - ./services/reports:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
-  # --- POSTGRESQL DATABASES ---
-  db_auth:
-    image: postgres:16-alpine
-    restart: always
+  admin-service:
+    build: ./services/admin
     environment:
-      POSTGRES_DB: auth
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      - DATABASE_URL=pgsql://postgres:postgres@db_main:5432/icmis_db
     volumes:
-      - ./db/init/auth.sql:/docker-entrypoint-initdb.d/init.sql
-      - auth_data:/var/lib/postgresql/data
+      - ./services/admin:/var/www/html
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
     networks:
       - icmis_network
 
-  db_project:
+  # --- SINGLE SHARED POSTGRESQL DATABASE ---
+  db_main:
     image: postgres:16-alpine
     restart: always
     environment:
-      POSTGRES_DB: project
+      POSTGRES_DB: icmis_db
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
-      - ./db/init/project.sql:/docker-entrypoint-initdb.d/init.sql
-      - project_data:/var/lib/postgresql/data
-    networks:
-      - icmis_network
-
-  db_budget:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: budget
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./db/init/budget.sql:/docker-entrypoint-initdb.d/init.sql
-      - budget_data:/var/lib/postgresql/data
-    networks:
-      - icmis_network
-
-  db_procurement:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: procurement
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./db/init/procurement.sql:/docker-entrypoint-initdb.d/init.sql
-      - procurement_data:/var/lib/postgresql/data
-    networks:
-      - icmis_network
-
-  db_workforce:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: workforce
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./db/init/workforce.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./db/seed/workforce_seed.sql:/docker-entrypoint-initdb.d/seed.sql
-      - workforce_data:/var/lib/postgresql/data
-    networks:
-      - icmis_network
-
-  db_reports:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: reports
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./db/init/reports.sql:/docker-entrypoint-initdb.d/init.sql
-      - reports_data:/var/lib/postgresql/data
+      - ./db/init/auth.sql:/docker-entrypoint-initdb.d/01-auth.sql
+      - ./db/init/project.sql:/docker-entrypoint-initdb.d/02-project.sql
+      - ./db/init/budget.sql:/docker-entrypoint-initdb.d/03-budget.sql
+      - ./db/init/procurement.sql:/docker-entrypoint-initdb.d/04-procurement.sql
+      - ./db/init/workforce.sql:/docker-entrypoint-initdb.d/05-workforce.sql
+      - ./db/init/reports.sql:/docker-entrypoint-initdb.d/06-reports.sql
+      - ./db/seed/workforce_seed.sql:/docker-entrypoint-initdb.d/99-workforce_seed.sql
+      - db_data:/var/lib/postgresql/data
     networks:
       - icmis_network
 
 volumes:
-  auth_data:
-  project_data:
-  budget_data:
-  procurement_data:
-  workforce_data:
-  reports_data:
+  db_data:
 
 networks:
   icmis_network:

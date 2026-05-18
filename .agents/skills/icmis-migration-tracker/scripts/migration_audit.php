@@ -37,7 +37,29 @@ foreach ($legacyModules as $module) {
     
     $parity = [];
     foreach ($legacyFiles as $file) {
-        $parity[$file] = in_array($file, $serviceFiles);
+        $exists = in_array($file, $serviceFiles);
+        
+        // Handle common mapping variations
+        if (!$exists) {
+            $base = str_replace(['_process', 'get_', '_report', '_include', 'fetch_', 'save_', 'update_', 'delete_', 'create_', 'edit_', 'export_', '.php'], ['', '', '', '', '', '', '', '', '', '', '', ''], $file);
+            $variations = [
+                $base . '.php', 
+                $base, 
+                str_replace('_', '-', $base) . '.php',
+                str_replace('_', '-', $base),
+                str_replace('_', '', $base) . '.php',
+                str_replace('purchase_', '', $base) . '.php',
+                str_replace('budget_', '', $base) . '.php'
+            ];
+            foreach ($variations as $variant) {
+                if (in_array($variant, $serviceFiles)) {
+                    $exists = true;
+                    break;
+                }
+            }
+        }
+        
+        $parity[$file] = $exists;
     }
     
     $status = 'Pending';

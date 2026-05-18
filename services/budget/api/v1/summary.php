@@ -30,7 +30,6 @@ try {
         $proj_data = json_decode($proj_res, true);
         $project_name = $proj_data['project']['project_name'] ?? 'Unknown Project';
     }
-    curl_close($ch);
 
     // 1. Get Approved Budget from Proposals
     $stmt = $conn->prepare("SELECT SUM(total_amount) as total_budget FROM budget_proposals WHERE project_id = ? AND status = 'APPROVED'");
