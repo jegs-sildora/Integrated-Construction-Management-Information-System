@@ -6,7 +6,12 @@ define('BASE_PATH', realpath(dirname(__FILE__) . '/../'));
 
 // 2. Web URL & Gateway Detection
 $is_docker = (getenv('GATEWAY_HOST') || file_exists('/.dockerenv'));
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+
+// Handle SSL Termination behind proxies (like Render)
+$is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') 
+           || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+
+$protocol = $is_https ? "https://" : "http://";
 $http_host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 if ($is_docker) {
