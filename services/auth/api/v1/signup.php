@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+$input = json_decode(file_get_contents('php://input'), true) ?: [];
 $full_name = trim($input['full_name'] ?? '');
 $email = trim($input['email'] ?? '');
 $password = $input['password'] ?? '';
@@ -35,9 +35,9 @@ if ($stmt->fetch()) {
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 $role = 'Admin'; // Default role as per monolithic logic
 
-$stmt = $db->prepare("INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)");
+$stmt = $db->prepare("INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?) RETURNING user_id");
 if ($stmt->execute([$full_name, $email, $hashed_password, $role])) {
-    $new_user_id = $db->lastInsertId();
+    $new_user_id = $stmt->fetchColumn();
     Logger::create('Auth', "New user registered: $full_name ($email)", $new_user_id);
     http_response_code(201);
     echo json_encode(['message' => 'Account created successfully']);
@@ -45,3 +45,4 @@ if ($stmt->execute([$full_name, $email, $hashed_password, $role])) {
     http_response_code(500);
     echo json_encode(['error' => 'Registration failed']);
 }
+

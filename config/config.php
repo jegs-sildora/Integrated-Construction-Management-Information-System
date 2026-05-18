@@ -4,10 +4,29 @@
 // 1. File System Path (Used for PHP includes like require_once)
 define('BASE_PATH', realpath(dirname(__FILE__) . '/../'));
 
-// 2. Web URL Path (Used for links, CSS, JS in HTML)
-// Update 'http://localhost/icmis/' if your URL is different
-define('BASE_URL', 'http://localhost/icmis/');
-define('GATEWAY_URL', 'http://localhost:8000/api/v1/');
+// 2. Web URL & Gateway Detection
+// We dynamically detect if we are running inside Docker or on a local host (Laragon).
+$is_docker = (getenv('GATEWAY_HOST') || file_exists('/.dockerenv'));
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+$http_host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+if ($is_docker) {
+    // Docker Environment
+    define('BASE_URL', $protocol . $http_host . '/');
+    define('GATEWAY_URL', 'http://gateway/api/v1/');
+} else {
+    // Local Host Environment (Laragon / XAMPP)
+    // If you access via http://localhost/icmis/, BASE_URL should reflect that.
+    $script_name = $_SERVER['SCRIPT_NAME'] ?? '';
+    $base_dir = str_replace(['/config/config.php', '\\config\\config.php'], '', $script_name);
+    $base_dir = trim($base_dir, '/');
+    $path_suffix = !empty($base_dir) ? $base_dir . '/' : '';
+    
+    // Default to /icmis/ if we can't detect it, or use the detected path
+    // For Laragon standard setup:
+    define('BASE_URL', $protocol . 'localhost/icmis/'); 
+    define('GATEWAY_URL', 'http://localhost:8000/api/v1/');
+}
 
 // 3. Database Credentials
 define('DB_HOST', 'localhost');

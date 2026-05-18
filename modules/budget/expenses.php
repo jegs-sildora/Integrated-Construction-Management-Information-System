@@ -12,6 +12,10 @@
   // Fetch all projects for dropdown from Project Service
   $projectRes = ApiHelper::get('project/projects');
   $projects = $projectRes['data']['projects'] ?? [];
+  $projectsById = [];
+  foreach ($projects as $proj) {
+    $projectsById[$proj['project_id']] = $proj;
+  }
 
   // Define phases
   $phases = [
@@ -60,10 +64,13 @@
     $summaryRes = ApiHelper::get('budget/summary?project_id=' . $selected_project_id);
     $projectSummary = $summaryRes['data'] ?? [];
 
+    if (isset($projectsById[$selected_project_id])) {
+      $project_name = $projectsById[$selected_project_id]['project_name'] ?? $project_name;
+    }
+
     if (!empty($projectSummary)) {
-        $project_name = $projectSummary['project_name'] ?? 'N/A';
         $total_budget = floatval($projectSummary['total_budget'] ?? 0);
-        $actual_spending = floatval($projectSummary['actual_spending'] ?? 0);
+        $actual_spending = floatval($projectSummary['actual_spending'] ?? $projectSummary['total_spent'] ?? 0);
         $remaining_budget = $total_budget - $actual_spending;
         $budget_utilization = $total_budget > 0 ? ($actual_spending / $total_budget) * 100 : 0;
 
@@ -87,6 +94,19 @@
     // Fetch recent expenses from Budget Service (synced from Procurement)
     $expenseRes = ApiHelper::get('budget/expenses?project_id=' . $selected_project_id . '&limit=10');
     $expenses = $expenseRes['data']['expenses'] ?? [];
+    if (!empty($expenses)) {
+      $suppliersMap = [];
+      $supRes = ApiHelper::get('procurement/suppliers?per_page=1000');
+      if ($supRes['status'] === 200) {
+        foreach (($supRes['data']['suppliers'] ?? []) as $sup) {
+          $suppliersMap[$sup['supplier_id']] = $sup['supplier_name'];
+        }
+      }
+      foreach ($expenses as &$expense) {
+        $sid = $expense['supplier_id'] ?? null;
+        $expense['supplier_name'] = $suppliersMap[$sid] ?? 'N/A';
+      }
+    }
     $total_expenses = count($expenses);
 
     // Check for approved proposals

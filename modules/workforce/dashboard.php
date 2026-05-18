@@ -7,9 +7,10 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/project_context.php';
 
 // 1. Project Context
-$selected_project_id = $_GET['project_id'] ?? $_SESSION['selected_project_id'] ?? 0;
+$selected_project_id = getProjectContext();
 
 // Fetch all projects for dropdown
 $projects = [];

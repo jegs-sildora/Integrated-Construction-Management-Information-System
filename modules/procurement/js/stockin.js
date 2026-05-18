@@ -205,7 +205,7 @@ function closeStockModal() {
 
 // Load Dropdown Options
 function loadApprovedPOs() {
-    const projectIdInput = document.getElementById("current_project_id");
+    const projectIdInput = document.getElementById("selected_project_id");
     const projectId = projectIdInput ? projectIdInput.value : 0;
 
     fetch(`php/get_approved_pos.php?project_id=${projectId}`)
@@ -313,7 +313,7 @@ function toggleRowInput(checkbox) {
    ========================================= */
 function submitStockIn() {
     const poId = document.getElementById("stk_po_select").value;
-    const projectId = document.getElementById("current_project_id").value;
+    const projectId = document.getElementById("selected_project_id").value;
     
     if (!poId) {
         showToastAjax('Please select a Purchase Order first.', 'error');

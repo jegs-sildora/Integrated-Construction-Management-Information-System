@@ -14,20 +14,24 @@ $db = Database::getConnection();
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
+    $id = intval($_GET['id'] ?? $_GET['fetch_id'] ?? 0);
 
     // Handle JSON Input from API Gateway
-    if (empty($_POST)) {
-        $input = json_decode(file_get_contents('php://input'), true);
-        if (is_array($input)) {
-            $_POST = $input;
-        }
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    if (!empty($input)) {
+        $_POST = array_merge($_POST, $input);
     }
 
     // -------------------- FETCH PHASES BY PROJECT (FOR DROPDOWNS) --------------------
-    if ($method === 'POST' && isset($_POST['project_id']) && !isset($_POST['phase_name']) && !isset($_POST['delete_id'])) {
-        $project_id = intval($_POST['project_id']);
+    if ($method === 'GET' && isset($_GET['project_id']) && !isset($_GET['id']) && !isset($_GET['fetch_id'])) {
+        $project_id = intval($_GET['project_id']);
         
-        $stmt = $db->prepare("SELECT phase_id, phase_name FROM project_phases WHERE project_id = ? ORDER BY phase_name ASC");
+        $stmt = $db->prepare("SELECT ph.phase_id, ph.phase_name, ph.start_date, ph.end_date, ph.project_id,
+                                     p.project_name, p.project_code
+                              FROM project_phases ph
+                              LEFT JOIN projects p ON ph.project_id = p.project_id
+                              WHERE ph.project_id = ?
+                              ORDER BY ph.phase_name ASC");
         $stmt->execute([$project_id]);
         $phases = $stmt->fetchAll();
 
@@ -39,8 +43,13 @@ try {
     }
 
     // -------------------- DELETE PHASE --------------------
-    if ($method === 'POST' && isset($_POST['delete_id'])) {
-        $phase_id = intval($_POST['delete_id']);
+    if ($method === 'DELETE' || ($method === 'POST' && isset($_POST['delete_id']))) {
+        $phase_id = $id ?: intval($_POST['delete_id'] ?? 0);
+
+        if ($phase_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid phase ID']);
+            exit;
+        }
 
         // Delete dependent tasks first (same service)
         $db->prepare("DELETE FROM tasks WHERE phase_id = ?")->execute([$phase_id]);
@@ -137,10 +146,10 @@ try {
             // INSERT
             $sql = "INSERT INTO project_phases 
                         (project_id, phase_name, description, start_date, end_date, duration, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING phase_id";
             $stmt = $db->prepare($sql);
             $stmt->execute([$project_id, $phase_name, $description, $start_date, $end_date, $duration, $status]);
-            $phase_id = intval($db->lastInsertId());
+            $phase_id = intval($stmt->fetchColumn());
             $msg = "Phase added successfully";
             Logger::create('Project', "Created new phase: $phase_name", $phase_id);
         }
@@ -150,12 +159,26 @@ try {
     }
 
     // -------------------- FETCH ALL PHASES --------------------
-    $stmt = $db->query("
-        SELECT ph.*, p.project_name 
-        FROM project_phases ph
-        LEFT JOIN projects p ON ph.project_id = p.project_id
-        ORDER BY ph.start_date DESC
-    ");
+    $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+    
+    $where = [];
+    $params = [];
+    
+    if ($project_id > 0) {
+        $where[] = "ph.project_id = ?";
+        $params[] = $project_id;
+    }
+    
+    $whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+
+    $sql = "SELECT ph.*, p.project_name 
+            FROM project_phases ph
+            LEFT JOIN projects p ON ph.project_id = p.project_id
+            $whereSql
+            ORDER BY ph.start_date DESC";
+            
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $phases = $stmt->fetchAll();
 
     echo json_encode([
@@ -167,3 +190,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
+

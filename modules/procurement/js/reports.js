@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function generateReport(templateType, event) {
     const button = event ? event.target.closest('.generate-btn') : document.querySelector(`[data-template="${templateType}"] .generate-btn`);
-    const projectId = document.getElementById('current_project_id')?.value || '0';
+    const projectId = document.getElementById('selected_project_id')?.value || '0';
 
     if (button) setLoadingState(button);
 
@@ -66,7 +66,7 @@ function generateReport(templateType, event) {
  * @param {string} templateType - The report template type
  */
 function regenerateReport(templateType) {
-    const projectId = document.getElementById('current_project_id')?.value || '0';
+    const projectId = document.getElementById('selected_project_id')?.value || '0';
 
     // Log the regeneration
     logReportGeneration(templateType, projectId)
@@ -136,7 +136,7 @@ function logReportGeneration(reportType, projectId) {
  * Load recent reports via AJAX and update the table
  */
 function loadRecentReports() {
-    const projectId = document.getElementById('current_project_id')?.value || '0';
+    const projectId = document.getElementById('selected_project_id')?.value || '0';
     let url = 'php/fetch_recent_reports.php?action=fetch';
     if (projectId && parseInt(projectId) > 0) {
         url += `&project_id=${projectId}`;
@@ -320,7 +320,7 @@ function showSuccessState(button) {
  * Load procurement statistics for the dashboard cards
  */
 function loadProcurementStats() {
-    const projectId = document.getElementById('current_project_id')?.value || 0;
+    const projectId = document.getElementById('selected_project_id')?.value || 0;
     
     // Fetch inventory stats
     fetchInventoryStats(projectId);

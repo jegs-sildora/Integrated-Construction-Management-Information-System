@@ -3,10 +3,8 @@
 // Handles HTML rendering and Printing for Workforce Reports
 session_start();
 require_once __DIR__ . '/../../../core/Logger.php';
-include __DIR__ . '/../project_context.php'; // Adjust path if this file is in api/ folder
-
-// Database Connection
-$conn = getWorkforceConnection();
+require_once __DIR__ . '/../../../core/ApiHelper.php';
+include __DIR__ . '/../project_context.php';
 
 if (!isset($_GET['project_id']) || !isset($_GET['type'])) {
     die('Project ID and Report Type are required');
@@ -15,38 +13,18 @@ if (!isset($_GET['project_id']) || !isset($_GET['type'])) {
 $project_id = intval($_GET['project_id']);
 $type = $_GET['type'];
 $month = $_GET['month'] ?? date('Y-m');
-$generatedBy = 'System';
-if (!empty($_SESSION['user_name'])) {
-    $generatedBy = $_SESSION['user_name'];
-} elseif (!empty($_SESSION['user_id'])) {
-    $uid = intval($_SESSION['user_id']);
-    // Try to get user name from project API instead of direct DB
-    $res_users = ApiHelper::get('auth/users');
-    if ($res_users['status'] === 200) {
-        foreach ($res_users['data'] as $u) {
-            if (intval($u['user_id']) === $uid) {
-                $generatedBy = $u['full_name'] ?? 'Admin';
-                break;
-            }
-        }
-    }
-}
+$generatedBy = $_SESSION['user_name'] ?? 'System';
 
-// 1. Fetch Project Details
+// 1. Fetch Project Details via API
 $project_name = "Unknown Project";
 $project_code = "N/A";
-$sql_proj = "SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?";
-$stmt = $conn->prepare($sql_proj);
-$stmt->bind_param("i", $project_id);
-$stmt->execute();
-$res = $stmt->get_result();
-if($r = $res->fetch_assoc()) {
-    $project_name = $r['project_name'];
-    $project_code = $r['project_code'];
+$projRes = ApiHelper::get("project/projects/$project_id");
+if ($projRes['status'] === 200 && !empty($projRes['data'])) {
+    $project_name = $projRes['data']['project_name'];
+    $project_code = $projRes['data']['project_code'];
 }
-$stmt->close();
 
-// 2. Log Generation (Insert into workforce_generated_reports)
+// 2. Log Generation via Centralized Reports Service
 $reportTitles = [
     'employee-directory' => 'Employee Directory',
     'attendance-summary' => 'Attendance Summary',
@@ -59,20 +37,16 @@ if($type === 'attendance-summary' || $type === 'payroll-report') {
     $reportName .= ' (' . date('M Y', strtotime($month)) . ')';
 }
 
-$checkTable = $conn->query("SHOW TABLES LIKE 'workforce_generated_reports'");
-if ($checkTable && $checkTable->num_rows > 0) {
-    $logSql = "INSERT INTO workforce_generated_reports (project_id, report_type, report_name, generated_by, created_at) VALUES (?, ?, ?, ?, NOW())";
-    $stmtLog = $conn->prepare($logSql);
-    $stmtLog->bind_param("isss", $project_id, $type, $reportName, $generatedBy);
-    $stmtLog->execute();
-    $stmtLog->close();
-    
-    // Log to Global Audit Trail
-    Logger::init($conn);
-    Logger::export('Workforce', "Generated Report: $reportName" . ($project_id > 0 ? " for $project_name" : ""), $project_id > 0 ? $project_id : null);
-}
+// POST to Reports Service
+ApiHelper::call('reports/reports', 'POST', [
+    'project_id' => $project_id,
+    'report_type' => $type,
+    'report_name' => $reportName,
+    'category' => 'workforce',
+    'generated_by' => $generatedBy
+]);
 
-// 3. Fetch Data Based on Type
+// 3. Fetch Data Based on Type via Workforce Service
 $data = [];
 $stats = [];
 $tableHeaders = [];
@@ -82,19 +56,9 @@ $reportDateInfo = date('F j, Y');
 switch ($type) {
     case 'employee-directory':
         $reportDateInfo = "Current Staff List";
-        // Logic
-        $sql = "SELECT e.employee_code, CONCAT(e.last_name, ', ', e.first_name) as name, 
-                       a.role, e.email, e.phone, e.status
-                FROM workforce_employees e
-                JOIN workforce_assignments a ON e.employee_id = a.employee_id
-                WHERE a.project_id = ? ORDER BY e.last_name";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $project_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        while($row = $res->fetch_assoc()) { $data[] = $row; }
+        $res = ApiHelper::get("workforce/employees?project_id=$project_id&limit=1000");
+        $data = $res['data']['data'] ?? [];
         
-        // Stats
         $active = count(array_filter($data, fn($i) => $i['status'] === 'Active'));
         $stats = [
             ['label' => 'Total Staff', 'value' => count($data)],
@@ -106,12 +70,12 @@ switch ($type) {
         foreach($data as $r) {
             $statusClass = $r['status'] === 'Active' ? 'text-blue-700 font-bold' : 'text-slate-500';
             $tableRows[] = [
-                '<span class="font-mono">'.$r['employee_code'].'</span>',
-                $r['name'],
-                $r['role'],
-                $r['email'],
-                $r['phone'],
-                '<span class="'.$statusClass.'">'.$r['status'].'</span>'
+                '<span class="font-mono">'.($r['employee_code'] ?? 'N/A').'</span>',
+                ($r['first_name'] ?? '') . ' ' . ($r['last_name'] ?? ''),
+                $r['job_title'] ?? 'Staff',
+                $r['email'] ?? '-',
+                $r['phone'] ?? '-',
+                '<span class="'.$statusClass.'">'.($r['status'] ?? 'Active').'</span>'
             ];
         }
         break;
@@ -121,26 +85,8 @@ switch ($type) {
         $start_date = $month . '-01';
         $end_date = date('Y-m-t', strtotime($start_date));
         
-        $sql = "SELECT e.employee_code, CONCAT(e.first_name, ' ', e.last_name) as name,
-                       COUNT(CASE WHEN att.status = 'Present' THEN 1 END) as present,
-                       COUNT(CASE WHEN att.status = 'Absent' THEN 1 END) as absent,
-                       COUNT(CASE WHEN att.status = 'On Leave' THEN 1 END) as leave_days,
-                       COALESCE(SUM(TIMESTAMPDIFF(HOUR, att.time_in, att.time_out)), 0) as hours
-                FROM workforce_employees e
-                JOIN workforce_assignments a ON e.employee_id = a.employee_id
-                LEFT JOIN workforce_attendance att ON e.employee_id = att.employee_id 
-                    AND att.project_id = ? AND att.attendance_date BETWEEN ? AND ?
-                WHERE a.project_id = ? AND a.status = 'Active'
-                GROUP BY e.employee_id ORDER BY e.last_name";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("issi", $project_id, $start_date, $end_date, $project_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        while($row = $res->fetch_assoc()) { 
-            $total = $row['present'] + $row['absent'] + $row['leave_days'];
-            $row['rate'] = $total > 0 ? round(($row['present']/$total)*100, 1) : 0;
-            $data[] = $row; 
-        }
+        $res = ApiHelper::get("workforce/reports?type=attendance-summary&project_id=$project_id&start_date=$start_date&end_date=$end_date");
+        $data = $res['data']['data'] ?? [];
 
         // Stats
         $totalHours = array_sum(array_column($data, 'hours'));
@@ -155,13 +101,13 @@ switch ($type) {
         $tableHeaders = ['Code', 'Name', 'Present', 'Absent', 'Leave', 'Total Hours', 'Rate'];
         foreach($data as $r) {
             $tableRows[] = [
-                '<span class="font-mono">'.$r['employee_code'].'</span>',
-                $r['name'],
-                $r['present'],
-                $r['absent'],
-                $r['leave_days'],
-                $r['hours'],
-                '<span class="font-bold">'.$r['rate'].'%</span>'
+                '<span class="font-mono">'.($r['employee_code'] ?? 'N/A').'</span>',
+                $r['name'] ?? 'N/A',
+                $r['present'] ?? 0,
+                $r['absent'] ?? 0,
+                $r['leave_days'] ?? 0,
+                $r['hours'] ?? 0,
+                '<span class="font-bold">'.($r['rate'] ?? 0).'%</span>'
             ];
         }
         break;
@@ -171,36 +117,12 @@ switch ($type) {
         $start_date = $month . '-01';
         $end_date = date('Y-m-t', strtotime($start_date));
 
-        $sql = "SELECT e.employee_code, CONCAT(e.first_name, ' ', e.last_name) as name,
-                       COALESCE(jt.default_daily_rate, 800) as daily_rate,
-                       jt.title_name as job_title,
-                       COUNT(CASE WHEN att.status IN ('Present', 'Late') THEN 1 END) as days_worked
-                FROM workforce_employees e
-                JOIN workforce_assignments a ON e.employee_id = a.employee_id
-                LEFT JOIN workforce_job_titles jt ON e.job_title_id = jt.job_title_id
-                LEFT JOIN workforce_attendance att ON e.employee_id = att.employee_id 
-                    AND att.project_id = ? AND att.attendance_date BETWEEN ? AND ?
-                WHERE a.project_id = ? AND a.status = 'Active'
-                GROUP BY e.employee_id ORDER BY e.last_name";
+        $res = ApiHelper::get("workforce/reports?type=payroll-report&project_id=$project_id&start_date=$start_date&end_date=$end_date");
+        $data = $res['data']['data'] ?? [];
         
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("issi", $project_id, $start_date, $end_date, $project_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        
-        $totalGross = 0; $totalDed = 0; $totalNet = 0;
-
-        while($row = $res->fetch_assoc()) {
-            $gross = $row['days_worked'] * $row['daily_rate'];
-            $ded = $gross * 0.05; // 5% flat deduction logic
-            $net = $gross - $ded;
-            
-            $totalGross += $gross;
-            $totalDed += $ded;
-            $totalNet += $net;
-
-            $data[] = array_merge($row, ['gross'=>$gross, 'ded'=>$ded, 'net'=>$net]);
-        }
+        $totalGross = array_sum(array_column($data, 'gross')); 
+        $totalDed = array_sum(array_column($data, 'ded')); 
+        $totalNet = array_sum(array_column($data, 'net'));
 
         $stats = [
             ['label' => 'Total Gross', 'value' => '₱'.number_format($totalGross, 2)],
@@ -211,34 +133,24 @@ switch ($type) {
         $tableHeaders = ['Code', 'Name', 'Role', 'Days', 'Daily Rate', 'Gross Pay', 'Deductions', 'Net Pay'];
         foreach($data as $r) {
             $tableRows[] = [
-                '<span class="font-mono">'.$r['employee_code'].'</span>',
-                $r['name'],
-                $r['job_title'],
-                $r['days_worked'],
-                number_format($r['daily_rate'], 2),
-                number_format($r['gross'], 2),
-                '<span class="text-red-700">('.number_format($r['ded'], 2).')</span>',
-                '<span class="font-bold">'.number_format($r['net'], 2).'</span>'
+                '<span class="font-mono">'.($r['employee_code'] ?? 'N/A').'</span>',
+                $r['name'] ?? 'N/A',
+                $r['job_title'] ?? 'N/A',
+                $r['days_worked'] ?? 0,
+                number_format($r['daily_rate'] ?? 0, 2),
+                number_format($r['gross'] ?? 0, 2),
+                '<span class="text-red-700">('.number_format($r['ded'] ?? 0, 2).')</span>',
+                '<span class="font-bold">'.number_format($r['net'] ?? 0, 2).'</span>'
             ];
         }
         break;
 
     case 'assignment-report':
         $reportDateInfo = "Active Assignments";
-        $sql = "SELECT CONCAT(e.first_name, ' ', e.last_name) as name,
-                   COALESCE(ph.phase_name, '-') as phase,
-                   a.role, a.start_date, a.end_date, a.status
-            FROM workforce_assignments a
-            JOIN workforce_employees e ON a.employee_id = e.employee_id
-            LEFT JOIN icmis_project_phases ph ON a.phase_id = ph.phase_id
-            WHERE a.project_id = ? ORDER BY a.status, e.last_name";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $project_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        while($row = $res->fetch_assoc()) { $data[] = $row; }
+        $res = ApiHelper::get("workforce/reports?type=assignment-report&project_id=$project_id");
+        $data = $res['data']['data'] ?? [];
 
-        $active = count(array_filter($data, fn($i) => $i['status'] === 'Active'));
+        $active = count(array_filter($data, fn($i) => ($i['status'] ?? '') === 'Active'));
         $stats = [
             ['label' => 'Total Records', 'value' => count($data)],
             ['label' => 'Active', 'value' => $active, 'color' => 'text-green-700'],
@@ -248,27 +160,21 @@ switch ($type) {
         $tableHeaders = ['Employee', 'Phase', 'Role', 'Start Date', 'End Date', 'Status'];
         foreach($data as $r) {
             $tableRows[] = [
-                $r['name'], $r['phase'], $r['role'], 
-                $r['start_date'] ?: '-', $r['end_date'] ?: '-',
-                '<span class="font-bold '.($r['status']=='Active'?'text-green-700':'text-slate-500').'">'.$r['status'].'</span>'
+                $r['name'] ?? 'N/A', 
+                $r['phase'] ?? '-', 
+                $r['role'] ?? '-', 
+                $r['start_date'] ?: '-', 
+                $r['end_date'] ?: '-',
+                '<span class="font-bold '.(($r['status'] ?? '')=='Active'?'text-green-700':'text-slate-500').'">'.($r['status'] ?? 'N/A').'</span>'
             ];
         }
         break;
 
     case 'workforce-analytics':
         $reportDateInfo = "Performance Metrics";
-        // Simple analytics logic
-        $sql = "SELECT status, COUNT(*) as count FROM workforce_assignments WHERE project_id = ? GROUP BY status";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $project_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        $breakdown = [];
-        $total = 0;
-        while($r = $res->fetch_assoc()){ 
-            $breakdown[] = $r; 
-            $total += $r['count'];
-        }
+        $res = ApiHelper::get("workforce/reports?type=workforce-analytics&project_id=$project_id");
+        $breakdown = $res['data']['breakdown'] ?? [];
+        $total = $res['data']['total'] ?? 0;
 
         $stats = [
             ['label' => 'Total Assignments', 'value' => $total],
@@ -280,8 +186,8 @@ switch ($type) {
         foreach($breakdown as $r) {
             $pct = $total > 0 ? round(($r['count']/$total)*100, 1) : 0;
             $tableRows[] = [
-                '<span class="font-bold">'.$r['status'].'</span>',
-                $r['count'],
+                '<span class="font-bold">'.($r['status'] ?? 'N/A').'</span>',
+                $r['count'] ?? 0,
                 $pct.'%'
             ];
         }

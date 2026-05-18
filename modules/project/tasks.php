@@ -7,11 +7,15 @@
  */
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/project_context.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "index.php");
     exit();
 }
+
+// Get project context
+$selected_project_id = getProjectContext();
 
 // Define status columns for Kanban
 $statusColumns = [
@@ -22,14 +26,40 @@ $statusColumns = [
 ];
 
 // Fetch all tasks from Project Service
-$taskRes = ApiHelper::get('project/tasks');
+$task_api_url = 'project/tasks';
+if ($selected_project_id > 0) {
+    $task_api_url .= '?project_id=' . $selected_project_id;
+}
+$taskRes = ApiHelper::get($task_api_url);
 $tasksData = $taskRes['data']['tasks'] ?? [];
 
 $totalTasks = 0;
 $overdueCount = 0;
 $now = new DateTime();
 
+// Fetch all employees from Workforce Service for mapping
+$empRes = ApiHelper::get('workforce/employees?action=list');
+$allEmployees = $empRes['data']['data'] ?? [];
+
+// Create employee map for easy lookup
+$employeeMap = [];
+foreach ($allEmployees as $emp) {
+    $employeeMap[$emp['employee_id']] = [
+        'name' => $emp['first_name'] . ' ' . $emp['last_name'],
+        'i1' => strtoupper(substr($emp['first_name'], 0, 1)),
+        'i2' => strtoupper(substr($emp['last_name'], 0, 1))
+    ];
+}
+
 foreach ($tasksData as $row) {
+    // Enrich row with employee data
+    $empId = $row['assigned_to_employee_id'] ?? 0;
+    if (isset($employeeMap[$empId])) {
+        $row['assignee_name'] = $employeeMap[$empId]['name'];
+        $row['assignee_initial_first'] = $employeeMap[$empId]['i1'];
+        $row['assignee_initial_last'] = $employeeMap[$empId]['i2'];
+    }
+
     // Group by status
     $status = $row['status'] ?? 'Not Started';
     if (isset($statusColumns[$status])) {
@@ -55,10 +85,6 @@ $allProjects = $projRes['data']['projects'] ?? [];
 // Fetch all phases for dropdown
 $phaseRes = ApiHelper::get('project/phases');
 $allPhases = $phaseRes['data']['phases'] ?? [];
-
-// Fetch all employees from Workforce Service
-$empRes = ApiHelper::get('workforce/employees?action=list');
-$allEmployees = $empRes['data']['data'] ?? [];
 
 // Status column colors
 $statusColors = [

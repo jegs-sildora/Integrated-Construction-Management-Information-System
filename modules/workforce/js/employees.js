@@ -41,6 +41,12 @@ lucide.createIcons();
             const params = new URLSearchParams(window.location.search);
             params.set('fetch_updates', '1');
             
+            // Ensure project_id is preserved if present in URL
+            if (!params.has('project_id')) {
+                const projId = document.getElementById('selected_project_id')?.value;
+                if (projId) params.set('project_id', projId);
+            }
+            
             fetch(`${window.location.pathname}?${params.toString()}`)
                 .then(res => res.json())
                 .then(data => {

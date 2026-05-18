@@ -10,15 +10,16 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 try {
     if ($method === 'GET') {
-        $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
-        
-        // In a real scenario, this might query a table of generated reports.
-        // For now, we'll return an empty list or mock data based on existing tables.
-        
+        // Migration Notice: 
+        // Real reports are now handled by the Reports Service via 'reports/reports'.
+        // This endpoint remains as a stub for backwards compatibility during transition.
+
         echo json_encode([
             'success' => true,
-            'reports' => [] 
+            'message' => 'Reporting has moved to the Reports Service.',
+            'reports' => []
         ]);
+
     } else {
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Method not allowed']);

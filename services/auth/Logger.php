@@ -36,3 +36,4 @@ class Logger {
     public static function delete($module, $details, $record_id = null) { return self::log('DELETE', $module, $details, $record_id); }
     public static function login($details, $user_id, $user_name) { return self::log('LOGIN', 'Auth', $details, null, $user_id, $user_name); }
 }
+

@@ -3,6 +3,7 @@
 
 // 1. Load Configuration
 require_once '../../../config/config.php';
+require_once BASE_PATH . '/core/ApiHelper.php';
 
 // 2. Start Session
 if (session_status() === PHP_SESSION_NONE) {
@@ -29,22 +30,15 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['signup']))
         exit();
     }
 
-    // Call API Gateway
-    $ch = curl_init(GATEWAY_URL . 'auth/signup');
-    $payload = json_encode([
+    // Call API Gateway via ApiHelper
+    $response = ApiHelper::post('auth/signup', [
         'full_name' => $full_name,
         'email' => $email,
         'password' => $password
     ]);
     
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type:application/json']);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    $data = json_decode($response, true);
+    $httpCode = $response['status'];
+    $data = $response['data'];
 
     if ($httpCode === 201) {
         // SUCCESS: Redirect back to login with success message

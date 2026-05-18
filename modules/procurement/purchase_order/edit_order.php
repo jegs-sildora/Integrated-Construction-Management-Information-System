@@ -55,7 +55,7 @@ if ($po_phase_id > 0) {
 $suppliers = [];
 $res_sup = ApiHelper::get("procurement/suppliers");
 if ($res_sup['status'] === 200) {
-    $suppliers = $res_sup['data'];
+    $suppliers = $res_sup['data']['suppliers'] ?? [];
 }
 
 // 7. Fetch Approved Budget Items for dropdown

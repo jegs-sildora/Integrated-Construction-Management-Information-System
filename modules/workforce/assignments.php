@@ -4,32 +4,31 @@ include __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
 include __DIR__ . '/project_context.php';
 
-$conn = getWorkforceConnection();
-
-// Initial Data for Dropdowns (SSR for speed)
-$employees = [];
-$res_employees = ApiHelper::get('workforce/employees?status=Active');
-if ($res_employees['status'] === 200) {
-    $employees = $res_employees['data']['data'] ?? $res_employees['data'];
-}
-
-$projects = [];
-$res_projects = ApiHelper::get('project/projects');
-if ($res_projects['status'] === 200) {
-    $projects = $res_projects['data']['projects'] ?? [];
-}
-
-$groups = [];
-$res_groups = ApiHelper::get('workforce/employee-groups');
-if ($res_groups['status'] === 200) {
-    $groups = $res_groups['data']['data'] ?? $res_groups['data'];
-}
-
 $pageSection = "Labor & Workforce";
 $pageTitle = "Workforce Assignments";
 
 // Context
-$selected_project_id = getProjectContext($conn);
+$selected_project_id = getProjectContext();
+
+// Fetch dropdown data
+$projects = [];
+$employees = [];
+$groups = [];
+
+$projRes = ApiHelper::get('project/projects');
+if ($projRes['status'] === 200) {
+    $projects = $projRes['data']['projects'] ?? [];
+}
+
+$empRes = ApiHelper::get('workforce/employees?limit=1000');
+if ($empRes['status'] === 200) {
+    $employees = $empRes['data']['data'] ?? [];
+}
+
+$groupRes = ApiHelper::get('workforce/employee_groups?action=list');
+if ($groupRes['status'] === 200) {
+    $groups = $groupRes['data']['data'] ?? [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

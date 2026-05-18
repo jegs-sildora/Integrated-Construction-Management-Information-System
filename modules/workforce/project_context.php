@@ -1,13 +1,22 @@
 <?php
 /**
- * Project Context Manager (Microservices Version)
- * Handles global project selection across Labor & Workforce pages
+ * modules/workforce/project_context.php
+ * 
+ * Module-specific wrapper for ProjectContext.
  */
 
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/../../core/ProjectContext.php';
 
-// Return the global mock connection object
+/**
+ * Get the current project context
+ */
+function getProjectContext($conn = null) {
+    return ProjectContext::getProjectId();
+}
+
+/**
+ * Get the database connection (Legacy Mock support)
+ */
 function getWorkforceConnection() {
     global $conn;
     if (!isset($conn)) {
@@ -17,41 +26,16 @@ function getWorkforceConnection() {
 }
 
 /**
- * Get the current project context
+ * Build navigation URL with context
  */
-function getProjectContext($conn = null) {
-    if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
-        $project_id = intval($_GET['project_id']);
-        $_SESSION['selected_project_id'] = $project_id;
-        return $project_id;
-    }
-    
-    if (isset($_SESSION['selected_project_id']) && !empty($_SESSION['selected_project_id'])) {
-        return intval($_SESSION['selected_project_id']);
-    }
-    
-    try {
-        $res = ApiHelper::get('project/projects');
-        $projects = $res['data']['projects'] ?? [];
-        if (!empty($projects)) {
-            $project_id = intval($projects[0]['project_id']);
-            $_SESSION['selected_project_id'] = $project_id;
-            return $project_id;
-        }
-    } catch (Exception $e) {
-        error_log("Project Context Error: " . $e->getMessage());
-    }
-    
-    return 0;
+function buildContextUrl($base_url, $params = []) {
+    return ProjectContext::buildUrl($base_url, $params);
 }
 
 /**
- * Build context-aware URL
+ * Clear project context
  */
-function buildContextUrl($base_url, $params = []) {
-    if (isset($_SESSION['selected_project_id'])) {
-        $params['project_id'] = $_SESSION['selected_project_id'];
-    }
-    return $base_url . (!empty($params) ? '?' . http_build_query($params) : '');
+function clearProjectContext() {
+    ProjectContext::clear();
 }
 ?>

@@ -5,8 +5,10 @@
  * - Loads project phases and associated approved budget totals.
  * - Renders a responsive Tailwind UI for filtering and managing phases.
  */
+// authentication check and configuration
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/project_context.php';
 
 // enforce authentication
 if (!isset($_SESSION['user_id'])) {
@@ -14,8 +16,15 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Get project context
+$selected_project_id = getProjectContext();
+
 // Fetch phases from Project Service
-$phaseRes = ApiHelper::get('project/phases');
+$phase_api_url = 'project/phases';
+if ($selected_project_id > 0) {
+    $phase_api_url .= '?project_id=' . $selected_project_id;
+}
+$phaseRes = ApiHelper::get($phase_api_url);
 $phasesData = $phaseRes['data']['phases'] ?? [];
 
 $phases = [];

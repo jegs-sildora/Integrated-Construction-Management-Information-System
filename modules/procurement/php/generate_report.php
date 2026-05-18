@@ -4,9 +4,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/project_context.php';
 require_once __DIR__ . '/../../../core/ApiHelper.php';
 
-// Get params - fallback to session if not in GET
+// Get params - fallback to centralized context if not in GET
 $report_type = $_GET['type'] ?? 'inventory';
-$project_id = $_GET['project_id'] ?? $_SESSION['current_project_id'] ?? 0;
+$project_id = $_GET['project_id'] ?? ProjectContext::getProjectId();
 
 // Fetch data via Microservice API Gateway
 $api_url = "procurement/reports?type=$report_type&project_id=$project_id";
@@ -26,6 +26,22 @@ if (!$data['success']) {
 
 $payload = $data['data'];
 $project = $payload['project'] ?? [];
+
+// Log Generation via Centralized Reports Service
+$reportName = $title;
+if (!empty($project['project_name'])) {
+    $reportName .= ' - ' . $project['project_name'];
+}
+
+$generatedBy = $_SESSION['user_name'] ?? 'System';
+
+ApiHelper::call('reports/reports', 'POST', [
+    'project_id' => intval($project['project_id'] ?? $project_id),
+    'report_type' => $report_type,
+    'report_name' => $reportName,
+    'category' => 'procurement',
+    'generated_by' => $generatedBy
+]);
 
 // Determine Prepared By (session user or API fallback)
 $prepared_by = 'Authorized Staff';

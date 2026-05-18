@@ -26,7 +26,7 @@ if ($contentLength > $maxPayloadSize) {
 // 3. Basic Rate Limiting (Simple File-Based Implementation)
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 $rateLimitFile = sys_get_temp_dir() . '/ratelimit_' . md5($ip);
-$limit = 100; // requests
+$limit = 1000; // requests
 $window = 60; // seconds
 
 $requests = [];
@@ -51,12 +51,12 @@ $requests[] = $now;
 file_put_contents($rateLimitFile, json_encode($requests));
 
 $services = [
-    'auth' => 'http://auth-service',
-    'project' => 'http://project-service',
-    'budget' => 'http://budget-service',
-    'procurement' => 'http://procurement-service',
-    'workforce' => 'http://workforce-service',
-    'reports' => 'http://reports-service'
+    'auth' => getenv('AUTH_SERVICE_URL') ?: 'http://auth-service',
+    'project' => getenv('PROJECT_SERVICE_URL') ?: 'http://project-service',
+    'budget' => getenv('BUDGET_SERVICE_URL') ?: 'http://budget-service',
+    'procurement' => getenv('PROCUREMENT_SERVICE_URL') ?: 'http://procurement-service',
+    'workforce' => getenv('WORKFORCE_SERVICE_URL') ?: 'http://workforce-service',
+    'reports' => getenv('REPORTS_SERVICE_URL') ?: 'http://reports-service'
 ];
 
 $requestUri = $_SERVER['REQUEST_URI'];
@@ -75,7 +75,7 @@ if (count($pathParts) < 3 || $pathParts[0] !== 'api' || $pathParts[1] !== 'v1') 
 }
 
 $serviceKey = $pathParts[2];
-$subPath = implode('/', array_slice($pathParts, 3));
+$subPathParts = array_slice($pathParts, 3);
 
 if (!isset($services[$serviceKey])) {
     http_response_code(404);
@@ -83,11 +83,31 @@ if (!isset($services[$serviceKey])) {
     exit;
 }
 
+// REST-style ID handling: if last part is numeric, treat it as fetch_id
+$fetchId = null;
+if (count($subPathParts) > 0 && is_numeric(end($subPathParts))) {
+    $fetchId = array_pop($subPathParts);
+}
+
+$fileName = count($subPathParts) > 0 ? implode('/', $subPathParts) : 'index';
 $targetBaseUrl = $services[$serviceKey];
-// Map to v1 file structure: http://service/api/v1/{subPath}.php
-$targetUrl = $targetBaseUrl . '/api/v1/' . $subPath . '.php';
+
+// Map to v1 file structure: http://service/api/v1/{fileName}.php
+$targetUrl = $targetBaseUrl . '/api/v1/' . $fileName . '.php';
+
+$queryParams = [];
 if (!empty($_SERVER['QUERY_STRING'])) {
-    $targetUrl .= '?' . $_SERVER['QUERY_STRING'];
+    parse_str($_SERVER['QUERY_STRING'], $queryParams);
+}
+
+if ($fetchId !== null) {
+    // Standardize fetch_id param for downstream services
+    $queryParams['fetch_id'] = $fetchId;
+    $queryParams['id'] = $fetchId; // Support both patterns
+}
+
+if (!empty($queryParams)) {
+    $targetUrl .= '?' . http_build_query($queryParams);
 }
 
 // --- Authentication Middleware ---
@@ -95,7 +115,7 @@ if (!empty($_SERVER['QUERY_STRING'])) {
 $publicRoutes = [
     'auth' => ['login', 'signup']
 ];
-$isPublicRoute = isset($publicRoutes[$serviceKey]) && in_array($subPath, $publicRoutes[$serviceKey]);
+$isPublicRoute = isset($publicRoutes[$serviceKey]) && in_array($fileName, $publicRoutes[$serviceKey]);
 
 if (!$isPublicRoute) {
     $authHeader = $headers['Authorization'] ?? '';
@@ -141,11 +161,19 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, $forwardHeaders);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HEADER, true);
 
-if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH') {
+if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH' || $method === 'DELETE') {
     curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents('php://input'));
 }
 
 $response = curl_exec($ch);
+
+if ($response === false) {
+    $error = curl_error($ch);
+    http_response_code(502);
+    echo json_encode(['error' => "Bad Gateway: Service '$serviceKey' unreachable", 'details' => $error]);
+    exit;
+}
+
 $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 

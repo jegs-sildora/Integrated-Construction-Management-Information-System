@@ -5,9 +5,8 @@
 
 include __DIR__ . '/project_context.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
-$conn = getWorkforceConnection();
 
-$selected_project_id = getProjectContext($conn);
+$selected_project_id = getProjectContext();
 
 // Fetch all projects for dropdown
 $projects = [];
@@ -51,7 +50,7 @@ $selectedDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 $stats = ['total' => 0, 'present' => 0, 'absent' => 0, 'late' => 0];
 $res_stats = ApiHelper::get("workforce/attendance/stats?date=$selectedDate&project_id=$selected_project_id");
 if ($res_stats['status'] === 200) {
-    $stats = $res_stats['data'];
+    $stats = $res_stats['data']['data'] ?? $stats;
 }
 
 // --- 2. INDIVIDUAL EMPLOYEES ---

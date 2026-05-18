@@ -20,7 +20,7 @@ function jsonResponse($success, $message, $data = []) {
 
 // Input Handling
 if (empty($_POST)) {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
     if (is_array($input)) {
         $_POST = $input;
         $_REQUEST = array_merge($_REQUEST, $input);
@@ -157,9 +157,9 @@ function createAssignment($db) {
             $role = $res ? $res['title_name'] : 'Staff';
         }
 
-        $stmt = $db->prepare("INSERT INTO assignments (employee_id, project_id, phase_id, role, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $db->prepare("INSERT INTO assignments (employee_id, project_id, phase_id, role, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING assignment_id");
         if ($stmt->execute([$employee_id, $project_id, $phase_id, $role, $start_date, $end_date, $status])) {
-            $new_id = intval($db->lastInsertId());
+            $new_id = intval($stmt->fetchColumn());
             Logger::create('Workforce', "Created assignment for Employee #$employee_id to Project #$project_id", $new_id);
             jsonResponse(true, "Assignment created.");
         } else {
@@ -206,11 +206,22 @@ function deleteAssignment($db) {
 function getPhases($db) {
     try {
         $pid = intval($_REQUEST['project_id']);
-        $stmt = $db->prepare("SELECT phase_id, phase_name FROM project_phases WHERE project_id = ?");
-        $stmt->execute([$pid]);
-        jsonResponse(true, "Loaded", $stmt->fetchAll());
+        if ($pid <= 0) throw new Exception("Project ID required");
+
+        // Fetch from Project Service
+        $url = 'http://project-service/api/v1/phases.php?project_id=' . $pid;
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        $res = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if ($status !== 200) throw new Exception("Could not fetch phases from Project Service");
+        
+        $data = json_decode($res, true);
+        jsonResponse(true, "Loaded", $data['phases'] ?? []);
     } catch (Exception $e) {
-        jsonResponse(false, "Phases not available in this service.");
+        jsonResponse(false, $e->getMessage());
     }
 }
 
@@ -220,3 +231,4 @@ function getAssignment($db) {
     $stmt->execute([$id]);
     jsonResponse(true, "Loaded", $stmt->fetch());
 }
+

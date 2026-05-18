@@ -17,7 +17,7 @@ try {
 
     // Handle JSON Input from API Gateway
     if (empty($_POST)) {
-        $input = json_decode(file_get_contents('php://input'), true);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
         if (is_array($input)) {
             $_POST = $input;
         }
@@ -72,3 +72,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
+

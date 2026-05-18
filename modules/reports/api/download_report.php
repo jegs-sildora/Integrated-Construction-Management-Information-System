@@ -6,7 +6,7 @@
 
 session_start();
 require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
 
 $report_id = intval($_GET['id'] ?? 0);
 
@@ -24,10 +24,7 @@ if ($res['status'] !== 200) {
 // and the microservice only stores metadata, we redirect to print_report.php
 // with the correct parameters retrieved from the metadata.
 
-$report = null;
-// The list endpoint with filter by id might return a single object or list
-// Based on our reports service implementation: GET ?id=X returns {success:true, report:{...}}
-$report = $res['data']['reports'][0] ?? null; 
+$report = $res['data']['report'] ?? null;
 
 if (!$report) {
     die("Report details not found");

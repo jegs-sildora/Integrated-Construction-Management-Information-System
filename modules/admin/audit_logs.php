@@ -37,10 +37,15 @@ if ($response['status'] !== 200) {
     $page = $api_data['current_page'] ?? $page;
 }
 
+// Fetch Projects for Filter
+$projRes = ApiHelper::get('project/projects');
+$projects = $projRes['data']['projects'] ?? [];
+
 $filter_module = $_GET['module'] ?? '';
 $filter_action = $_GET['action'] ?? '';
 $filter_user   = $_GET['user'] ?? '';
 $filter_date   = $_GET['date'] ?? '';
+$filter_project = $_GET['project_id'] ?? '';
 
 ?>
 
@@ -88,7 +93,7 @@ $filter_date   = $_GET['date'] ?? '';
             </div>
 
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
-                <form id="filterForm" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <form id="filterForm" method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Date</label>
@@ -104,6 +109,18 @@ $filter_date   = $_GET['date'] ?? '';
                             <option value="BUDGET" <?= $filter_module == 'BUDGET' ? 'selected' : '' ?>>Budget</option>
                             <option value="INVENTORY" <?= $filter_module == 'INVENTORY' ? 'selected' : '' ?>>Inventory</option>
                             <option value="PROCUREMENT" <?= $filter_module == 'PROCUREMENT' ? 'selected' : '' ?>>Procurement</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Project</label>
+                        <select name="project_id" class="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-[#e9922c] focus:border-[#e9922c] p-2.5">
+                            <option value="">All Projects</option>
+                            <?php foreach ($projects as $proj): ?>
+                                <option value="<?= $proj['project_id'] ?>" <?= $filter_project == $proj['project_id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($proj['project_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 

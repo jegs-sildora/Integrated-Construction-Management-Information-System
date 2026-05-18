@@ -13,7 +13,7 @@ require_once __DIR__ . '/../../Logger.php';
 $db = Database::getConnection();
 
 // Handle JSON Input
-$input = json_decode(file_get_contents('php://input'), true);
+$input = json_decode(file_get_contents('php://input'), true) ?: [];
 if (is_array($input)) {
     $_POST = array_merge($_POST, $input);
     $_REQUEST = array_merge($_REQUEST, $input);
@@ -134,10 +134,10 @@ function saveAttendance($db) {
         $stmt->execute([$project_id, $time_in, $time_out, $status, $remarks, $existing['attendance_id']]);
         Logger::update('Workforce', "Updated attendance for $name on {$data['attendance_date']}: $status", $existing['attendance_id']);
     } else {
-        $sql = "INSERT INTO attendance (employee_id, project_id, attendance_date, time_in, time_out, status, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO attendance (employee_id, project_id, attendance_date, time_in, time_out, status, remarks) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING attendance_id";
         $stmt = $db->prepare($sql);
         $stmt->execute([$data['employee_id'], $project_id, $data['attendance_date'], $time_in, $time_out, $status, $remarks]);
-        $new_id = intval($db->lastInsertId());
+        $new_id = intval($stmt->fetchColumn());
         Logger::create('Workforce', "Logged attendance for $name on {$data['attendance_date']}: $status", $new_id);
     }
     
@@ -211,3 +211,4 @@ function deleteAttendance($db, $id) {
     
     echo json_encode(['success' => true, 'message' => 'Deleted']);
 }
+

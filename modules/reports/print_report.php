@@ -19,11 +19,13 @@
 session_start();
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/Logger.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/../../core/ProjectContext.php';
 require_once __DIR__ . '/../../config/database.php';
 
 // Get request parameters
 $report_type = $_GET['type'] ?? '';
-$project_id = intval($_GET['project_id'] ?? 0);
+$project_id = ProjectContext::getProjectId();
 
 if (empty($report_type)) {
     die('Report type is required. Usage: print_report.php?type=budget-summary');
@@ -167,72 +169,48 @@ switch ($report_type) {
     // BUDGET REPORTS
     // ========================================
     case 'budget-summary':
-        // Get total budget from project or sum of approved proposals
+        // Fetch project details for budget allocation
         $total_allocated = 0;
-        if ($project_id > 0 && $project) {
-            $total_allocated = floatval($project['total_budget']);
-        } else {
-            // Sum all approved proposals
-            $alloc_sql = "SELECT COALESCE(SUM(total_amount), 0) as total FROM budget_proposals WHERE status = 'APPROVED'";
-            $alloc_result = $conn->query($alloc_sql);
-            if ($alloc_result) {
-                $total_allocated = floatval($alloc_result->fetch_assoc()['total']);
+        if ($project_id > 0) {
+            $projRes = ApiHelper::get("project/projects/$project_id");
+            if ($projRes['status'] === 200 && !empty($projRes['data'])) {
+                $total_allocated = floatval($projRes['data']['total_budget'] ?? 0);
             }
         }
+
+        // Fetch expenses from Budget Service
+        $expRes = ApiHelper::get("budget/expenses?project_id=$project_id");
+        $all_expenses = $expRes['data']['expenses'] ?? [];
         
-        // Get expenses grouped by category
-        $sql = "SELECT 
-                    e.category,
-                    SUM(e.amount) as spent,
-                    COUNT(*) as expense_count
-                FROM budget_expenses e
-                WHERE 1=1";
-        
-        if ($project_id > 0) {
-            $sql .= " AND e.project_id = ?";
-        }
-        $sql .= " GROUP BY e.category ORDER BY spent DESC";
-        
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
         $total_spent = 0;
         $category_data = [];
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $spent = floatval($row['spent']);
-                $total_spent += $spent;
-                $category_data[] = [
-                    'category' => $row['category'] ?: 'Uncategorized',
-                    'spent' => $spent
-                ];
+        foreach ($all_expenses as $e) {
+            $spent = floatval($e['amount']);
+            $total_spent += $spent;
+            $cat = $e['category'] ?: 'Uncategorized';
+            if (!isset($category_data[$cat])) {
+                $category_data[$cat] = 0;
             }
+            $category_data[$cat] += $spent;
         }
         
         // Calculate allocation per category proportionally based on spending
-        foreach ($category_data as $cat) {
-            $proportion = $total_spent > 0 ? ($cat['spent'] / $total_spent) : 0;
+        foreach ($category_data as $cat_name => $spent_amount) {
+            $proportion = $total_spent > 0 ? ($spent_amount / $total_spent) : 0;
             $allocated = $total_allocated * $proportion;
-            // Ensure allocated is at least equal to spent for display purposes
-            $allocated = max($allocated, $cat['spent']);
-            $remaining = $allocated - $cat['spent'];
-            $utilization = $allocated > 0 ? ($cat['spent'] / $allocated) * 100 : 0;
+            $allocated = max($allocated, $spent_amount);
+            $remaining = $allocated - $spent_amount;
+            $utilization = $allocated > 0 ? ($spent_amount / $allocated) * 100 : 0;
             
             $rows[] = [
-                'category' => $cat['category'],
+                'category' => $cat_name,
                 'allocated' => $allocated,
-                'spent' => $cat['spent'],
+                'spent' => $spent_amount,
                 'remaining' => $remaining,
                 'utilization' => $utilization
             ];
         }
-        
-        // Recalculate totals from rows
-        $total_allocated_display = array_sum(array_column($rows, 'allocated'));
         
         $summary = [
             'Total Budget' => '₱' . number_format($total_allocated, 2),
@@ -243,29 +221,21 @@ switch ($report_type) {
         break;
 
     case 'expense-log':
-        $sql = "SELECT e.expense_id, e.expense_date, e.category, e.description, 
-                       COALESCE(s.supplier_name, 'N/A') as supplier_name, e.amount, e.status 
-                FROM budget_expenses e
-                LEFT JOIN procurement_suppliers s ON e.supplier_id = s.supplier_id
-                WHERE 1=1";
-        if ($project_id > 0) {
-            $sql .= " AND e.project_id = ?";
-        }
-        $sql .= " ORDER BY e.expense_date DESC LIMIT 100";
-        
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $res = ApiHelper::get("budget/expenses?project_id=$project_id&limit=100");
+        $expenses = $res['data']['expenses'] ?? [];
         $total_amount = 0;
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $total_amount += floatval($row['amount']);
-                $rows[] = $row;
-            }
+        foreach ($expenses as $e) {
+            $total_amount += floatval($e['amount']);
+            $rows[] = [
+                'expense_id' => $e['expense_id'],
+                'expense_date' => $e['expense_date'],
+                'category' => $e['category'],
+                'description' => $e['description'],
+                'supplier_name' => $e['supplier_name'] ?? 'N/A',
+                'amount' => $e['amount'],
+                'status' => $e['status']
+            ];
         }
         
         $summary = [
@@ -280,60 +250,51 @@ switch ($report_type) {
         if ($project_id > 0 && $project) {
             $total_budget = floatval($project['total_budget']);
         } else {
-            $budget_sql = "SELECT COALESCE(SUM(total_budget), 0) as total FROM icmis_projects";
-            $budget_result = $conn->query($budget_sql);
-            if ($budget_result) {
-                $total_budget = floatval($budget_result->fetch_assoc()['total']);
+            // Get sum of all projects from API
+            $projRes = ApiHelper::get("project/projects");
+            if ($projRes['status'] === 200) {
+                foreach ($projRes['data']['projects'] ?? [] as $p) {
+                    $total_budget += floatval($p['total_budget'] ?? 0);
+                }
             }
         }
         
-        // Get monthly expenses
-        $sql = "SELECT 
-                    DATE_FORMAT(expense_date, '%Y-%m') as month_year,
-                    SUM(amount) as monthly_total
-                FROM budget_expenses 
-                WHERE 1=1";
-        if ($project_id > 0) {
-            $sql .= " AND project_id = ?";
-        }
-        $sql .= " GROUP BY DATE_FORMAT(expense_date, '%Y-%m') ORDER BY month_year ASC LIMIT 12";
+        // Fetch expenses from Budget Service
+        $expRes = ApiHelper::get("budget/expenses?project_id=$project_id");
+        $all_expenses = $expRes['data']['expenses'] ?? [];
         
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0) {
-            $stmt->bind_param("i", $project_id);
+        // Group by month
+        $monthly_data = [];
+        foreach ($all_expenses as $e) {
+            $month = date('Y-m', strtotime($e['expense_date']));
+            if (!isset($monthly_data[$month])) $monthly_data[$month] = 0;
+            $monthly_data[$month] += floatval($e['amount']);
         }
-        $stmt->execute();
-        $result = $stmt->get_result();
+        ksort($monthly_data);
+
         $cumulative = 0;
         $total_outflow = 0;
+        $month_count = count($monthly_data);
+        $monthly_budget = $month_count > 0 ? ($total_budget / max($month_count, 1)) : 0;
         
-        if ($result) {
-            $month_count = $result->num_rows;
-            $monthly_budget = $month_count > 0 ? ($total_budget / max($month_count, 1)) : 0;
+        foreach ($monthly_data as $month_year => $outflow) {
+            $inflow = $monthly_budget;
+            $net = $inflow - $outflow;
+            $cumulative += $net;
             
-            while ($row = $result->fetch_assoc()) {
-                $outflow = floatval($row['monthly_total']);
-                // Use proportional budget as "inflow" (budget allocation per month)
-                $inflow = $monthly_budget;
-                $net = $inflow - $outflow;
-                $cumulative += $net;
-                
-                $dateParts = explode('-', $row['month_year']);
-                $monthName = date('F Y', mktime(0, 0, 0, $dateParts[1], 1, $dateParts[0]));
-                
-                $total_outflow += $outflow;
-                
-                $rows[] = [
-                    'month' => $monthName,
-                    'inflow' => $inflow,
-                    'outflow' => $outflow,
-                    'net' => $net,
-                    'cumulative' => $cumulative
-                ];
-            }
-            // Reverse to show newest first
-            $rows = array_reverse($rows);
+            $monthName = date('F Y', strtotime($month_year . '-01'));
+            $total_outflow += $outflow;
+            
+            $rows[] = [
+                'month' => $monthName,
+                'inflow' => $inflow,
+                'outflow' => $outflow,
+                'net' => $net,
+                'cumulative' => $cumulative
+            ];
         }
+        // Reverse to show newest first
+        $rows = array_reverse($rows);
         
         $summary = [
             'Total Budget' => '₱' . number_format($total_budget, 2),
@@ -346,72 +307,41 @@ switch ($report_type) {
     // PROCUREMENT REPORTS
     // ========================================
     case 'inventory-status':
-        // Check which columns exist in procurement_inventory
-        $hasReorder = false;
-        $hasUnitCost = false;
-        $hasProjectId = false;
+        $res = ApiHelper::get("procurement/inventory?project_id=$project_id");
+        $items = $res['data']['items'] ?? [];
         
-        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_inventory");
-        if ($colCheck) {
-            while ($col = $colCheck->fetch_assoc()) {
-                if ($col['Field'] === 'reorder_level') $hasReorder = true;
-                if ($col['Field'] === 'unit_cost') $hasUnitCost = true;
-                if ($col['Field'] === 'project_id') $hasProjectId = true;
-            }
-        }
-
-        // Build dynamic SQL based on available columns
-        $selectCols = "item_id, item_name, category, quantity, unit";
-        if ($hasReorder) $selectCols .= ", reorder_level";
-        if ($hasUnitCost) $selectCols .= ", unit_cost";
-        
-        $sql = "SELECT $selectCols FROM procurement_inventory WHERE 1=1";
-        if ($project_id > 0 && $hasProjectId) {
-            $sql .= " AND project_id = ?";
-        }
-        $sql .= " ORDER BY category, item_name";
-
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0 && $hasProjectId) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
         $low_stock_count = 0;
-        $total_items = 0;
+        $total_items = count($items);
         $total_value = 0;
 
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $qty = intval($row['quantity']);
-                $reorder = isset($row['reorder_level']) ? intval($row['reorder_level']) : 10;
-                $unit_cost = isset($row['unit_cost']) ? floatval($row['unit_cost']) : 0;
-                
-                // Determine status based on quantity vs reorder level
-                if ($qty <= 0) {
-                    $status = 'Out of Stock';
-                    $low_stock_count++;
-                } elseif ($qty <= $reorder) {
-                    $status = 'Low Stock';
-                    $low_stock_count++;
-                } elseif ($qty <= $reorder * 2) {
-                    $status = 'Normal';
-                } else {
-                    $status = 'Well Stocked';
-                }
-
-                $total_items++;
-                $total_value += $qty * $unit_cost;
-
-                $rows[] = [
-                    'item_id' => $row['item_id'],
-                    'item_name' => $row['item_name'],
-                    'category' => $row['category'] ?: 'Uncategorized',
-                    'quantity' => $qty,
-                    'unit' => $row['unit'] ?: 'pcs',
-                    'status' => $status
-                ];
+        foreach ($items as $item) {
+            $qty = intval($item['quantity']);
+            $reorder = intval($item['reorder_level'] ?? 10);
+            $unit_cost = floatval($item['unit_cost'] ?? 0);
+            
+            // Determine status based on quantity vs reorder level
+            if ($qty <= 0) {
+                $status = 'Out of Stock';
+                $low_stock_count++;
+            } elseif ($qty <= $reorder) {
+                $status = 'Low Stock';
+                $low_stock_count++;
+            } elseif ($qty <= $reorder * 2) {
+                $status = 'Normal';
+            } else {
+                $status = 'Well Stocked';
             }
+
+            $total_value += $qty * $unit_cost;
+
+            $rows[] = [
+                'item_id' => $item['item_id'],
+                'item_name' => $item['item_name'],
+                'category' => $item['category'] ?: 'Uncategorized',
+                'quantity' => $qty,
+                'unit' => $item['unit'] ?: 'pcs',
+                'status' => $status
+            ];
         }
         
         $summary = [
@@ -423,42 +353,28 @@ switch ($report_type) {
         break;
 
     case 'purchase-orders':
-        // Check if project_id column exists
-        $hasProjectId = false;
-        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_purchase_orders LIKE 'project_id'");
-        if ($colCheck && $colCheck->num_rows > 0) {
-            $hasProjectId = true;
-        }
+        $res = ApiHelper::get("procurement/orders?project_id=$project_id&limit=50");
+        $orders = $res['data']['orders'] ?? [];
         
-        $sql = "SELECT po.po_id, po.po_reference, COALESCE(s.supplier_name, 'N/A') as supplier_name, 
-                       po.order_date, po.total_amount, po.status,
-                       (SELECT COUNT(*) FROM procurement_purchase_order_items poi WHERE poi.po_id = po.po_id) as item_count
-                FROM procurement_purchase_orders po
-                LEFT JOIN procurement_suppliers s ON po.supplier_id = s.supplier_id
-                WHERE 1=1";
-        if ($project_id > 0 && $hasProjectId) {
-            $sql .= " AND po.project_id = ?";
-        }
-        $sql .= " ORDER BY po.order_date DESC LIMIT 50";
-        
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0 && $hasProjectId) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
         $total_amount = 0;
         $pending_count = 0;
         $delivered_count = 0;
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $total_amount += floatval($row['total_amount']);
-                $status = strtolower($row['status'] ?? '');
-                if ($status === 'pending' || $status === 'processing') $pending_count++;
-                if ($status === 'delivered' || $status === 'completed' || $status === 'received') $delivered_count++;
-                $rows[] = $row;
-            }
+        foreach ($orders as $o) {
+            $total_amount += floatval($o['total_amount']);
+            $status = strtolower($o['status'] ?? '');
+            if ($status === 'pending' || $status === 'processing') $pending_count++;
+            if ($status === 'delivered' || $status === 'completed' || $status === 'received') $delivered_count++;
+            
+            $rows[] = [
+                'po_id' => $o['po_id'],
+                'po_reference' => $o['po_reference'],
+                'supplier_name' => $o['supplier_name'] ?? 'N/A',
+                'order_date' => $o['order_date'],
+                'item_count' => $o['item_count'] ?? 0,
+                'total_amount' => $o['total_amount'],
+                'status' => $o['status']
+            ];
         }
         
         $summary = [
@@ -470,90 +386,40 @@ switch ($report_type) {
         break;
 
     case 'stock-movement':
-        $movements = [];
+        $res = ApiHelper::get("procurement/reports?type=movement&project_id=$project_id&limit=100");
+        $payload = $res['data']['data'] ?? $res['data'];
+        $movements = $payload['rows'] ?? [];
         
-        // Check if project_id columns exist
-        $hasProjectIdIn = false;
-        $hasProjectIdOut = false;
-        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_stock_in LIKE 'project_id'");
-        if ($colCheck && $colCheck->num_rows > 0) $hasProjectIdIn = true;
-        $colCheck = $conn->query("SHOW COLUMNS FROM procurement_stock_out LIKE 'project_id'");
-        if ($colCheck && $colCheck->num_rows > 0) $hasProjectIdOut = true;
-        
-        // Stock In
-        $sql = "SELECT si.date_received as movement_date, COALESCE(i.item_name, 'Unknown') as item_name, 
-                       'Stock In' as type, si.quantity_received as quantity, 
-                       COALESCE(po.po_reference, '-') as reference, 'Received' as handler
-                FROM procurement_stock_in si
-                LEFT JOIN procurement_purchase_orders po ON si.po_id = po.po_id
-                LEFT JOIN procurement_inventory i ON si.item_id = i.item_id
-                WHERE 1=1";
-        if ($project_id > 0 && $hasProjectIdIn) {
-            $sql .= " AND si.project_id = ?";
-        }
-        $sql .= " ORDER BY si.date_received DESC LIMIT 50";
-        
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0 && $hasProjectIdIn) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $movements[] = $row;
-            }
-        }
-        
-        // Stock Out - detect which quantity column exists to avoid SQL errors
-        $qtyCandidates = ['quantity', 'qty', 'quantity_issued', 'issued_qty'];
-        $foundCols = [];
-        foreach ($qtyCandidates as $c) {
-            $colCheckQty = $conn->query("SHOW COLUMNS FROM procurement_stock_out LIKE '$c'");
-            if ($colCheckQty && $colCheckQty->num_rows > 0) $foundCols[] = "so.$c";
-        }
-        $qtyExpr = !empty($foundCols) ? 'COALESCE(' . implode(', ', $foundCols) . ', 0)' : '0';
-
-        // Build Stock Out SELECT using the discovered quantity expression
-        $sql = "SELECT so.date_issued as movement_date, COALESCE(i.item_name, 'Unknown') as item_name,
-                       'Stock Out' as type, $qtyExpr as quantity, '-' as reference,
-                       COALESCE(CONCAT(emp.first_name, ' ', emp.last_name), 'N/A') as handler
-                FROM procurement_stock_out so
-                LEFT JOIN procurement_inventory i ON so.item_id = i.item_id
-                LEFT JOIN workforce_employees emp ON so.issued_to_employee_id = emp.employee_id
-                WHERE 1=1";
-        if ($project_id > 0 && $hasProjectIdOut) {
-            $sql .= " AND so.project_id = ?";
-        }
-        $sql .= " ORDER BY so.date_issued DESC LIMIT 50";
-        
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0 && $hasProjectIdOut) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $movements[] = $row;
-            }
-        }
-        
-        // Sort by date (newest first)
-        usort($movements, function($a, $b) {
-            return strtotime($b['movement_date']) - strtotime($a['movement_date']);
-        });
-        
-        // Compute totals using the complete movements list, then slice for display
         $total_movements = count($movements);
-        $stock_in_count = count(array_filter($movements, function($r){ return ($r['type'] ?? '') === 'Stock In'; }));
-        $stock_out_count = count(array_filter($movements, function($r){ return ($r['type'] ?? '') === 'Stock Out'; }));
+        $stock_in_count = 0;
+        $stock_out_count = 0;
+        $total_in_qty = 0;
+        $total_out_qty = 0;
 
-        // Calculate total quantities across all movements
-        $total_in_qty = array_sum(array_map(function($r){ return (($r['type'] ?? '') === 'Stock In') ? intval($r['quantity'] ?? 0) : 0; }, $movements));
-        $total_out_qty = array_sum(array_map(function($r){ return (($r['type'] ?? '') === 'Stock Out') ? intval($r['quantity'] ?? 0) : 0; }, $movements));
+        foreach ($movements as $m) {
+            // Note: ApiHelper returns arrays, but our previous logic expected object-like access.
+            // Let's assume the rows are indexed by header position or associative.
+            // In the centralized generator, we'll map them to a standard format.
+            $type = $m['type'] ?? ($m[1] ?? ''); // Fallback to index if needed
+            $qty = intval($m['quantity'] ?? ($m[3] ?? 0));
 
-        $rows = array_slice($movements, 0, 50);
+            if ($type === 'Stock In') {
+                $stock_in_count++;
+                $total_in_qty += $qty;
+            } else {
+                $stock_out_count++;
+                $total_out_qty += $qty;
+            }
+
+            $rows[] = [
+                'movement_date' => $m['movement_date'] ?? ($m[0] ?? ''),
+                'item_name' => $m['item_name'] ?? ($m[2] ?? ''),
+                'type' => $type,
+                'quantity' => $qty,
+                'reference' => $m['reference'] ?? ($m[4] ?? '-'),
+                'handler' => $m['handler'] ?? ($m[5] ?? 'N/A')
+            ];
+        }
 
         $summary = [
             'Total Movements' => $total_movements,
@@ -566,31 +432,27 @@ switch ($report_type) {
     // PROJECT REPORTS
     // ========================================
     case 'project-summary':
-        $sql = "SELECT p.project_id, p.project_name, p.project_code, p.location, p.total_budget, 
-                       p.status, COALESCE(p.completion_rate, 0) as completion_rate
-                FROM icmis_projects p";
-        if ($project_id > 0) {
-            $sql .= " WHERE p.project_id = ?";
-        }
-        $sql .= " ORDER BY p.project_id DESC";
+        $res = ApiHelper::get("project/projects" . ($project_id > 0 ? "/$project_id" : ""));
+        $projects = ($project_id > 0) ? [$res['data']] : ($res['data']['projects'] ?? []);
         
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
         $total_budget = 0;
         $active_count = 0;
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $total_budget += floatval($row['total_budget']);
-                if (strtolower($row['status'] ?? '') === 'active' || strtolower($row['status'] ?? '') === 'in progress') {
-                    $active_count++;
-                }
-                $rows[] = $row;
+        foreach ($projects as $p) {
+            $total_budget += floatval($p['total_budget'] ?? 0);
+            $status = strtolower($p['status'] ?? '');
+            if ($status === 'active' || $status === 'in progress') {
+                $active_count++;
             }
+            $rows[] = [
+                'project_id' => $p['project_id'],
+                'project_name' => $p['project_name'],
+                'project_code' => $p['project_code'],
+                'location' => $p['location'] ?? 'N/A',
+                'total_budget' => $p['total_budget'],
+                'completion_rate' => $p['completion_rate'] ?? 0,
+                'status' => $p['status'] ?? 'Active'
+            ];
         }
         
         $summary = [
@@ -601,29 +463,21 @@ switch ($report_type) {
         break;
 
     case 'phase-progress':
-        $sql = "SELECT pp.phase_id, pp.phase_name, p.project_name, pp.start_date, pp.end_date, 
-                       pp.duration, pp.status
-                FROM icmis_project_phases pp
-                LEFT JOIN icmis_projects p ON pp.project_id = p.project_id
-                WHERE 1=1";
-        if ($project_id > 0) {
-            $sql .= " AND pp.project_id = ?";
-        }
-        $sql .= " ORDER BY pp.start_date";
-        
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $res = ApiHelper::get("project/phases?project_id=$project_id");
+        $phases = $res['data']['phases'] ?? [];
         $completed_count = 0;
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                if (strtolower($row['status'] ?? '') === 'completed') $completed_count++;
-                $rows[] = $row;
-            }
+        foreach ($phases as $p) {
+            if (strtolower($p['status'] ?? '') === 'completed') $completed_count++;
+            $rows[] = [
+                'phase_id' => $p['phase_id'],
+                'phase_name' => $p['phase_name'],
+                'project_name' => $p['project_name'] ?? $project_name,
+                'start_date' => $p['start_date'],
+                'end_date' => $p['end_date'],
+                'duration' => $p['duration'] ?? 0,
+                'status' => $p['status'] ?? 'Not Started'
+            ];
         }
         
         $summary = [
@@ -634,37 +488,27 @@ switch ($report_type) {
         break;
 
     case 'task-status':
-        $sql = "SELECT t.task_id, t.task_name, COALESCE(pp.phase_name, 'N/A') as phase_name,
-                       COALESCE(CONCAT(e.first_name, ' ', e.last_name), 'Unassigned') as assignee,
-                       t.due_date, t.priority, t.status
-                FROM icmis_tasks t
-                LEFT JOIN icmis_project_phases pp ON t.phase_id = pp.phase_id
-                LEFT JOIN workforce_employees e ON t.assigned_to_employee_id = e.employee_id
-                WHERE 1=1";
-        if ($project_id > 0) {
-            $sql .= " AND t.project_id = ?";
-        }
-        $sql .= " ORDER BY t.due_date LIMIT 100";
-        
-        $stmt = $conn->prepare($sql);
-        if ($project_id > 0) {
-            $stmt->bind_param("i", $project_id);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $res = ApiHelper::get("project/tasks?project_id=$project_id&limit=100");
+        $tasks = $res['data']['tasks'] ?? [];
         $completed_count = 0;
         $overdue_count = 0;
         $today = date('Y-m-d');
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $status = strtolower($row['status'] ?? '');
-                if ($status === 'completed' || $status === 'done') $completed_count++;
-                if ($row['due_date'] && $row['due_date'] < $today && $status !== 'completed' && $status !== 'done') {
-                    $overdue_count++;
-                }
-                $rows[] = $row;
+        foreach ($tasks as $t) {
+            $status = strtolower($t['status'] ?? '');
+            if ($status === 'completed' || $status === 'done') $completed_count++;
+            if (($t['due_date'] ?? '') && $t['due_date'] < $today && $status !== 'completed' && $status !== 'done') {
+                $overdue_count++;
             }
+            $rows[] = [
+                'task_id' => $t['task_id'],
+                'task_name' => $t['task_name'],
+                'phase_name' => $t['phase_name'] ?? 'N/A',
+                'assignee' => $t['assignee_name'] ?? 'Unassigned',
+                'due_date' => $t['due_date'],
+                'priority' => $t['priority'] ?? 'Normal',
+                'status' => $t['status'] ?? 'Pending'
+            ];
         }
         
         $summary = [
@@ -678,21 +522,20 @@ switch ($report_type) {
     // WORKFORCE REPORTS
     // ========================================
     case 'employee-roster':
-        $sql = "SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) as full_name,
-                       COALESCE(j.title_name, 'N/A') as position, COALESCE(j.department, 'N/A') as department,
-                       COALESCE(e.phone, '-') as phone, COALESCE(e.status, 'Active') as status
-                FROM workforce_employees e
-                LEFT JOIN workforce_job_titles j ON e.job_title_id = j.job_title_id
-                ORDER BY e.last_name, e.first_name";
-        
-        $result = $conn->query($sql);
+        $res = ApiHelper::get("workforce/employees?project_id=$project_id&limit=1000");
+        $employees = $res['data']['data'] ?? [];
         $active_count = 0;
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                if (strtolower($row['status']) === 'active') $active_count++;
-                $rows[] = $row;
-            }
+        foreach ($employees as $e) {
+            if (strtolower($e['status'] ?? 'active') === 'active') $active_count++;
+            $rows[] = [
+                'employee_id' => $e['employee_id'],
+                'full_name' => ($e['first_name'] ?? '') . ' ' . ($e['last_name'] ?? ''),
+                'position' => $e['job_title'] ?? 'N/A',
+                'department' => $e['department'] ?? 'N/A',
+                'phone' => $e['phone'] ?? '-',
+                'status' => $e['status'] ?? 'Active'
+            ];
         }
         
         $summary = [
@@ -703,35 +546,27 @@ switch ($report_type) {
         break;
 
     case 'attendance-summary':
-        $sql = "SELECT a.attendance_id, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-                       a.attendance_date, a.time_in, a.time_out, a.status
-                FROM workforce_attendance a
-                LEFT JOIN workforce_employees e ON a.employee_id = e.employee_id
-                ORDER BY a.attendance_date DESC, e.last_name LIMIT 100";
-        
-        $result = $conn->query($sql);
+        $res = ApiHelper::get("workforce/reports?type=attendance-summary&project_id=$project_id&limit=100");
+        $data = $res['data']['data'] ?? [];
         $present_count = 0;
         $absent_count = 0;
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                // Calculate hours worked
-                $hours = '-';
-                if ($row['time_in'] && $row['time_out']) {
-                    $diff = strtotime($row['time_out']) - strtotime($row['time_in']);
-                    $hours = round($diff / 3600, 1);
-                }
-                $row['hours_worked'] = $hours;
-                
-                $status = strtolower($row['status'] ?? 'present');
-                if ($status === 'present' || $status === 'on time' || $status === 'late') {
-                    $present_count++;
-                } else {
-                    $absent_count++;
-                }
-                
-                $rows[] = $row;
+        foreach ($data as $r) {
+            $status = strtolower($r['status'] ?? 'present');
+            if ($status === 'present' || $status === 'on time' || $status === 'late') {
+                $present_count++;
+            } else {
+                $absent_count++;
             }
+            
+            $rows[] = [
+                'employee_name' => $r['name'] ?? 'N/A',
+                'attendance_date' => $r['date'] ?? date('Y-m-d'),
+                'time_in' => $r['time_in'] ?? null,
+                'time_out' => $r['time_out'] ?? null,
+                'hours_worked' => $r['hours'] ?? 0,
+                'status' => $r['status'] ?? 'Present'
+            ];
         }
         
         $summary = [
@@ -742,29 +577,26 @@ switch ($report_type) {
         break;
 
     case 'payroll-report':
-        $sql = "SELECT p.payroll_id, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-                       pp.start_date, pp.end_date, p.hours_worked, p.gross_pay, 
-                       (p.gross_pay - p.net_pay) as deductions, p.net_pay, p.status
-                FROM workforce_payroll p
-                LEFT JOIN workforce_employees e ON p.employee_id = e.employee_id
-                LEFT JOIN workforce_payroll_periods pp ON p.period_id = pp.period_id
-                ORDER BY pp.end_date DESC, e.last_name LIMIT 100";
+        $res = ApiHelper::get("workforce/reports?type=payroll-report&project_id=$project_id&limit=100");
+        $data = $res['data']['data'] ?? [];
         
-        $result = $conn->query($sql);
         $total_gross = 0;
         $total_deductions = 0;
         $total_net = 0;
         
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $total_gross += floatval($row['gross_pay']);
-                $total_deductions += floatval($row['deductions']);
-                $total_net += floatval($row['net_pay']);
-                
-                // Format period
-                $row['period'] = date('M j', strtotime($row['start_date'])) . ' - ' . date('M j, Y', strtotime($row['end_date']));
-                $rows[] = $row;
-            }
+        foreach ($data as $r) {
+            $total_gross += floatval($r['gross'] ?? 0);
+            $total_deductions += floatval($r['ded'] ?? 0);
+            $total_net += floatval($r['net'] ?? 0);
+            
+            $rows[] = [
+                'employee_name' => $r['name'] ?? 'N/A',
+                'period' => $r['period'] ?? 'Current',
+                'hours_worked' => $r['hours'] ?? 0,
+                'gross_pay' => $r['gross'] ?? 0,
+                'deductions' => $r['ded'] ?? 0,
+                'net_pay' => $r['net'] ?? 0
+            ];
         }
         
         $summary = [
@@ -773,27 +605,6 @@ switch ($report_type) {
             'Total Net Pay' => '₱' . number_format($total_net, 2)
         ];
         break;
-}
-
-// Log the report generation
-$tableExists = $conn->query("SHOW TABLES LIKE 'icmis_generated_reports'");
-if ($tableExists && $tableExists->num_rows > 0) {
-    $stmt = $conn->prepare("INSERT INTO icmis_generated_reports (report_name, category, project_id, project_name, generated_by, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $category = explode('-', $report_type)[0];
-    $stmt->bind_param("ssiss", $report_title, $category, $project_id, $project_name, $userName);
-    $stmt->execute();
-    $stmt->close();
-}
-
-// Also try the old table name
-$tableExists = $conn->query("SHOW TABLES LIKE 'budget_generated_reports'");
-if ($tableExists && $tableExists->num_rows > 0) {
-    // Ensure project_id of 0 is stored as NULL to satisfy FK (use NULLIF to convert 0->NULL)
-    $stmt = $conn->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, NULLIF(?,0), ?, NOW())");
-    $category = explode('-', $report_type)[0];
-    $stmt->bind_param("ssis", $category, $report_title, $project_id, $userName);
-    $stmt->execute();
-    $stmt->close();
 }
 
 // Helper function for status badge color
@@ -814,11 +625,6 @@ function getUtilizationColor($utilization) {
     if ($utilization >= 50) return 'text-blue-700';
     return 'text-green-700';
 }
-
-// Log the report generation
-Logger::init($conn);
-Logger::export('Reports', "Generated Report: $report_title" . ($project_id > 0 ? " for $project_name" : ""), $project_id > 0 ? $project_id : null);
-
 ?>
 <!DOCTYPE html>
 <html lang="en">

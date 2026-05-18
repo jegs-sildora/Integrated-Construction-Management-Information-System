@@ -7,14 +7,14 @@ include __DIR__ . '/../../config/config.php';
 include __DIR__ . '/../../core/ApiHelper.php';
 include __DIR__ . '/project_context.php';
 
-$conn = getWorkforceConnection();
-$selected_project_id = getProjectContext($conn);
+$selected_project_id = getProjectContext();
 $selected_project_name = 'All Projects';
 
 if ($selected_project_id && $selected_project_id > 0) {
     $res = ApiHelper::get("project/projects/$selected_project_id");
     if ($res['status'] === 200) {
-        $selected_project_name = $res['data']['project_name'] ?? 'Unknown Project';
+        $project = $res['data']['project'] ?? null;
+        $selected_project_name = $project['project_name'] ?? 'Unknown Project';
     }
 }
 
@@ -46,6 +46,9 @@ $pageTitle = "Payroll Management";
     <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
     <?php include __DIR__ . '/../../includes/toast.php'; ?>
     <?php include __DIR__ . '/../../includes/header.php'; ?>
+
+    <!-- Hidden input for project context -->
+    <input type="hidden" id="selected_project_id" value="<?php echo $selected_project_id; ?>">
 
     <main class="ml-56 mt-20 p-6 transition-all duration-300 animate-fade-in">
         <div class="max-w-[90rem] mx-auto">
@@ -368,4 +371,3 @@ $pageTitle = "Payroll Management";
     </script>
 </body>
 </html>
-<?php $conn->close(); ?>

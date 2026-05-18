@@ -14,18 +14,22 @@ $db = Database::getConnection();
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
+    $id = intval($_GET['id'] ?? $_GET['fetch_id'] ?? 0);
 
     // Handle JSON Input from API Gateway
-    if (empty($_POST)) {
-        $input = json_decode(file_get_contents('php://input'), true);
-        if (is_array($input)) {
-            $_POST = $input;
-        }
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    if (!empty($input)) {
+        $_POST = array_merge($_POST, $input);
     }
 
     // -------------------- DELETE TASK --------------------
-    if ($method === 'POST' && isset($_POST['delete_id'])) {
-        $task_id = intval($_POST['delete_id']);
+    if ($method === 'DELETE' || ($method === 'POST' && isset($_POST['delete_id']))) {
+        $task_id = $id ?: intval($_POST['delete_id'] ?? 0);
+
+        if ($task_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid task ID']);
+            exit;
+        }
 
         $stmt = $db->prepare("DELETE FROM tasks WHERE task_id = ?");
         $stmt->execute([$task_id]);
@@ -69,7 +73,7 @@ try {
 
         echo json_encode([
             'success' => (bool)$task,
-            'record' => $task ?? null
+            'task' => $task ?? null
         ]);
         exit;
     }
@@ -116,11 +120,11 @@ try {
             // INSERT
             $sql = "INSERT INTO tasks 
                     (task_name, project_id, phase_id, description, assigned_to_employee_id, start_date, due_date, priority, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING task_id";
             
             $stmt = $db->prepare($sql);
             $stmt->execute([$task_name, $project_id, $phase_id, $description, $assigned_to, $start_date, $due_date, $priority, $status]);
-            $task_id = intval($db->lastInsertId());
+            $task_id = intval($stmt->fetchColumn());
             $msg = "Task added successfully";
             Logger::create('Project', "Created new task: $task_name", $task_id);
         }
@@ -130,13 +134,27 @@ try {
     }
 
     // -------------------- FETCH ALL TASKS --------------------
-    $stmt = $db->query("
-        SELECT t.*, p.project_name, ph.phase_name
-        FROM tasks t
-        LEFT JOIN projects p ON t.project_id = p.project_id
-        LEFT JOIN project_phases ph ON t.phase_id = ph.phase_id
-        ORDER BY t.due_date ASC
-    ");
+    $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+    
+    $where = [];
+    $params = [];
+    
+    if ($project_id > 0) {
+        $where[] = "t.project_id = ?";
+        $params[] = $project_id;
+    }
+    
+    $whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+
+    $sql = "SELECT t.*, p.project_name, ph.phase_name
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.project_id
+            LEFT JOIN project_phases ph ON t.phase_id = ph.phase_id
+            $whereSql
+            ORDER BY t.due_date ASC";
+            
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $tasks = $stmt->fetchAll();
 
     echo json_encode([
@@ -148,3 +166,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
+

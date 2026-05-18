@@ -41,7 +41,7 @@ let currentMaxStock = 0.0;
    2. FETCH & RENDER HISTORY TABLE
    ========================================= */
 function fetchStockOuts() {
-    const pidEl = document.getElementById('current_project_id');
+    const pidEl = document.getElementById('selected_project_id');
     const pid = pidEl ? pidEl.value : (document.getElementById('stock_projectID') ? document.getElementById('stock_projectID').value : 0);
     const url = 'php/fetch_stockout.php' + (pid ? '?project_id=' + encodeURIComponent(pid) : '');
     fetch(url, { credentials: 'same-origin' }) 
@@ -80,7 +80,7 @@ function fetchStockOuts() {
    3. LOAD DROPDOWN
    ========================================= */
 function loadInventoryDropdown() {
-    const pidEl = document.getElementById('current_project_id');
+    const pidEl = document.getElementById('selected_project_id');
     const pid = pidEl ? pidEl.value : (document.getElementById('stock_projectID') ? document.getElementById('stock_projectID').value : 0);
     const url = 'php/fetch_inventory_dropdown.php' + (pid ? '?project_id=' + encodeURIComponent(pid) : '');
     fetch(url, { credentials: 'same-origin' })

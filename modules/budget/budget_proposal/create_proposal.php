@@ -4,6 +4,8 @@
 // ============================================================
 
 include __DIR__ . '/../project_context.php';
+require_once __DIR__ . '/../../../core/ApiHelper.php';
+
 $conn = getBudgetConnection();
 
 // Initialize default values
@@ -14,18 +16,12 @@ $default_equipment_quantity = 0;
 $default_equipment_days = 0;
 $default_equipment_rate = 0.00;
 
-// Fetch projects from database
-$sql = "SELECT project_id, project_code, project_name, status FROM icmis_projects ORDER BY project_id DESC";
-$result = $conn->query($sql);
-$projects = [];
-if ($result && $result->num_rows > 0) {
-  while ($row = $result->fetch_assoc()) {
-    $projects[] = $row;
-  }
-}
+// Fetch projects from Project Service
+$projRes = ApiHelper::get('project/projects');
+$projects = $projRes['data']['projects'] ?? [];
 
 // Get selected project and phase from global context
-$selected_project_id = getProjectContext($conn);
+$selected_project_id = getProjectContext();
 $selected_phase_id = getPhaseContext();
 
 // Normalize phase id if provided via URL or numeric string
@@ -35,17 +31,11 @@ if (isset($_GET['phase_id']) && !empty($_GET['phase_id'])) {
     $selected_phase_id = is_numeric($selected_phase_id) ? intval($selected_phase_id) : 0;
 }
 
-// Preload phases for the selected project (if any)
-$result_phases = null;
+// Preload phases for the selected project (if any) via Project Service
+$phases = [];
 if ($selected_project_id && $selected_project_id > 0) {
-    $sql_ph = "SELECT phase_id, phase_name, start_date, end_date FROM icmis_project_phases WHERE project_id = ? ORDER BY start_date ASC";
-    $stmt_ph = $conn->prepare($sql_ph);
-    if ($stmt_ph) {
-        $stmt_ph->bind_param('i', $selected_project_id);
-        $stmt_ph->execute();
-        $result_phases = $stmt_ph->get_result();
-        $stmt_ph->close();
-    }
+    $phaseRes = ApiHelper::get("project/phases?project_id=$selected_project_id");
+    $phases = $phaseRes['data']['phases'] ?? [];
 }
 
 // Header variables
@@ -104,13 +94,17 @@ $pageSection = "Budget & Cost Control";
                         <label for="targetPhase" class="block text-sm text-gray-700 mb-2">Target Milestone / Phase</label>
                         <select id="targetPhase" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none">
                             <option value="">Select Phase...</option>
-                            <?php if ($result_phases && $result_phases->num_rows > 0):
-                                while ($ph = $result_phases->fetch_assoc()): ?>
-                                    <option value="<?php echo intval($ph['phase_id']); ?>" data-id="<?php echo intval($ph['phase_id']); ?>" data-start="<?php echo htmlspecialchars($ph['start_date']); ?>" data-end="<?php echo htmlspecialchars($ph['end_date']); ?>" <?php echo ($selected_phase_id && $selected_phase_id == $ph['phase_id']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($ph['phase_name']); ?>
+                            <?php if (!empty($phases)): ?>
+                                <?php foreach ($phases as $ph): ?>
+                                    <option value="<?php echo intval($ph['phase_id']); ?>" 
+                                            data-id="<?php echo intval($ph['phase_id']); ?>" 
+                                            data-start="<?php echo htmlspecialchars($ph['start_date'] ?? ''); ?>" 
+                                            data-end="<?php echo htmlspecialchars($ph['end_date'] ?? ''); ?>" 
+                                            <?php echo ($selected_phase_id && $selected_phase_id == $ph['phase_id']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($ph['phase_name'] ?? ''); ?>
                                     </option>
-                                <?php endwhile; 
-                            endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                     </div>
 

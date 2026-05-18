@@ -56,7 +56,7 @@ $stat_pending_orders = $stats['pending_orders'] ?? 0;
 // FETCH RECENT REPORTS
 // ==========================================================================
 $recent_reports = [];
-$reportRes = ApiHelper::get("budget/reports?types=procurement&project_id=" . $selected_project_id);
+$reportRes = ApiHelper::get("reports/reports?category=procurement&project_id=" . $selected_project_id);
 $recent_reports = $reportRes['data']['reports'] ?? [];
 
 $pageSection = "Procurement & Inventory";
@@ -124,7 +124,7 @@ $pageTitle = "Reports";
     </div>
 
     <!-- Hidden input for project context -->
-    <input type="hidden" id="current_project_id" value="<?php echo $selected_project_id; ?>">
+    <input type="hidden" id="selected_project_id" value="<?php echo $selected_project_id; ?>">
 
     <!-- Print Header (Hidden on Screen) -->
     <?php echo renderPrintHeader('Procurement Reports', [
@@ -399,4 +399,3 @@ $pageTitle = "Reports";
     </script>
 </body>
 </html>
-<?php $conn->close(); ?>

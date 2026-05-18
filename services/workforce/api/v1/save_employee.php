@@ -14,7 +14,7 @@ $db = Database::getConnection();
 
 // Handle JSON Input from API Gateway
 if (empty($_POST)) {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
     if (is_array($input)) {
         $_POST = $input;
         $_REQUEST = array_merge($_REQUEST, $input);
@@ -95,3 +95,4 @@ try{
     http_response_code(500);
     echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
 }
+

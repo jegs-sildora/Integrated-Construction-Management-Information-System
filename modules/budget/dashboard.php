@@ -1,12 +1,9 @@
 <?php 
-  // 1. Connection & Context - using centralized config
   include __DIR__ . '/project_context.php';
   require_once __DIR__ . '/../../core/ApiHelper.php';
   
-  $conn = getBudgetConnection();
-  
   // Get selected project ID
-  $selected_project_id = getProjectContext($conn);
+  $selected_project_id = getProjectContext();
   
   // Fetch all projects for dropdown from Project Service
   $projectRes = ApiHelper::get('project/projects');

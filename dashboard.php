@@ -13,6 +13,7 @@
 
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/core/ApiHelper.php';
+require_once __DIR__ . '/core/ProjectContext.php';
 
 // Start session and enforce authentication. Redirect unauthenticated users.
 if (session_status() === PHP_SESSION_NONE) {
@@ -24,6 +25,9 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Get project context
+$selected_project_id = ProjectContext::getProjectId();
+
 /**
  * ===================================================================================
  * DASHBOARD DATA AGGREGATION (Microservices Version)
@@ -32,12 +36,21 @@ if (!isset($_SESSION['user_id'])) {
  */
 
 // A. Project Statistics
-$projRes = ApiHelper::get('project/projects');
-$all_projects = $projRes['data']['projects'] ?? [];
+$proj_api_url = 'project/projects';
+if ($selected_project_id > 0) {
+    $proj_api_url .= '/' . $selected_project_id;
+}
+$projRes = ApiHelper::get($proj_api_url);
+
+if ($selected_project_id > 0) {
+    $all_projects = isset($projRes['data']['project_id']) ? [$projRes['data']] : (isset($projRes['data']['project']['project_id']) ? [$projRes['data']['project']] : []);
+} else {
+    $all_projects = $projRes['data']['projects'] ?? [];
+}
 $total_projects = count($all_projects);
 $active_projects = 0;
 foreach ($all_projects as $p) {
-    if (in_array($p['status'], ['In Progress', 'Active'])) $active_projects++;
+    if (in_array($p['status'] ?? '', ['In Progress', 'Active'])) $active_projects++;
 }
 
 // B. Financial Overview
@@ -46,7 +59,7 @@ foreach ($all_projects as $p) {
     $total_budget += floatval($p['total_budget'] ?? 0);
 }
 
-$expRes = ApiHelper::get('budget/expenses');
+$expRes = ApiHelper::get('budget/expenses' . ($selected_project_id > 0 ? "?project_id=$selected_project_id" : ""));
 $all_expenses = $expRes['data']['expenses'] ?? [];
 $total_spent = 0;
 foreach ($all_expenses as $e) {
@@ -56,12 +69,12 @@ foreach ($all_expenses as $e) {
 }
 
 // C. Workforce Summary
-$empRes = ApiHelper::get('workforce/employees?action=list');
+$empRes = ApiHelper::get('workforce/employees?action=list' . ($selected_project_id > 0 ? "&project_id=$selected_project_id" : ""));
 $all_employees = $empRes['data']['data'] ?? [];
 $total_staff = count($all_employees);
 
 // D. Procurement Summary
-$poRes = ApiHelper::get('procurement/orders');
+$poRes = ApiHelper::get('procurement/orders' . ($selected_project_id > 0 ? "?project_id=$selected_project_id" : ""));
 $all_orders = $poRes['data']['orders'] ?? [];
 $pending_po = 0;
 foreach ($all_orders as $o) {
@@ -120,7 +133,7 @@ $trend_labels = array_keys($trend_map);
 $trend_data = array_values($trend_map);
 
 // H. Chart Data: Workforce Attendance (Last 7 Days)
-$attRes = ApiHelper::get('workforce/attendance'); // Assuming this returns all attendance
+$attRes = ApiHelper::get('workforce/attendance' . ($selected_project_id > 0 ? "?project_id=$selected_project_id" : ""));
 $all_attendance = $attRes['data']['data'] ?? [];
 $att_map = [];
 for ($i = 6; $i >= 0; $i--) {

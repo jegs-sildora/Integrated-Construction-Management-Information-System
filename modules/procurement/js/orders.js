@@ -117,7 +117,7 @@ function setupDeleteHandler() {
                 if (data.success) {
                     const ref = data.po_reference || '';
                     // Redirect immediately to orders page with msg=deleted so toast displays after reload
-                    const currentProj = document.getElementById('current_project_id');
+                    const currentProj = document.getElementById('selected_project_id');
                     const params = new URLSearchParams();
                     if (currentProj && currentProj.value) params.set('project_id', currentProj.value);
                     params.set('msg', 'deleted');

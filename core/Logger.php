@@ -42,15 +42,7 @@ class Logger {
      */
     private static function getConnection(): ?mysqli {
         if (self::$conn !== null) {
-            // Avoid calling mysqli::ping() on PHP 8.4+ where it's deprecated
-            if (version_compare(PHP_VERSION, '8.4.0', '<')) {
-                if (self::$conn->ping()) {
-                    return self::$conn;
-                }
-            } else {
-                // Assume existing connection is usable on newer PHP versions
-                return self::$conn;
-            }
+            return self::$conn;
         }
         
         // Try to create a new connection using config constants
@@ -189,7 +181,7 @@ class Logger {
         // Send to Auth Microservice via ApiHelper
         if (class_exists('ApiHelper')) {
             $response = ApiHelper::post('auth/audit_logs', $data);
-            return isset($response['success']) && $response['success'] === true;
+            return isset($response['data']['success']) && $response['data']['success'] === true;
         }
         
         error_log('Logger: ApiHelper not found. Could not log action.');
@@ -347,3 +339,4 @@ class Logger {
         return intval($response['data']['total'] ?? 0);
     }
 }
+

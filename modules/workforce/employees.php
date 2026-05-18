@@ -5,16 +5,19 @@
 
 include __DIR__ . '/project_context.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
-$conn = getWorkforceConnection();
 
-$selected_project_id = getProjectContext($conn);
+$selected_project_id = getProjectContext();
 
 // make job titles available for server-side rendering in included components
 include __DIR__ . '/api/job_titles_include.php';
 
 // --- HELPER FUNCTION FOR STATS ---
-function getEmployeeStats() {
-    $res = ApiHelper::get('workforce/employees/stats');
+function getEmployeeStats($project_id = 0) {
+    $url = 'workforce/employees/stats';
+    if ($project_id > 0) {
+        $url .= '?project_id=' . $project_id;
+    }
+    $res = ApiHelper::get($url);
     if ($res['status'] === 200 && isset($res['data']['data'])) {
         $apiStats = $res['data']['data'];
         return [
@@ -34,8 +37,12 @@ if ($page < 1) $page = 1;
 $offset = ($page - 1) * $limit;
 
 // Fetch Employees Function
-function fetchEmployees($limit, $offset) {
-    $res = ApiHelper::get("workforce/employees?limit=$limit&offset=$offset");
+function fetchEmployees($limit, $offset, $project_id = 0) {
+    $url = "workforce/employees?limit=$limit&offset=$offset";
+    if ($project_id > 0) {
+        $url .= "&project_id=$project_id";
+    }
+    $res = ApiHelper::get($url);
     return $res['status'] === 200 ? ($res['data']['data'] ?? $res['data']) : [];
 }
 
@@ -43,10 +50,10 @@ function fetchEmployees($limit, $offset) {
 // If the JS requests 'fetch_updates', we return JSON and exit.
 if (isset($_GET['fetch_updates'])) {
     // 1. Get Stats
-    $stats = getEmployeeStats();
+    $stats = getEmployeeStats($selected_project_id);
     
     // 2. Get Employees
-    $employees = fetchEmployees($limit, $offset);
+    $employees = fetchEmployees($limit, $offset, $selected_project_id);
     $total_rows = $stats['total'] ?? 0;
     $total_pages = ceil($total_rows / $limit);
     
@@ -182,12 +189,12 @@ $pageTitle = "Employee Management";
 $pageSubTitle = $breadcrumbHTML;
 
 // Initial Stats Load
-$stats = getEmployeeStats();
+$stats = getEmployeeStats($selected_project_id);
 
 // Initial Employee Load
 $total_rows = $stats['total'] ?? 0;
 $total_pages = ceil($total_rows / $limit);
-$employees = fetchEmployees($limit, $offset);
+$employees = fetchEmployees($limit, $offset, $selected_project_id);
 
 $userName = $_SESSION['user_name'] ?? "Admin";
 ?>

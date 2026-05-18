@@ -6,6 +6,8 @@ services:
       dockerfile: ./services/gateway/Dockerfile # Reusing gateway Dockerfile as it has the same PHP/Apache setup
     ports:
       - "8080:80"
+    environment:
+      - GATEWAY_HOST=gateway
     volumes:
       - .:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini

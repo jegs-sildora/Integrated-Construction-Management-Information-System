@@ -21,11 +21,32 @@ if (empty($_POST)) {
     }
 }
 
-$action = $_GET['action'] ?? $_POST['action'] ?? $_REQUEST['action'] ?? 'list';
+$method = $_SERVER['REQUEST_METHOD'];
+$id = intval($_GET['id'] ?? $_GET['fetch_id'] ?? $_REQUEST['id'] ?? 0);
+
+$action = $_GET['action'] ?? $_POST['action'] ?? $_REQUEST['action'] ?? '';
 $action = trim($action);
 
-if ($action === 'update' && empty($_POST['employee_id'])) {
-    $action = 'create';
+// Map REST methods to actions if action is not explicitly provided
+if (empty($action)) {
+    switch ($method) {
+        case 'GET':
+            $action = ($id > 0) ? 'get' : 'list';
+            break;
+        case 'POST':
+            $action = isset($_POST['employee_id']) ? 'update' : 'create';
+            break;
+        case 'PUT':
+            $action = 'update';
+            break;
+        case 'DELETE':
+            $action = 'delete';
+            break;
+    }
+}
+
+if ($action === 'update' && empty($_POST['employee_id']) && $id > 0) {
+    $_POST['employee_id'] = $id;
 }
 
 try {
@@ -34,7 +55,7 @@ try {
             listEmployees($db);
             break;
         case 'get':
-            getEmployee($db, $_REQUEST['id'] ?? 0);
+            getEmployee($db, $id);
             break;
         case 'create':
             createEmployee($db);
@@ -43,16 +64,12 @@ try {
             updateEmployee($db);
             break;
         case 'delete':
-            $idToDelete = $_POST['employee_id'] ?? $_POST['id'] ?? $_REQUEST['employee_id'] ?? $_REQUEST['id'] ?? 0;
+            $idToDelete = $id ?: ($_POST['employee_id'] ?? $_POST['id'] ?? $_REQUEST['employee_id'] ?? 0);
             deleteEmployee($db, $idToDelete);
             break;
         default:
-            // Default to list if action is unknown but present? No, let's keep it strict if provided.
-            if (empty($action)) {
-                listEmployees($db);
-            } else {
-                echo json_encode(['success' => false, 'message' => "Invalid action: '{$action}'"]);
-            }
+            listEmployees($db);
+            break;
     }
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -173,7 +190,7 @@ function createEmployee($db) {
                 job_title_id, employment_type, payment_type, daily_rate, monthly_salary,
                 bank_name, bank_account, emergency_contact_name, emergency_contact_phone,
                 supervisor_id, notes, status, hire_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING employee_id";
     
     $stmt = $db->prepare($sql);
     
@@ -186,7 +203,7 @@ function createEmployee($db) {
     ];
     
     if ($stmt->execute($params)) {
-        $newId = $db->lastInsertId();
+        $newId = $stmt->fetchColumn();
         Logger::create('Workforce', "Employee Created: {$data['first_name']} {$data['last_name']} ({$data['employee_code']})", $newId);
         echo json_encode(['success' => true, 'message' => 'Employee created successfully', 'id' => $newId]);
     } else {

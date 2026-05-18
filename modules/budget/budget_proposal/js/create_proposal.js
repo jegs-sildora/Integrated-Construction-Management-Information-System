@@ -618,7 +618,7 @@
         const targetPhaseSelect = document.getElementById('targetPhase');
         const selectedPhaseOption = targetPhaseSelect ? targetPhaseSelect.options[targetPhaseSelect.selectedIndex] : null;
         const targetPhaseId = selectedPhaseOption && selectedPhaseOption.dataset && selectedPhaseOption.dataset.id ? selectedPhaseOption.dataset.id : (selectedPhaseOption ? selectedPhaseOption.value : '');
-        const targetPhaseName = selectedPhaseOption ? selectedPhaseOption.textContent : '';
+        const targetPhaseName = selectedPhaseOption ? selectedPhaseOption.textContent.trim().replace(/\s+/g, ' ') : '';
 
         const data = {
             project_id: projectId,
@@ -646,18 +646,23 @@
         .then(response => response.text())
         .then(text => {
             try {
+                if (!text || text.trim() === "") {
+                    throw new Error("Empty response from server");
+                }
                 const result = JSON.parse(text);
-                if (result.success) {
+                if (result && result.success) {
                     showToastAjax(result.message + ' - Code: ' + result.code, 'success', true);
                     setTimeout(() => { window.location.href = '../proposals.php'; }, 300);
                 } else {
-                    showToastAjax('Error: ' + result.message, 'error');
+                    const errorMsg = result ? result.message : "Unknown error (null response)";
+                    showToastAjax('Error: ' + errorMsg, 'error');
                     if (saveDraftBtn) saveDraftBtn.disabled = false;
                     if (submitProposalBtn) submitProposalBtn.disabled = false;
                 }
             } catch (e) {
-                console.error('JSON parse error:', e);
-                showToastAjax('Server returned invalid response', 'error');
+                console.error('Response parsing error:', e);
+                console.error('Raw response text:', text);
+                showToastAjax('Server returned invalid response. Check console for details.', 'error');
                 if (saveDraftBtn) saveDraftBtn.disabled = false;
                 if (submitProposalBtn) submitProposalBtn.disabled = false;
             }

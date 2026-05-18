@@ -5,7 +5,6 @@
 
 include __DIR__ . '/project_context.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
-$conn = getWorkforceConnection();
 
 // Fetch Employees for the Member Selection List (All Active)
 $employees = [];

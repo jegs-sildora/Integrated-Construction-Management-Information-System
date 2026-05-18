@@ -21,8 +21,9 @@ if ($method === 'OPTIONS') {
 
 switch ($method) {
     case 'GET':
-        if (isset($_GET['id'])) {
-            getProposalDetails($conn, intval($_GET['id']));
+        $id = intval($_GET['id'] ?? $_GET['fetch_id'] ?? 0);
+        if ($id > 0) {
+            getProposalDetails($conn, $id);
         } else {
             listProposals($conn);
         }
@@ -47,6 +48,7 @@ function listProposals($conn) {
         $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
         $phase_id = isset($_GET['phase_id']) ? intval($_GET['phase_id']) : 0;
         $status = $_GET['status'] ?? '';
+        $count_only = isset($_GET['count_only']) && ($_GET['count_only'] === '1' || $_GET['count_only'] === 'true');
         
         $where = [];
         $params = [];
@@ -65,12 +67,21 @@ function listProposals($conn) {
         }
         
         $whereSql = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
+        if ($count_only) {
+            $sql = "SELECT COUNT(*) as total FROM budget_proposals $whereSql";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute($params);
+            $count = intval($stmt->fetch()['total'] ?? 0);
+            echo json_encode(['success' => true, 'count' => $count]);
+            return;
+        }
+
         $sql = "SELECT * FROM budget_proposals $whereSql ORDER BY created_at DESC";
-        
+
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
         $proposals = $stmt->fetchAll();
-        
+
         echo json_encode(['success' => true, 'proposals' => $proposals]);
     } catch (Exception $e) {
         http_response_code(500);
@@ -111,8 +122,10 @@ function getProposalDetails($conn, $id) {
 
 function saveProposal($conn) {
     try {
-        $data = json_decode(file_get_contents('php://input'), true);
-        if (!$data) throw new Exception('Invalid JSON data');
+        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+        if (!$data) {
+            throw new Exception('Invalid JSON data: ' . json_last_error_msg());
+        }
 
         $project_id = intval($data['project_id'] ?? 0);
         $phase_id = isset($data['phase_id']) ? intval($data['phase_id']) : null;
@@ -182,7 +195,7 @@ function saveProposal($conn) {
 
 function updateProposal($conn) {
     try {
-        $data = json_decode(file_get_contents('php://input'), true);
+        $data = json_decode(file_get_contents('php://input'), true) ?: [];
         if (!$data || !isset($data['proposal_id'])) throw new Exception('Invalid JSON or missing proposal_id');
 
         $proposal_id = intval($data['proposal_id']);
@@ -234,7 +247,7 @@ function updateProposal($conn) {
 
 function deleteProposal($conn) {
     try {
-        $data = json_decode(file_get_contents('php://input'), true);
+        $data = json_decode(file_get_contents('php://input'), true) ?: [];
         $proposal_id = intval($data['proposal_id'] ?? $_GET['id'] ?? 0);
 
         if ($proposal_id <= 0) throw new Exception('Invalid proposal ID');
@@ -253,3 +266,4 @@ function deleteProposal($conn) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
+

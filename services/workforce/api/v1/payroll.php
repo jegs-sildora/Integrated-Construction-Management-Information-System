@@ -22,7 +22,7 @@ const PH_PAGIBIG_MAX = 200;
 try {
     // Handle JSON Input from API Gateway
     if (empty($_POST)) {
-        $input = json_decode(file_get_contents('php://input'), true);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
         if (is_array($input)) {
             $_POST = $input;
             $_REQUEST = array_merge($_REQUEST, $input);
@@ -383,9 +383,9 @@ function lockPayrollPeriod($db, $project_id, $month, $period) {
             $period_id = $ex['period_id'];
             $db->prepare("UPDATE payroll_periods SET status='Closed' WHERE period_id=?")->execute([$period_id]);
         } else {
-            $ins = $db->prepare("INSERT INTO payroll_periods (start_date, end_date, pay_date, status, created_at) VALUES (?, ?, ?, 'Closed', CURRENT_TIMESTAMP)");
+            $ins = $db->prepare("INSERT INTO payroll_periods (start_date, end_date, pay_date, status, created_at) VALUES (?, ?, ?, 'Closed', CURRENT_TIMESTAMP) RETURNING period_id");
             $ins->execute([$start, $end, $pay_date]);
-            $period_id = $db->lastInsertId();
+            $period_id = $ins->fetchColumn();
         }
 
         $empSql = "SELECT e.employee_id, e.payment_type, e.monthly_salary, COALESCE(e.daily_rate, jt.default_daily_rate, 0) as daily_rate
@@ -474,3 +474,4 @@ function getPeriodDates($month, $period) {
     }
     return ['start' => $start, 'end' => $end, 'label' => $label];
 }
+

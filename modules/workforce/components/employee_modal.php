@@ -298,4 +298,4 @@
     </div>
 </div>
 
-<script src="js/employee_modal.js"></script>
+<script src="js/employee_modal.js?v=<?php echo filemtime(__DIR__ . '/../js/employee_modal.js'); ?>"></script>

@@ -14,18 +14,22 @@ $db = Database::getConnection();
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
+    $id = intval($_GET['id'] ?? $_GET['fetch_id'] ?? 0);
 
     // Handle JSON Input from API Gateway
-    if (empty($_POST)) {
-        $input = json_decode(file_get_contents('php://input'), true);
-        if (is_array($input)) {
-            $_POST = $input;
-        }
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    if (!empty($input)) {
+        $_POST = array_merge($_POST, $input);
     }
 
     // -------------------- DELETE PROJECT --------------------
-    if ($method === 'POST' && isset($_POST['delete_id'])) {
-        $project_id = intval($_POST['delete_id']);
+    if ($method === 'DELETE' || ($method === 'POST' && isset($_POST['delete_id']))) {
+        $project_id = $id ?: intval($_POST['delete_id'] ?? 0);
+        
+        if ($project_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid project ID']);
+            exit;
+        }
         
         // Fetch project details for descriptive response
         $stmtGet = $db->prepare("SELECT project_name, project_code FROM projects WHERE project_id = ?");
@@ -128,10 +132,10 @@ try {
             // INSERT
             $sql = "INSERT INTO projects
                         (project_code, project_name, project_manager_id, description, location, start_date, end_date, status, total_budget)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING project_id";
             $stmt = $db->prepare($sql);
             $stmt->execute([$project_code, $project_name, $project_manager, $description, $location, $start_date, $end_date, $status, $total_budget]);
-            $new_id = intval($db->lastInsertId());
+            $new_id = intval($stmt->fetchColumn());
 
             Logger::create('Project', "Created new project: $project_name ($project_code)", $new_id);
 
@@ -153,3 +157,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
+

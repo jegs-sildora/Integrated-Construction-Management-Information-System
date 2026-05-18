@@ -6,30 +6,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
 
 require_once '../../core/ApiHelper.php';
+require_once __DIR__ . '/project_context.php';
 
-// Prefer procurement project context if available
-if (file_exists(__DIR__ . '/project_context.php')) {
-    require_once __DIR__ . '/project_context.php';
-    $__ctx_project = getProjectContext();
-    if ($__ctx_project && $__ctx_project > 0) {
-        $_SESSION['current_project_id'] = $__ctx_project;
-    }
-}
-
-// ==========================================================================
-// 1. SESSION BASED CONTEXT LOGIC
-// ==========================================================================
-$project_id = 0;
-
-// Priority 1: URL Parameter (Updates Session)
-if (isset($_GET['project_id'])) {
-    $project_id = intval($_GET['project_id']);
-    $_SESSION['current_project_id'] = $project_id; 
-} 
-// Priority 2: Session Data (Persistence)
-elseif (isset($_SESSION['current_project_id'])) {
-    $project_id = $_SESSION['current_project_id'];
-}
+// 1. Get Project Context
+$project_id = getProjectContext();
 
 // ==========================================================================
 // 2. FETCH DATA FOR DROPDOWN & CURRENT PROJECT
@@ -41,15 +21,18 @@ $projects_list = [];
 // Fetch Current Project Info via Gateway
 if ($project_id > 0) {
     $projRes = ApiHelper::get("project/projects/$project_id");
-    if ($projRes['status'] === 200 && !empty($projRes['data'])) {
-        $project_name = $projRes['data']['project_name'];
-        $project_code = $projRes['data']['project_code'];
+    if ($projRes['status'] === 200) {
+        $project = $projRes['data']['project'] ?? null;
+        if ($project) {
+            $project_name = $project['project_name'] ?? $project_name;
+            $project_code = $project['project_code'] ?? $project_code;
+        }
     }
 }
 
 // Fetch ALL Projects for Dropdown via Gateway
 $allProjRes = ApiHelper::get("project/projects");
-if ($allProjRes['status'] === 200) { $projects_list = $allProjRes['data']; }
+if ($allProjRes['status'] === 200) { $projects_list = $allProjRes['data']['projects'] ?? []; }
 
 // ==========================================================================
 // 3. FETCH ORDERS DATA VIA GATEWAY
@@ -64,7 +47,7 @@ if ($project_id > 0) {
 
     // Fetch Orders List via Gateway
     $ordersRes = ApiHelper::get("procurement/orders?project_id=$project_id");
-    if ($ordersRes['status'] === 200) { $orders_list = $ordersRes['data']; }
+    if ($ordersRes['status'] === 200) { $orders_list = $ordersRes['data']['orders'] ?? []; }
 }
 
 $pageSection = "Procurement & Inventory";
@@ -85,7 +68,7 @@ $pageTitle = "Purchase Orders";
     <?php include '../../includes/toast.php'; ?>
     <?php if(file_exists('purchase_order/order_modal.php')) include 'purchase_order/order_modal.php'; ?>
 
-    <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
+    <input type="hidden" id="selected_project_id" value="<?= $project_id ?>">
 
     <main class="ml-56 pt-24 min-h-screen transition-all duration-300 animate-fade-in">
         <div class="content-wrapper space-y-6">

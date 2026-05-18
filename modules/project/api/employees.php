@@ -12,11 +12,11 @@ require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../core/ApiHelper.php';
 
 // Fetch employees from Workforce Microservice
-$res = ApiHelper::get("workforce/employees");
+$res = ApiHelper::get("workforce/employees?action=list");
 $employees = [];
 
-if ($res['status'] === 200 && isset($res['data']['employees'])) {
-    foreach ($res['data']['employees'] as $emp) {
+if ($res['status'] === 200 && isset($res['data']['data'])) {
+    foreach ($res['data']['data'] as $emp) {
         if (($emp['status'] ?? 'Active') === 'Active') {
             $employees[] = [
                 'employee_id' => $emp['employee_id'],

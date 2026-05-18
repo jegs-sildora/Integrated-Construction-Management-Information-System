@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+$input = json_decode(file_get_contents('php://input'), true) ?: [];
 $email = $input['email'] ?? '';
 $password = $input['password'] ?? '';
 
@@ -48,3 +48,4 @@ echo json_encode([
     'token' => $token,
     'user' => $payload
 ]);
+

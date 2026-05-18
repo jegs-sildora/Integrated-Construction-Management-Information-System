@@ -11,6 +11,19 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 try {
     if ($method === 'GET') {
+        if (isset($_GET['id'])) {
+            $id = intval($_GET['id']);
+            $stmt = $db->prepare("SELECT * FROM generated_reports WHERE report_id = ? LIMIT 1");
+            $stmt->execute([$id]);
+            $report = $stmt->fetch();
+
+            echo json_encode([
+                'success' => (bool)$report,
+                'report' => $report ?: null
+            ]);
+            exit;
+        }
+
         $per_page = isset($_GET['per_page']) ? intval($_GET['per_page']) : 20;
         $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
         $offset = ($page - 1) * $per_page;
@@ -50,7 +63,7 @@ try {
             'current_page' => $page
         ]);
     } elseif ($method === 'POST') {
-        $input = json_decode(file_get_contents('php://input'), true);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
         
         $project_id = $input['project_id'] ?? null;
         $report_type = $input['report_type'] ?? '';
@@ -65,10 +78,10 @@ try {
         }
         
         $sql = "INSERT INTO generated_reports (project_id, report_type, category, report_name, generated_by) 
-                VALUES (?, ?, ?, ?, ?)";
+                VALUES (?, ?, ?, ?, ?) RETURNING report_id";
         $stmt = $db->prepare($sql);
         $stmt->execute([$project_id, $report_type, $category, $report_name, $generated_by]);
-        $newId = $db->lastInsertId();
+        $newId = $stmt->fetchColumn();
 
         Logger::create('Reports', "Saved report metadata: $report_name ($report_type)", $newId);
         
@@ -81,3 +94,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
+

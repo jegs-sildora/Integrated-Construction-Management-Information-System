@@ -11,6 +11,7 @@ CREATE TABLE users (
 CREATE TABLE audit_logs (
   log_id SERIAL PRIMARY KEY,
   user_id INT,
+  project_id INT,
   user_name VARCHAR(100) DEFAULT 'System',
   action VARCHAR(50) NOT NULL,
   module VARCHAR(50) NOT NULL,

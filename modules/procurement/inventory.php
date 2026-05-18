@@ -5,28 +5,11 @@ require_once '../../config/config.php';
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) { header("Location: " . BASE_URL . "index.php"); exit(); }
 require_once '../../core/ApiHelper.php';
-// Prefer procurement project context if available
-if (file_exists(__DIR__ . '/project_context.php')) {
-    require_once __DIR__ . '/project_context.php';
-    $__ctx_project = getProjectContext();
-    if ($__ctx_project && $__ctx_project > 0) {
-        $_SESSION['current_project_id'] = $__ctx_project;
-    }
-}
+require_once __DIR__ . '/project_context.php';
+
+// 1. Get Project Context
+$project_id = getProjectContext();
 require_once '../../includes/report_print_layout.php';
-
-// ==========================================================================
-// 1. SESSION BASED CONTEXT LOGIC
-// ==========================================================================
-$project_id = 0;
-
-if (isset($_GET['project_id'])) {
-    $project_id = intval($_GET['project_id']); // Allow 0 for "All Projects"
-    $_SESSION['current_project_id'] = $project_id;
-} 
-elseif (isset($_SESSION['current_project_id'])) {
-    $project_id = $_SESSION['current_project_id'];
-}
 
 // ==========================================================================
 // 2. FETCH DATA
@@ -38,14 +21,17 @@ $projects_list = [];
 if ($project_id > 0) {
     $projRes = ApiHelper::get("project/projects/$project_id");
     if ($projRes['status'] === 200 && !empty($projRes['data'])) {
-        $project_name = $projRes['data']['project_name'];
-        $project_code = $projRes['data']['project_code'] ?? '';
+        $project = $projRes['data']['project'] ?? null;
+        if ($project) {
+            $project_name = $project['project_name'];
+            $project_code = $project['project_code'] ?? '';
+        }
     }
 }
 
 // Fetch All Projects for Dropdown
 $allProjRes = ApiHelper::get("project/projects");
-if ($allProjRes['status'] === 200) { $projects_list = $allProjRes['data']; }
+if ($allProjRes['status'] === 200) { $projects_list = $allProjRes['data']['projects'] ?? []; }
 
 $pageSection = "Procurement & Inventory";
 $pageTitle = "Inventory Masterlist";
@@ -70,7 +56,7 @@ $pageTitle = "Inventory Masterlist";
         <?php include '../../includes/toast.php'; ?>
     </div>
     
-    <input type="hidden" id="current_project_id" value="<?= $project_id ?>">
+    <input type="hidden" id="selected_project_id" value="<?= $project_id ?>">
 
     <main class="ml-56 pt-24 min-h-screen transition-all duration-300 animate-fade-in">
         
@@ -137,7 +123,7 @@ $pageTitle = "Inventory Masterlist";
         <?php echo renderPrintReportScript(); ?>
 
         function changeProject(projectId) {
-            const hidden = document.getElementById('current_project_id');
+            const hidden = document.getElementById('selected_project_id');
             if (hidden) hidden.value = projectId;
 
             // Update the URL without reloading so the context is preserved

@@ -18,8 +18,8 @@ class Database {
         try {
             $dsn = "pgsql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name;
             $this->conn = new PDO($dsn, $this->username, $this->password);
-            $this->conn->setAttribute(PDO::ATTR_ERR_MODE, PDO::ERR_MODE_EXCEPTION);
-            $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            $this->conn->setAttribute(3, 2); // 3, 2
+            $this->conn->setAttribute(19, 2); // 19, 2
         } catch(PDOException $exception) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => "Connection error: " . $exception->getMessage()]);
@@ -29,3 +29,4 @@ class Database {
         return $this->conn;
     }
 }
+

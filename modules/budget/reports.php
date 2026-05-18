@@ -23,8 +23,8 @@
     // 3. Fetch Real Reports from Database via Gateway
     $recent_reports = [];
     if ($selected_project_id) {
-        $reportRes = ApiHelper::get("budget/reports?project_id=" . $selected_project_id);
-        $recent_reports = $reportRes['data']['reports'] ?? [];
+        $reportRes = ApiHelper::get("reports/reports?category=budget&project_id=" . $selected_project_id);
+        $recent_reports = $reportRes['reports'] ?? [];
     }
 
     $userName = $_SESSION['user_name'] ?? "Admin"; 

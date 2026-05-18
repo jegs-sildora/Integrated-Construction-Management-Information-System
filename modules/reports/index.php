@@ -13,21 +13,10 @@ require_once __DIR__ . '/../../includes/report_print_layout.php';
 
 // Centralized connection logic (provides MockMysqli during microservices migration)
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../core/ProjectContext.php';
 
-// Use centralized project context when available
-$selected_project_id = 0;
-if (file_exists(__DIR__ . '/../budget/project_context.php')) {
-    include_once __DIR__ . '/../budget/project_context.php';
-    $selected_project_id = getProjectContext($conn);
-} else {
-    // Fallback to URL/session behavior if context helper missing
-    if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
-        $selected_project_id = intval($_GET['project_id']);
-        $_SESSION['selected_project_id'] = $selected_project_id;
-    } elseif (isset($_SESSION['selected_project_id'])) {
-        $selected_project_id = $_SESSION['selected_project_id'];
-    }
-}
+// Use centralized project context
+$selected_project_id = ProjectContext::getProjectId();
 
 // Fetch current project info from API
 $current_project_name = "All Projects";
@@ -664,4 +653,3 @@ $userName = $_SESSION['user_name'] ?? "Admin";
     </script>
 </body>
 </html>
-<?php $conn->close(); ?>

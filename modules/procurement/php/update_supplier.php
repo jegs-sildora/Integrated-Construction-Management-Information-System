@@ -7,8 +7,22 @@ header('Content-Type: application/json');
 $method = $_SERVER['REQUEST_METHOD'];
 $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 
-$res = ApiHelper::call("procurement/suppliers/$id", 'PUT', $_POST);
+$payload = [
+	'supplier_id' => $id,
+	'supplier_name' => $_POST['name'] ?? $_POST['supplier_name'] ?? '',
+	'contact_person' => $_POST['person'] ?? $_POST['contact_person'] ?? '',
+	'contact_number' => $_POST['phone'] ?? $_POST['contact_number'] ?? '',
+	'email' => $_POST['email'] ?? '',
+	'address' => $_POST['address'] ?? '',
+	'status' => $_POST['status'] ?? 'Active'
+];
 
+$res = ApiHelper::call("procurement/suppliers/$id", 'PUT', $payload);
+
+$success = (bool)($res['data']['success'] ?? false);
 http_response_code($res['status']);
-echo json_encode($res['data']);
+echo json_encode([
+	'status' => $success ? 'success' : 'error',
+	'message' => $res['data']['message'] ?? ($success ? 'Updated' : 'Update failed')
+]);
 ?>

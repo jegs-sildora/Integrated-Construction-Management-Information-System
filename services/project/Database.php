@@ -16,9 +16,9 @@ class Database {
             $dsn = "pgsql:host=$host;port=$port;dbname=$db";
             
             try {
-                self::$instance = new PDO($dsn, $user, $pass, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                self::$instance = new \PDO($dsn, $user, $pass, [
+                    3 => 2,
+                    19 => 2
                 ]);
             } catch (PDOException $e) {
                 http_response_code(500);
@@ -29,3 +29,4 @@ class Database {
         return self::$instance;
     }
 }
+

@@ -28,18 +28,11 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['login'])) 
         exit();
     }
 
-    // Call API Gateway
-    $ch = curl_init(GATEWAY_URL . 'auth/login');
-    $payload = json_encode(['email' => $email, 'password' => $password]);
+    // Call API Gateway via ApiHelper
+    $response = ApiHelper::post('auth/login', ['email' => $email, 'password' => $password]);
     
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type:application/json']);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    $data = json_decode($response, true);
+    $httpCode = $response['status'];
+    $data = $response['data'];
 
     if ($httpCode === 200 && isset($data['token'])) {
         // Success: Set Session Variables

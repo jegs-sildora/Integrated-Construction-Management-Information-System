@@ -3,7 +3,7 @@
 require_once __DIR__ . '/project_context.php';
 
 // Get params
-$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+$project_id = getProjectContext();
 $report_type = isset($_GET['report_type']) ? $_GET['report_type'] : 'expense-log';
 $phase = isset($_GET['phase']) ? $_GET['phase'] : '';
 
@@ -90,29 +90,26 @@ $reportTitle = match($report_type) {
     default => ucwords(str_replace(['-', '_'], ' ', $report_type)) . ' Report',
 };
 
-// Record generated report in `budget_generated_reports`
+// Record generated report in centralized Reports Service
 try {
-    if (function_exists('getBudgetConnection')) {
-        $db = getBudgetConnection();
-        // Prepare a friendly report name
-        $reportName = $reportTitle;
-        if (!empty($project['project_name'])) {
-            $reportName .= ' - ' . $project['project_name'];
-        }
-
-        $generatedBy = $_SESSION['user_name'] ?? 'System';
-
-        // Insert record (created_at uses NOW())
-        $ins = $db->prepare("INSERT INTO budget_generated_reports (report_type, report_name, project_id, generated_by, created_at) VALUES (?, ?, NULLIF(?,0), ?, NOW())");
-        if ($ins) {
-            $pid = isset($project['project_id']) ? intval($project['project_id']) : intval($project_id ?? 0);
-            $ins->bind_param('ssis', $report_type, $reportName, $pid, $generatedBy);
-            $ins->execute();
-            $ins->close();
-        }
+    // Prepare a friendly report name
+    $reportName = $reportTitle;
+    if (!empty($project['project_name'])) {
+        $reportName .= ' - ' . $project['project_name'];
     }
+
+    $generatedBy = $_SESSION['user_name'] ?? 'System';
+
+    // POST to Reports Service via Gateway
+    ApiHelper::call('reports/reports', 'POST', [
+        'project_id' => intval($project['project_id'] ?? $project_id),
+        'report_type' => $report_type,
+        'report_name' => $reportName,
+        'category' => 'budget',
+        'generated_by' => $generatedBy
+    ]);
 } catch (Throwable $e) {
-    // Do not halt report rendering on logging failure; optionally log to error_log
+    // Do not halt report rendering on logging failure
     error_log('Failed to log generated report: ' . $e->getMessage());
 }
 

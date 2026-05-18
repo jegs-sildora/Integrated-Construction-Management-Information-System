@@ -1,0 +1,165 @@
+# ICMIS Render Blueprint
+# Orchestrates the deployment of the ICMIS Microservices stack on Render.com
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. API GATEWAY (Public Entry Point)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-gateway
+    env: php
+    plan: starter
+    rootDir: services/gateway
+    healthCheckPath: /
+    envVars:
+      - key: AUTH_SERVICE_URL
+        value: http://icmis-auth:10000
+      - key: PROJECT_SERVICE_URL
+        value: http://icmis-project:10000
+      - key: BUDGET_SERVICE_URL
+        value: http://icmis-budget:10000
+      - key: PROCUREMENT_SERVICE_URL
+        value: http://icmis-procurement:10000
+      - key: WORKFORCE_SERVICE_URL
+        value: http://icmis-workforce:10000
+      - key: REPORTS_SERVICE_URL
+        value: http://icmis-reports:10000
+
+  # ----------------------------------------------------------------------------
+  # 2. AUTH SERVICE (Private)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-auth
+    env: php
+    plan: starter
+    rootDir: services/auth
+    region: singapore # Adjust based on your primary users
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icmis-auth-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+  # ----------------------------------------------------------------------------
+  # 3. PROJECT SERVICE (Private)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-project
+    env: php
+    plan: starter
+    rootDir: services/project
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icmis-project-db
+          property: connectionString
+
+  # ----------------------------------------------------------------------------
+  # 4. BUDGET SERVICE (Private)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-budget
+    env: php
+    plan: starter
+    rootDir: services/budget
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icmis-budget-db
+          property: connectionString
+
+  # ----------------------------------------------------------------------------
+  # 5. PROCUREMENT SERVICE (Private)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-procurement
+    env: php
+    plan: starter
+    rootDir: services/procurement
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icmis-procurement-db
+          property: connectionString
+
+  # ----------------------------------------------------------------------------
+  # 6. WORKFORCE SERVICE (Private)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-workforce
+    env: php
+    plan: starter
+    rootDir: services/workforce
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icmis-workforce-db
+          property: connectionString
+
+  # ----------------------------------------------------------------------------
+  # 7. REPORTS SERVICE (Private)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-reports
+    env: php
+    plan: starter
+    rootDir: services/reports
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icmis-reports-db
+          property: connectionString
+
+  # ----------------------------------------------------------------------------
+  # 8. FRONTEND (Public Monolith UI)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-frontend
+    env: php
+    plan: starter
+    rootDir: .
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: GATEWAY_URL
+        fromService:
+          name: icmis-gateway
+          property: host
+      - key: BASE_URL
+        sync: false # Set this in dashboard to the final public URL
+
+# ------------------------------------------------------------------------------
+# DATABASES (Managed PostgreSQL)
+# ------------------------------------------------------------------------------
+databases:
+  - name: icmis-auth-db
+    plan: starter
+    databaseName: auth
+    user: icmis_user
+
+  - name: icmis-project-db
+    plan: starter
+    databaseName: project
+    user: icmis_user
+
+  - name: icmis-budget-db
+    plan: starter
+    databaseName: budget
+    user: icmis_user
+
+  - name: icmis-procurement-db
+    plan: starter
+    databaseName: procurement
+    user: icmis_user
+
+  - name: icmis-workforce-db
+    plan: starter
+    databaseName: workforce
+    user: icmis_user
+
+  - name: icmis-reports-db
+    plan: starter
+    databaseName: reports
+    user: icmis_user

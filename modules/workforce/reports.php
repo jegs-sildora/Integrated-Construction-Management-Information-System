@@ -4,51 +4,39 @@
  * Main UI for selecting and generating reports.
  */
 include __DIR__ . '/project_context.php';
+require_once __DIR__ . '/../../core/ApiHelper.php';
 
-$conn = getWorkforceConnection();
-$selected_project_id = getProjectContext($conn);
+$selected_project_id = getProjectContext();
 
 // Get current project details
 $current_project_name = "No Project Selected";
 $current_project_code = "";
 
-if ($selected_project_id) {
-    $stmt = $conn->prepare("SELECT project_name, project_code FROM icmis_projects WHERE project_id = ?");
-    $stmt->bind_param("i", $selected_project_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($row = $res->fetch_assoc()) {
-        $current_project_name = $row['project_name'];
-        $current_project_code = $row['project_code'];
+if ($selected_project_id > 0) {
+    $projRes = ApiHelper::get("project/projects/$selected_project_id");
+    if ($projRes['status'] === 200) {
+        $project = $projRes['data']['project'] ?? null;
+        if ($project) {
+            $current_project_name = $project['project_name'] ?? $current_project_name;
+            $current_project_code = $project['project_code'] ?? $current_project_code;
+        }
     }
-    $stmt->close();
 }
 
+// Fetch all projects for dropdown
 $projects = [];
-$result = $conn->query("SELECT project_id, project_code, project_name FROM icmis_projects ORDER BY project_id DESC");
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $projects[] = $row;
-    }
+$allProjRes = ApiHelper::get("project/projects");
+if ($allProjRes['status'] === 200) {
+    $projects = $allProjRes['data']['projects'] ?? [];
 }
 
 // Fetch recent generated reports
 $recent_reports = [];
-$tableExists = $conn->query("SHOW TABLES LIKE 'workforce_generated_reports'");
-if ($tableExists && $tableExists->num_rows > 0 && $selected_project_id) {
-    $report_sql = "SELECT report_id, report_type, report_name, project_id, generated_by, created_at 
-                   FROM workforce_generated_reports 
-                   WHERE project_id = ? 
-                   ORDER BY created_at DESC 
-                   LIMIT 50";
-    $stmt = $conn->prepare($report_sql);
-    $stmt->bind_param("i", $selected_project_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $recent_reports[] = $row;
+if ($selected_project_id > 0) {
+    $reportRes = ApiHelper::get("reports/reports?category=workforce&project_id=" . $selected_project_id);
+    if ($reportRes['status'] === 200) {
+        $recent_reports = $reportRes['data']['reports'] ?? [];
     }
-    $stmt->close();
 }
 
 $userName = $_SESSION['user_name'] ?? "Admin";
@@ -270,4 +258,3 @@ $pageTitle = "Workforce Reports";
     <script src="js/reports.js"></script>
 </body>
 </html>
-<?php $conn->close(); ?>

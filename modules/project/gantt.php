@@ -7,6 +7,7 @@
  */
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/project_context.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "index.php");
@@ -14,7 +15,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Get selected project filter
-$selectedProjectId = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
+$selectedProjectId = getProjectContext();
 $queryParams = $selectedProjectId > 0 ? ['project_id' => $selectedProjectId] : [];
 $queryString = !empty($queryParams) ? '?' . http_build_query($queryParams) : '';
 

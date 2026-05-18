@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function fetchInventory() {
     // Read current project from hidden input (if present) and optional phase_id from URL
-    const projectInput = document.getElementById('current_project_id');
+    const projectInput = document.getElementById('selected_project_id');
     const projectId = projectInput ? projectInput.value : '';
     const pageUrlParams = new URLSearchParams(window.location.search);
     const phaseId = pageUrlParams.get('phase_id') || '';

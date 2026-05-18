@@ -14,7 +14,7 @@ $db = Database::getConnection();
 
 // Handle JSON Input
 if (empty($_POST)) {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
     if (is_array($input)) $_POST = $input;
 }
 
@@ -106,9 +106,9 @@ function saveGroup($db, $action) {
 
     try {
         if ($action === 'create') {
-            $stmt = $db->prepare("INSERT INTO employee_groups (group_name, group_leader_id, description) VALUES (?, ?, ?)");
+            $stmt = $db->prepare("INSERT INTO employee_groups (group_name, group_leader_id, description) VALUES (?, ?, ?) RETURNING group_id");
             $stmt->execute([$name, $leader, $desc]);
-            $group_id = intval($db->lastInsertId());
+            $group_id = intval($stmt->fetchColumn());
 
             $year = date('Y');
             $custom_code = sprintf('GRP-%s-%03d', $year, $group_id);
@@ -184,3 +184,4 @@ function deleteGroup($db, $id) {
         throw $e;
     }
 }
+

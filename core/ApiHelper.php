@@ -42,7 +42,7 @@ class ApiHelper {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
         
-        if ($data !== null && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH'])) {
+        if ($data !== null && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
         
@@ -53,13 +53,31 @@ class ApiHelper {
         if ($error) {
             return [
                 'status' => 500,
-                'data' => ['error' => 'Gateway Connection Error: ' . $error]
+                'data' => [
+                    'success' => false,
+                    'error' => 'Gateway Connection Error: ' . $error,
+                    'attempted_url' => $url
+                ]
+            ];
+        }
+
+        $decoded = json_decode($response, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return [
+                'status' => $httpCode,
+                'data' => [
+                    'success' => false,
+                    'error' => 'Invalid JSON response from service',
+                    'raw_response' => substr($response, 0, 1000), // Limit size
+                    'json_error' => json_last_error_msg()
+                ]
             ];
         }
         
         return [
             'status' => $httpCode,
-            'data' => json_decode($response, true)
+            'data' => $decoded
         ];
     }
     

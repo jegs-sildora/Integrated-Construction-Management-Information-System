@@ -6,9 +6,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../core/ApiHelper.php';
+require_once __DIR__ . '/../../../core/ProjectContext.php';
 
-// Get project_id from GET or session
-$project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : (isset($_SESSION['current_project_id']) ? intval($_SESSION['current_project_id']) : 0);
+// Get project_id from GET or centralized context
+$project_id = $_GET['project_id'] ?? ProjectContext::getProjectId();
 
 if ($project_id <= 0) {
     echo json_encode(['success' => false, 'message' => 'Invalid Project ID']);

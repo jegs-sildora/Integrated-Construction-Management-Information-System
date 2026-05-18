@@ -8,15 +8,17 @@ require_once __DIR__ . '/../../../core/ApiHelper.php';
 header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
-$data = json_decode(file_get_contents('php://input'), true);
+$raw = file_get_contents('php://input');
+$data = json_decode($raw, true);
 
-// Map proposal_id to delete_id for the Budget Service if needed
-if (isset($data['proposal_id'])) {
-    $data['delete_id'] = $data['proposal_id'];
+if (!$data || !isset($data['proposal_id'])) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Missing proposal_id']);
+    exit;
 }
 
-// Call Budget Service via Gateway
-$res = ApiHelper::call('budget/proposals', $method, $data);
+// Call Budget Service via Gateway using RESTful DELETE pattern
+$res = ApiHelper::call('budget/proposals/' . $data['proposal_id'], 'DELETE');
 
 http_response_code($res['status']);
 echo json_encode($res['data']);

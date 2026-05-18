@@ -2,11 +2,12 @@
     // 1. Use centralized config and project context
     require_once __DIR__ . '/../../../config/config.php';
     require_once __DIR__ . '/../../../core/ApiHelper.php';
+    require_once __DIR__ . '/../../../core/ProjectContext.php';
     
     if (session_status() === PHP_SESSION_NONE) session_start();
 
-    // Get selected project and phase from context
-    $selected_project_id = $_GET['project_id'] ?? $_SESSION['selected_project_id'] ?? 0;
+    // Get selected project and phase from centralized context
+    $selected_project_id = ProjectContext::getProjectId();
     $selected_phase_id = $_GET['phase_id'] ?? 0;
 
     // 2. Fetch Phases via API
@@ -50,7 +51,7 @@
     $suppliers = [];
     $res_sup = ApiHelper::get("procurement/suppliers");
     if ($res_sup['status'] === 200) {
-        $suppliers = $res_sup['data'] ?? [];
+        $suppliers = $res_sup['data']['suppliers'] ?? [];
     }
     
     // 6. Fetch Approved Proposals for dropdown
