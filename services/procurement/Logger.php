@@ -19,7 +19,7 @@ class Logger {
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null
         ];
         
-        $auth_url = 'http://auth-service/api/v1/audit_logs.php';
+        $auth_url = (getenv('AUTH_SERVICE_URL') ?: 'http://auth-service') . '/api/v1/audit_logs.php';
         
         $ch = curl_init($auth_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
