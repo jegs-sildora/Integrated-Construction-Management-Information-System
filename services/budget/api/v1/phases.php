@@ -7,7 +7,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../Database.php';
 
-$conn = Database::getConnection();
+$conn = \Database::getConnection();
 
 $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 

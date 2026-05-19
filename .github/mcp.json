@@ -1,5 +1,15 @@
 {
   "mcpServers": {
+    "render": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@render-oss/render-mcp-server"
+      ],
+      "env": {
+        "RENDER_API_KEY": "rnd_jKDCmSsOCMxcLgBmCLecg9Dzkj1o"
+      }
+    },
     "playwright": {
       "type": "local",
       "command": "npx",

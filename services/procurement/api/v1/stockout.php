@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../Database.php';
 
 
 
-$db = Database::getConnection();
+$db = \Database::getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
