@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../Database.php';
 require_once __DIR__ . '/../../Logger.php';
 header('Content-Type: application/json');
 
-$db = Database::getConnection();
+$db = \Database::getConnection();
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];

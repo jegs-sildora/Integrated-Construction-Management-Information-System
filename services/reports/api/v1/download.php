@@ -8,7 +8,7 @@
 
 require_once __DIR__ . '/../../Database.php';
 
-$db = Database::getConnection();
+$db = \Database::getConnection();
 $report_id = intval($_GET['id'] ?? 0);
 
 if ($report_id <= 0) {

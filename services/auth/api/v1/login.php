@@ -23,7 +23,7 @@ try {
         exit;
     }
 
-    $db = Database::getConnection();
+    $db = \Database::getConnection();
     
     // Case-insensitive search using ILIKE
     $stmt = $db->prepare("SELECT user_id, full_name, password, role FROM users WHERE email ILIKE ?");

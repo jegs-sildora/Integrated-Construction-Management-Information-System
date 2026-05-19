@@ -3,7 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
 try {
-    $db = Database::getConnection();
+    $db = \Database::getConnection();
     $new_hash = password_hash('password123', PASSWORD_DEFAULT);
     
     $stmt = $db->prepare("UPDATE users SET password = ? WHERE email = 'john.doe@icmis.com'");

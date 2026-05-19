@@ -23,7 +23,7 @@ try {
         exit;
     }
 
-    $db = Database::getConnection();
+    $db = \Database::getConnection();
     if (!$db) {
         throw new Exception("Could not establish database connection");
     }

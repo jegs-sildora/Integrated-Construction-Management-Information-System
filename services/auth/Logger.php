@@ -8,7 +8,7 @@ require_once __DIR__ . '/Database.php';
 class Logger {
     public static function log($action, $module, $details, $record_id = null, $user_id = null, $user_name = null) {
         try {
-            $db = Database::getConnection();
+            $db = \Database::getConnection();
             
             // Get user info from session if not provided (for internal use)
             if ($user_id === null && session_status() !== PHP_SESSION_NONE) {
