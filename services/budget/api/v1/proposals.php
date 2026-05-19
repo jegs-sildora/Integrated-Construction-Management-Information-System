@@ -63,7 +63,7 @@ try {
 
             $sql = "INSERT INTO budget_proposals (project_id, phase_id, title, total_amount, status) VALUES (?, ?, ?, ?, ?) RETURNING proposal_id";
             $stmt = $db->prepare($sql);
-            $stmt->execute([$project_id, $phase_id, $input['title'], $input['total_amount'], $input['status'] ?? 'Pending']);
+            $stmt->execute([$project_id, $phase_id, $input['title'], $input['total_amount'], $input['status'] ?? 'PENDING']);
             echo json_encode(['success' => true, 'proposal_id' => $stmt->fetchColumn()]);
             break;
 
