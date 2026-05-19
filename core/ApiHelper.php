@@ -29,6 +29,8 @@ class ApiHelper {
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         if ($data !== null && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
@@ -44,8 +46,8 @@ class ApiHelper {
                 'status' => 500,
                 'data' => [
                     'success' => false,
-                    'error' => 'Gateway Connection Error: ' . $error,
-                    'attempted_url' => $url
+                    'error' => 'Gateway Connection Error',
+                    'debug_info' => $error
                 ]
             ];
         }
@@ -53,14 +55,13 @@ class ApiHelper {
         $decoded = json_decode($response, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            // Return the first 500 chars of response to see if it's an HTML error page
-            $snippet = substr(strip_tags($response), 0, 500);
+            // CRITICAL: If not JSON, return the raw response as debug_info
             return [
                 'status' => $httpCode,
                 'data' => [
                     'success' => false,
-                    'error' => 'Invalid JSON response',
-                    'debug_info' => $snippet ?: 'Empty response body'
+                    'error' => 'Invalid JSON response from gateway',
+                    'debug_info' => substr(strip_tags($response), 0, 1000)
                 ]
             ];
         }
