@@ -66,7 +66,9 @@
             return;
         }
 
-        fetch(`get_project_phases.php?project_id=${projectId}`)
+        fetch(`${window.GATEWAY_URL}project/phases?project_id=${projectId}`, {
+            headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+        })
             .then(response => {
                 if (!response.ok) throw new Error("API Not Found (404)");
                 return response.json();
@@ -297,9 +299,12 @@
             total_amount: items.reduce((sum, item) => sum + item.subtotal, 0)
         };
 
-        fetch('update_proposal.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        fetch(`${window.GATEWAY_URL}budget/proposals`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.AUTH_TOKEN}`
+            },
             body: JSON.stringify(data)
         })
         .then(res => res.json())
@@ -325,7 +330,9 @@
     // Initialize by fetching authoritative proposal details (ensures phase_id resolved by code)
     async function initProposalContext() {
         try {
-            const resp = await fetch(`get_proposal_details.php?id=${proposalId}`);
+            const resp = await fetch(`${window.GATEWAY_URL}budget/proposals?fetch_id=${proposalId}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const data = await resp.json();
             if (data && data.success && data.proposal) {
                 const p = data.proposal;

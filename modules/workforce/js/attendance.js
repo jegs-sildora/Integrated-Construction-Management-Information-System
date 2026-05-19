@@ -188,8 +188,10 @@ window.markAllPresent = function(context = 'individual') {
         const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
         const projectId = (typeof window.SELECTED_PROJECT_ID !== 'undefined') ? window.SELECTED_PROJECT_ID : 0;
 
-            // Instead of fetching and saving to the database, save drafts in localStorage
-            fetch(`api/attendance.php?action=list&date=${encodeURIComponent(date)}&project_id=${encodeURIComponent(projectId)}`)
+            // Updated to use API Gateway
+            fetch(`${window.GATEWAY_URL}workforce/attendance?action=list&date=${encodeURIComponent(date)}&project_id=${encodeURIComponent(projectId)}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            })
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) {
@@ -306,9 +308,13 @@ window.saveAllAttendance = function() {
         btn.disabled = true;
     }
 
-    fetch('api/attendance.php', {
+    // Updated to use API Gateway
+    fetch(`${window.GATEWAY_URL}workforce/attendance`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+        },
         body: JSON.stringify({
             action: 'save_bulk',
             date: date,

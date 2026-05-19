@@ -7,7 +7,7 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg p-1.5">
-                        <img src="/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+                        <img src="<?php echo BASE_URL; ?>assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
                     </div>
                     <div>
                         <h2 class="text-2xl font-bold text-white">Purchase Order Details</h2>

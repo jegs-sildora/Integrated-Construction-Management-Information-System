@@ -113,15 +113,20 @@ function regenerateReport(templateType) {
  * @returns {Promise}
  */
 function logReportGeneration(reportType, projectId) {
-    const formData = new FormData();
-    formData.append('action', 'log');
-    formData.append('report_type', reportType);
-    formData.append('project_id', projectId || 0);
-    formData.append('report_name', getReportTitle(reportType));
+    const data = {
+        action: 'log',
+        report_type: reportType,
+        project_id: projectId || 0,
+        report_name: getReportTitle(reportType)
+    };
 
-    return fetch('php/fetch_recent_reports.php', {
+    return fetch(`${window.GATEWAY_URL}procurement/reports`, {
         method: 'POST',
-        body: formData
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+        },
+        body: JSON.stringify(data)
     })
     .then(response => response.json())
     .then(data => {
@@ -137,12 +142,14 @@ function logReportGeneration(reportType, projectId) {
  */
 function loadRecentReports() {
     const projectId = document.getElementById('selected_project_id')?.value || '0';
-    let url = 'php/fetch_recent_reports.php?action=fetch';
+    let url = `${window.GATEWAY_URL}procurement/reports?action=fetch`;
     if (projectId && parseInt(projectId) > 0) {
         url += `&project_id=${projectId}`;
     }
 
-    fetch(url)
+    fetch(url, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -333,26 +340,29 @@ function loadProcurementStats() {
  * Fetch inventory statistics from the server
  */
 function fetchInventoryStats(projectId) {
-    let url = 'php/fetch_inventory_dropdown.php';
+    let url = `${window.GATEWAY_URL}procurement/inventory`;
     if (projectId && parseInt(projectId) > 0) {
         url += `?project_id=${projectId}`;
     }
     
-    fetch(url)
+    fetch(url, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    })
         .then(response => response.json())
-        .then(data => {
-            if (data.success && data.data) {
-                const items = data.data;
+        .then(res => {
+            const data = res.data || res.inventory || [];
+            if (data) {
+                const items = data;
                 let totalItems = items.length;
                 let lowStock = 0;
                 let totalValue = 0;
                 
                 items.forEach(item => {
-                    const stock = parseFloat(item.stock_quantity) || 0;
-                    const reorder = parseFloat(item.reorder_level) || 0;
+                    const stock = parseFloat(item.quantity || item.stock_quantity) || 0;
+                    const reorder = parseFloat(item.reorder_level) || 20;
                     const cost = parseFloat(item.unit_cost) || 0;
                     
-                    if (stock <= reorder && stock > 0) {
+                    if (stock <= reorder && stock >= 0) {
                         lowStock++;
                     }
                     totalValue += stock * cost;
@@ -377,16 +387,19 @@ function fetchInventoryStats(projectId) {
  * Fetch purchase order statistics from the server
  */
 function fetchPurchaseOrderStats(projectId) {
-    let url = 'php/fetch_orders.php';
+    let url = `${window.GATEWAY_URL}procurement/orders`;
     if (projectId && parseInt(projectId) > 0) {
         url += `?project_id=${projectId}`;
     }
     
-    fetch(url)
+    fetch(url, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    })
         .then(response => response.json())
-        .then(data => {
-            if (data.success && data.data) {
-                const orders = data.data;
+        .then(res => {
+            const data = res.data || res.orders || [];
+            if (data) {
+                const orders = data;
                 let pendingOrders = 0;
                 
                 orders.forEach(order => {

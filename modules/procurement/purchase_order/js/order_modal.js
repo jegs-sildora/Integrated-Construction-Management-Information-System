@@ -11,7 +11,9 @@ function openOrderModal(poId) {
 
     // Fetch Data - ensure path points to the new backend script
     // Assuming current page is modules/procurement/orders.php
-    fetch(`php/get_order_details.php?po_id=${poId}`)
+    fetch(`${window.GATEWAY_URL}procurement/orders?fetch_id=${poId}`, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {

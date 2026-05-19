@@ -149,6 +149,10 @@ if ($show_project_selector) {
 <div id="mobileSidebarBackdrop" class="fixed inset-0 bg-black bg-opacity-40 z-40 transition-opacity duration-300 opacity-0 pointer-events-none md:hidden"></div>
 
 <script>
+    window.BASE_URL = '<?php echo BASE_URL; ?>';
+    window.GATEWAY_URL = '<?php echo GATEWAY_URL; ?>';
+    window.AUTH_TOKEN = '<?php echo $_SESSION['jwt_token'] ?? ''; ?>';
+    
     function changeHeaderProject(id) {
         const url = new URL(window.location.href);
         url.searchParams.set('project_id', id);

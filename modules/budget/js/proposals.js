@@ -49,14 +49,11 @@ function confirmDelete() {
     Deleting...
   `;
 
-  fetch('api/delete_proposal.php', {
-    method: 'POST',
+  fetch(`${window.GATEWAY_URL}budget/proposals?id=${proposalToDelete}`, {
+    method: 'DELETE',
     headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      proposal_id: proposalToDelete
-    })
+      'Authorization': `Bearer ${window.AUTH_TOKEN}`
+    }
   })
   .then(response => response.json())
   .then(result => {

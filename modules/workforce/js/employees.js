@@ -101,7 +101,10 @@ lucide.createIcons();
             }, 10);
 
             try {
-                const response = await fetch(`api/employees.php?action=get&id=${id}`);
+                // Updated to use API Gateway
+                const response = await fetch(`${window.GATEWAY_URL}workforce/employees/${id}`, {
+                    headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+                });
                 const result = await response.json();
 
                 if (result.success && result.data) {
@@ -140,10 +143,13 @@ lucide.createIcons();
             btn.innerHTML = 'Deleting...';
             btn.disabled = true;
 
-            fetch('api/employees.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'delete', id: employeeToDeleteId })
+            // Updated to use API Gateway with DELETE method
+            fetch(`${window.GATEWAY_URL}workforce/employees/${employeeToDeleteId}`, {
+                method: 'DELETE',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${window.AUTH_TOKEN}`
+                }
             })
             .then(res => res.json())
             .then(data => {

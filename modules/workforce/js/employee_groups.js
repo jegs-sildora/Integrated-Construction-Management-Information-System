@@ -8,15 +8,20 @@ lucide.createIcons();
         const tableState = document.getElementById('groupsTable');
         const tbody = document.getElementById('groupsTableBody');
 
-        loading.classList.remove('hidden'); emptyState.classList.add('hidden'); tableState.classList.add('hidden');
+        if (loading) loading.classList.remove('hidden'); 
+        if (emptyState) emptyState.classList.add('hidden'); 
+        if (tableState) tableState.classList.add('hidden');
 
         try {
-            const res = await fetch('api/employee_groups.php?action=list');
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/employee_groups`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const result = await res.json();
-            loading.classList.add('hidden');
+            if (loading) loading.classList.add('hidden');
 
             if (result.success && result.data.length > 0) {
-                tableState.classList.remove('hidden');
+                if (tableState) tableState.classList.remove('hidden');
                 tbody.innerHTML = result.data.map(g => `
                     <tr class="hover:bg-gray-50 transition-colors">
                         <td class="px-6 py-4 text-center">
@@ -39,21 +44,25 @@ lucide.createIcons();
                         </td>
                     </tr>
                 `).join('');
-                lucide.createIcons();
+                if (typeof lucide !== 'undefined') lucide.createIcons();
             } else {
-                emptyState.classList.remove('hidden');
+                if (emptyState) emptyState.classList.remove('hidden');
             }
         } catch (e) {
-            loading.innerHTML = '<p class="text-red-500">Error loading data.</p>';
+            if (loading) loading.innerHTML = '<p class="text-red-500">Error loading data.</p>';
         }
     }
 
     function openGroupModal(reset = true) {
         if(reset) {
-            document.getElementById('groupForm').reset();
-            document.getElementById('group_action').value = 'create';
-            document.getElementById('group_id').value = '';
-            document.getElementById('selectedCount').textContent = '0 Selected';
+            const form = document.getElementById('groupForm');
+            if (form) form.reset();
+            const action = document.getElementById('group_action');
+            if (action) action.value = 'create';
+            const id = document.getElementById('group_id');
+            if (id) id.value = '';
+            const count = document.getElementById('selectedCount');
+            if (count) count.textContent = '0 Selected';
         }
         const modal = document.getElementById('groupModal');
         if (!modal) return;
@@ -64,7 +73,10 @@ lucide.createIcons();
 
     async function openEditGroupModal(id) {
         try {
-            const res = await fetch(`api/employee_groups.php?action=get&id=${id}`);
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/employee_groups/${id}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const result = await res.json();
             if(result.success) {
                 const data = result.data;
@@ -92,8 +104,31 @@ lucide.createIcons();
     async function saveGroup() {
         const form = document.getElementById('groupForm');
         const formData = new FormData(form);
+        const object = {};
+        formData.forEach((value, key) => {
+            if (key === 'members[]') {
+                if (!object.members) object.members = [];
+                object.members.push(value);
+            } else {
+                object[key] = value;
+            }
+        });
+
+        const isUpdate = !!object.group_id;
+        const method = isUpdate ? 'PUT' : 'POST';
+        const url = isUpdate 
+            ? `${window.GATEWAY_URL}workforce/employee_groups/${object.group_id}` 
+            : `${window.GATEWAY_URL}workforce/employee_groups`;
+
         try {
-            const res = await fetch('api/employee_groups.php', { method: 'POST', body: formData });
+            const res = await fetch(url, { 
+                method: method, 
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${window.AUTH_TOKEN}`
+                },
+                body: JSON.stringify(object) 
+            });
             const result = await res.json();
             if(result.success) {
                 showToast(result.message, 'success');
@@ -113,7 +148,11 @@ lucide.createIcons();
         }
         const deleteNameEl = document.getElementById('deleteGroupName');
         if (deleteNameEl) deleteNameEl.textContent = "Loading...";
-        fetch(`api/employee_groups.php?action=get&id=${id}`)
+        
+        // Updated to use API Gateway
+        fetch(`${window.GATEWAY_URL}workforce/employee_groups/${id}`, {
+            headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+        })
             .then(res=>res.json())
             .then(d => { if(d.success) {
                     if (deleteNameEl) deleteNameEl.textContent = d.data.group_name;
@@ -131,11 +170,12 @@ lucide.createIcons();
 
     async function confirmDelete() {
         if (!groupToDeleteId) return;
-        const formData = new FormData();
-        formData.append('action', 'delete');
-        formData.append('id', groupToDeleteId);
         try {
-            const res = await fetch('api/employee_groups.php', { method: 'POST', body: formData });
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/employee_groups/${groupToDeleteId}`, { 
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const data = await res.json();
             if (data.success) {
                 showToast('Group deleted', 'success');

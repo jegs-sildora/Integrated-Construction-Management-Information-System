@@ -173,11 +173,14 @@ document.getElementById('addPhaseBtn')?.addEventListener('click', function() {
 
 // ------------------ Edit Phase Logic ------------------
 function handleEditPhase(phaseId) {
-    fetch(backendUrl + '?fetch_id=' + phaseId)
+    // Updated to use API Gateway
+    fetch(`${window.GATEWAY_URL}project/phases/${phaseId}`, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                const phase = data.phase;
+                const phase = data.phase || data.data;
                 document.getElementById('phase_id').value = phase.phase_id;
                 populateProjectSelect(phase.project_id);
                 document.getElementById('phase_name').value = phase.phase_name;
@@ -214,10 +217,11 @@ function confirmDelete() {
         btn.innerHTML = `<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Deleting...`; 
     }
 
-    const formData = new FormData();
-    formData.append('delete_id', phaseToDelete);
-
-    fetch(backendUrl, { method: 'POST', body: formData })
+    // Updated to use API Gateway with DELETE method
+    fetch(`${window.GATEWAY_URL}project/phases/${phaseToDelete}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -264,8 +268,24 @@ document.getElementById('phaseForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     
     const formData = new FormData(this);
+    const object = {};
+    formData.forEach((value, key) => object[key] = value);
 
-    fetch(backendUrl, { method: 'POST', body: formData })
+    const isUpdate = !!object.phase_id;
+    const method = isUpdate ? 'PUT' : 'POST';
+    const url = isUpdate 
+        ? `${window.GATEWAY_URL}project/phases/${object.phase_id}` 
+        : `${window.GATEWAY_URL}project/phases`;
+
+    // Updated to use API Gateway
+    fetch(url, { 
+        method: method, 
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+        },
+        body: JSON.stringify(object) 
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {

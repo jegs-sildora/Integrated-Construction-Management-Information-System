@@ -136,8 +136,10 @@ const Assignments = {
         if (loader) loader.classList.remove('hidden');
         
         try {
-            // Ensure path is correct relative to the HTML file
-            const res = await fetch(`api/assignments.php?action=list&project_id=${this.state.projectId}&page=${this.state.page}`);
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/assignments?project_id=${this.state.projectId}&page=${this.state.page}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const json = await res.json();
 
             if (json.success) {
@@ -159,6 +161,7 @@ const Assignments = {
 
     renderRows(data) {
         const tbody = document.getElementById('assignmentsTableBody');
+        if (!tbody) return;
         tbody.innerHTML = '';
         
         if(!data || data.length === 0) {
@@ -230,10 +233,10 @@ const Assignments = {
         const prev = document.getElementById('prevBtn');
         const next = document.getElementById('nextBtn');
         
-        if (current) current.textContent = pageData.current_page;
-        if (total) total.textContent = pageData.total_pages;
-        if (prev) prev.disabled = pageData.current_page <= 1;
-        if (next) next.disabled = pageData.current_page >= pageData.total_pages;
+        if (current) current.textContent = pageData.current_page || pageData.currentPage || 1;
+        if (total) total.textContent = pageData.total_pages || pageData.totalPages || 1;
+        if (prev) prev.disabled = (pageData.current_page || pageData.currentPage || 1) <= 1;
+        if (next) next.disabled = (pageData.current_page || pageData.currentPage || 1) >= (pageData.total_pages || pageData.totalPages || 1);
     },
 
     async fetchPhases(projectId) {
@@ -244,7 +247,9 @@ const Assignments = {
         select.disabled = true;
         
         try {
-            const res = await fetch(`api/assignments.php?action=get_phases&project_id=${projectId}`);
+            const res = await fetch(`${window.GATEWAY_URL}workforce/assignments/phases?project_id=${projectId}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const json = await res.json();
             
             select.innerHTML = '<option value="">-- No Phase / General --</option>';
@@ -262,8 +267,10 @@ const Assignments = {
 
     async fetchEmployeeJobTitle(empId) {
         try {
-            const res = await fetch(`api/employees.php?action=get&id=${empId}`);
-            if (!res.ok) return; // Silent fail if endpoint doesn't exist
+            const res = await fetch(`${window.GATEWAY_URL}workforce/employees/${empId}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
+            if (!res.ok) return; 
             const json = await res.json();
             if (json.success && json.data) {
                 const title = json.data.position || json.data.job_title || '';
@@ -277,7 +284,9 @@ const Assignments = {
 
     async fetchDetails(id) {
         try {
-            const res = await fetch(`api/assignments.php?action=get_assignment&id=${id}`);
+            const res = await fetch(`${window.GATEWAY_URL}workforce/assignments/${id}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const json = await res.json();
             if(json.success) {
                 const data = json.data;
@@ -305,12 +314,20 @@ const Assignments = {
         const formData = new FormData(form);
         const object = {};
         formData.forEach((value, key) => object[key] = value);
-        object.action = object.assignment_id ? 'update' : 'create';
+        
+        const isUpdate = !!object.assignment_id;
+        const method = isUpdate ? 'PUT' : 'POST';
+        const url = isUpdate 
+            ? `${window.GATEWAY_URL}workforce/assignments/${object.assignment_id}` 
+            : `${window.GATEWAY_URL}workforce/assignments`;
 
         try {
-            const res = await fetch('api/assignments.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+            const res = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${window.AUTH_TOKEN}`
+                },
                 body: JSON.stringify(object)
             });
             const json = await res.json();
@@ -334,10 +351,11 @@ const Assignments = {
     async delete(id) {
         if(!confirm("Are you sure you want to delete this assignment?")) return;
         try {
-            const res = await fetch('api/assignments.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'delete', id: id})
+            const res = await fetch(`${window.GATEWAY_URL}workforce/assignments/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${window.AUTH_TOKEN}`
+                }
             });
             const json = await res.json();
             if(json.success) {

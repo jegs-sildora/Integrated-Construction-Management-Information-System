@@ -52,10 +52,13 @@ const Payroll = {
         tableBody.innerHTML = ''; 
         footer.classList.add('hidden');
         alertBox.classList.add('hidden');
-        
+
         try {
-            const params = new URLSearchParams({ action: 'get_payroll', project_id: this.state.projectId, month: this.state.month, period: this.period });
-            const res = await fetch(`api/payroll.php?${params.toString()}`);
+            const params = new URLSearchParams({ project_id: this.state.projectId, month: this.state.month, period: this.period });
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/payroll?${params.toString()}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const json = await res.json();
 
             if (json.success) {
@@ -70,7 +73,7 @@ const Payroll = {
 
                 this.renderTable(this.state.data);
                 this.updateStats(json.data.totals);
-                
+
                 // Update UI Status (Draft/Locked)
                 if (statusBadge) {
                     statusBadge.classList.remove('hidden', 'bg-gray-100', 'text-gray-600', 'bg-green-100', 'text-green-800', 'border-green-200', 'border-gray-200');
@@ -111,12 +114,15 @@ const Payroll = {
     async loadHistory() {
         const tbody = document.getElementById('historyTableBody');
         tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">Loading history...</td></tr>`;
-        
+
         try {
-            const params = new URLSearchParams({ action: 'get_history', project_id: this.state.projectId });
-            const res = await fetch(`api/payroll.php?${params.toString()}`);
+            const params = new URLSearchParams({ project_id: this.state.projectId });
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/payroll/history?${params.toString()}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const json = await res.json();
-            
+
             tbody.innerHTML = '';
             if(json.success && json.data.length > 0) {
                 json.data.forEach(row => {
@@ -163,11 +169,11 @@ const Payroll = {
         const title = document.getElementById('histModalTitle');
         const subtitle = document.getElementById('histModalSubtitle');
         const tbody = document.getElementById('histModalBody');
-        
+
         // Reset Modal State
         title.innerText = 'Loading...';
         tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-400">Fetching records...</td></tr>';
-        
+
         // Show Modal
         modal.classList.remove('hidden');
         setTimeout(() => modal.querySelector('.modal-content').classList.add('modal-open'), 10);
@@ -175,12 +181,14 @@ const Payroll = {
         try {
             // Fetch Specific Period Data (Passing period_id to get exact snapshot)
             const params = new URLSearchParams({ 
-                action: 'get_payroll', 
                 project_id: this.state.projectId, 
-                period_id: periodId // Backend must support this
+                period_id: periodId 
             });
-            
-            const res = await fetch(`api/payroll.php?${params.toString()}`);
+
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/payroll?${params.toString()}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const json = await res.json();
 
             if (json.success) {
@@ -190,29 +198,9 @@ const Payroll = {
 
                 title.innerText = `Payroll: ${meta.period_label}`;
                 subtitle.innerText = `Posted Record • ${meta.start_date} to ${meta.end_date}`;
-                
+
                 // Render Table
                 tbody.innerHTML = '';
-                employees.forEach(emp => {
-                    tbody.innerHTML += `
-                        <tr class="border-b border-gray-50 hover:bg-gray-50">
-                            <td class="px-6 py-3">
-                                <p class="font-bold text-gray-900 text-xs">${emp.fullname}</p>
-                                <p class="text-[10px] text-gray-500 font-mono">${emp.code}</p>
-                            </td>
-                            <td class="px-4 py-3 text-center text-xs text-gray-600">${emp.days_worked}</td>
-                            <td class="px-4 py-3 text-center text-xs ${emp.ot_hours > 0 ? 'text-[#e9922c] font-bold' : 'text-gray-300'}">
-                                ${emp.ot_hours > 0 ? emp.ot_hours : '-'}
-                            </td>
-                            <td class="px-4 py-3 text-right text-xs font-mono text-gray-500">₱${this.formatMoney(emp.daily_rate)}</td>
-                            <td class="px-6 py-3 text-right font-mono text-xs font-medium text-blue-800">₱${this.formatMoney(emp.gross_pay)}</td>
-                            <td class="px-6 py-3 text-right font-mono text-xs text-red-600">(${this.formatMoney(emp.deductions)})</td>
-                            <td class="px-6 py-3 text-right font-mono text-sm font-bold text-[#e9922c]">₱${this.formatMoney(emp.net_pay)}</td>
-                        </tr>
-                    `;
-                });
-
-                // Add per-employee print buttons if employee_id exists
                 // Re-render rows with action button to the right
                 const rows = employees.map(emp => {
                     const canPrint = emp.employee_id || emp.id || emp.emp_id;
@@ -292,15 +280,15 @@ const Payroll = {
         this.setTxt('psName', emp.fullname);
         this.setTxt('psId', emp.code);
         this.setTxt('psPeriod', this.state.meta.period_label || '-');
-        
+
         this.setTxt('psBasic', this.formatMoney(emp.basic_pay));
         this.setTxt('psOtPay', this.formatMoney(emp.ot_pay));
         this.setTxt('psTotalGross', this.formatMoney(emp.gross_pay));
-        
+
         let d = this.state.meta.is_locked ? 
             { sss: emp.sss_deduction, ph: emp.philhealth_deduction, pi: emp.pagibig_deduction } :
             this.calculateContributions(emp.payment_type==='Monthly' ? emp.monthly_salary : emp.gross_pay*2);
-            
+
         this.setTxt('psSSS', this.formatMoney(d.sss));
         this.setTxt('psPhilHealth', this.formatMoney(d.ph));
         this.setTxt('psPagIbig', this.formatMoney(d.pi));
@@ -390,18 +378,24 @@ const Payroll = {
 
     async confirmLock() {
         try {
-            const fd = new FormData();
-            fd.append('action', 'lock_payroll');
-            fd.append('project_id', this.state.projectId);
-            fd.append('month', this.state.month);
-            fd.append('period', this.period);
-            const res = await fetch('api/payroll.php', { method: 'POST', body: fd });
+            // Updated to use API Gateway
+            const res = await fetch(`${window.GATEWAY_URL}workforce/payroll/lock`, { 
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${window.AUTH_TOKEN}`
+                },
+                body: JSON.stringify({
+                    project_id: this.state.projectId,
+                    month: this.state.month,
+                    period: this.period
+                })
+            });
             const json = await res.json();
             if(json.success) { this.closeLockModal(); this.loadData(); }
             else alert(json.message);
         } catch(e) { console.error(e); }
     },
-
     calculateContributions(salary) {
         let s = parseFloat(salary)||0;
         return {

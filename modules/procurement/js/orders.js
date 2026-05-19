@@ -96,12 +96,15 @@ function setupDeleteHandler() {
             btn.disabled = true;
             btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Deleting...`;
 
-            const formData = new FormData();
-            formData.append('po_id', idToDelete);
-
-            fetch('purchase_order/delete_order.php', { 
-                method: 'POST', 
-                body: formData 
+            const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/orders';
+            fetch(url, { 
+                method: 'DELETE', 
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+                },
+                body: JSON.stringify({ po_id: idToDelete })
             }) 
             .then(res => {
                 // Check if response is valid JSON
@@ -114,7 +117,7 @@ function setupDeleteHandler() {
                 }
             })
             .then(data => {
-                if (data.success) {
+                if (data.success || data.status === 'success') {
                     const ref = data.po_reference || '';
                     // Redirect immediately to orders page with msg=deleted so toast displays after reload
                     const currentProj = document.getElementById('selected_project_id');

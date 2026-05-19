@@ -241,9 +241,12 @@ document.getElementById('submit-po-btn').addEventListener('click', function() {
         items: orderItems
     };
 
-    fetch('update_order.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    fetch(`${window.GATEWAY_URL}procurement/orders`, {
+        method: 'PUT',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+        },
         body: JSON.stringify(payload)
     })
     .then(res => res.json())

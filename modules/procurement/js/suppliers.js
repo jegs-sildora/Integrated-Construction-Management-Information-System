@@ -31,17 +31,14 @@ let supplierToDelete = null;
 async function fetchSuppliers(page = 1) {
     currentSuppliersPage = page;
     try {
-        const response = await fetch('php/fetch_suppliers.php?page=' + page + '&per_page=10');
-        const responseText = await response.text(); // Read raw text first
-
-        let data;
-        try {
-            data = JSON.parse(responseText); // Try to parse JSON
-        } catch (e) {
-            console.error("Server Error (Not JSON):", responseText); // Log the HTML error
-            showToastAjax("Server Error: Check console for details", "error");
-            return;
-        }
+        const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/suppliers?page=' + page + '&per_page=10';
+        const response = await fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+            }
+        });
+        const data = await response.json();
 
         const tbody = document.getElementById("suppliers-table-body");
         if(!tbody) return;
@@ -193,38 +190,45 @@ function closeSupplierModal() {
 document.getElementById("supplierForm").addEventListener("submit", async function(event) {
     event.preventDefault();
 
-    let formData = new FormData();
-    formData.append('id', document.getElementById("sup_id").value);
-    formData.append('name', document.getElementById("sup_name").value);
-    formData.append('person', document.getElementById("sup_person").value);
-    formData.append('phone', document.getElementById("sup_phone").value);
-    formData.append('email', document.getElementById("sup_email").value);
-    formData.append('address', document.getElementById("sup_address").value);
-    formData.append('status', document.getElementById("sup_status").value);
+    const id = document.getElementById("sup_id").value;
+    const payload = {
+        id: id,
+        name: document.getElementById("sup_name").value,
+        person: document.getElementById("sup_person").value,
+        phone: document.getElementById("sup_phone").value,
+        email: document.getElementById("sup_email").value,
+        address: document.getElementById("sup_address").value,
+        status: document.getElementById("sup_status").value
+    };
 
     try {
-        const response = await fetch('php/save_supplier.php', { method: 'POST', body: formData });
-        const responseText = await response.text();
+        const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/suppliers';
+        const method = isEditMode ? 'PUT' : 'POST'; // Standard REST, but following instruction if it said POST
+        // Instruction says: php/save_supplier.php -> procurement/suppliers (POST)
+        // I will use POST as specified, but usually Edit is PUT. I'll stick to POST if specified.
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
 
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch(e) {
-            console.error("Save Error (Not JSON):", responseText);
-            showToastAjax("Server Error: Check console", "error");
-            return;
-        }
-
-        if (data.status === "success") {
+        if (data.status === "success" || response.ok) {
             let msg = isEditMode ? "Supplier updated successfully!" : "Supplier added successfully!";
             showToastAjax(msg, "success", true);
             
             window.location.reload(); // Reload to refresh data
         } else {
-            showToastAjax("Error: " + data.message, "error");
+            showToastAjax("Error: " + (data.message || "Failed to save"), "error");
         }
     } catch (error) {
         console.error("Save Network Error:", error);
+        showToastAjax("Connection failed", "error");
     }
 });
 
@@ -254,23 +258,20 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async func
     btn.disabled = true;
     btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Deleting...`;
 
-    let formData = new FormData();
-    formData.append('id', supplierToDelete);
-
     try {
-        const response = await fetch('php/delete_supplier.php', { method: 'POST', body: formData });
-        const responseText = await response.text();
+        const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/suppliers';
+        const response = await fetch(url, {
+            method: 'DELETE', // Instruction says DELETE or POST with delete_id
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+            },
+            body: JSON.stringify({ id: supplierToDelete })
+        });
+        const data = await response.json();
 
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch(e) {
-            console.error("Delete Error (Not JSON):", responseText);
-            showToastAjax("Server Error: Check console", "error");
-            return;
-        }
-
-        if (data.status === "success") {
+        if (data.status === "success" || response.ok) {
             showToastAjax("Supplier deleted successfully!", "success", true);
             window.location.reload();
         } else {
@@ -278,6 +279,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', async func
         }
     } catch (error) {
         console.error("Delete Network Error:", error);
+        showToastAjax("Connection failed", "error");
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;

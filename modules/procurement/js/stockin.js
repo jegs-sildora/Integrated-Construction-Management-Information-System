@@ -65,9 +65,16 @@ function setupEventListeners() {
    2. FETCH STOCK IN HISTORY (Main Dashboard Table)
    ========================================= */
 function fetchStockHistory() {
-    fetch('php/fetch_stockin.php') 
+    const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/stockin';
+    fetch(url, {
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        }
+    }) 
     .then(response => response.json())
-    .then(data => {
+    .then(res => {
+        const data = res.data || res.stockin || res || [];
         const tbody = document.getElementById("stockin-table-body");
         if(!tbody) return;
         
@@ -147,16 +154,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const original = btn.innerText;
         btn.innerHTML = 'Updating...';
 
-        fetch('php/update_stockin.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/stockin';
+        fetch(url, {
+            method: 'PUT',
+            headers: { 
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+            },
             body: JSON.stringify({ stock_in_id: stockId, quantity_received: qty, date_received: date })
         })
         .then(res => res.json())
         .then(data => {
             btn.disabled = false;
             btn.innerText = original;
-            if (data.success) {
+            if (data.success || data.status === 'success') {
                 showToastAjax('Stock item updated', 'success');
                 closeEditStockModal();
                 fetchStockHistory();
@@ -208,13 +220,20 @@ function loadApprovedPOs() {
     const projectIdInput = document.getElementById("selected_project_id");
     const projectId = projectIdInput ? projectIdInput.value : 0;
 
-    fetch(`php/get_approved_pos.php?project_id=${projectId}`)
+    const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/orders?status=APPROVED&project_id=' + projectId;
+    fetch(url, {
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        }
+    })
     .then(res => res.json())
     .then(data => {
         const dropdown = document.getElementById("stk_po_select");
         dropdown.innerHTML = '<option value="" disabled selected>-- Select Approved Purchase Order --</option>';
 
-        if (!data.success || !data.pos || data.pos.length === 0) {
+        const pos = data.pos || data.data || [];
+        if ((!data.success && !data.status === 'success') || pos.length === 0) {
             let option = document.createElement("option");
             option.text = "No Approved POs found";
             option.disabled = true;
@@ -222,7 +241,7 @@ function loadApprovedPOs() {
             return;
         }
 
-        data.pos.forEach(po => {
+        pos.forEach(po => {
             let option = document.createElement("option");
             option.value = po.po_id; 
             option.text = `${po.po_reference} - ${po.supplier_name}`;
@@ -240,13 +259,21 @@ function fetchOrderDetails(poId) {
     tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Loading items...</td></tr>';
     container.classList.remove("hidden");
 
-    fetch(`php/get_order_details.php?po_id=${poId}`)
+    const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/orders?fetch_id=' + poId;
+    fetch(url, {
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        }
+    })
     .then(res => res.json())
-    .then(data => {
+    .then(res => {
         tbody.innerHTML = "";
+        const data = res.data || res;
+        const items = data.items || [];
 
-        if (data.success && data.items.length > 0) {
-            data.items.forEach((item, index) => {
+        if ((res.success || res.status === 'success' || Array.isArray(items)) && items.length > 0) {
+            items.forEach((item, index) => {
                 const orderedQty = parseFloat(item.quantity);
                 
                 // Renders TR elements to match the Table structure
@@ -359,9 +386,14 @@ function submitStockIn() {
     btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing...`;
 
     // Send Request
-    fetch('php/save_stockin.php', {
+    const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/stockin';
+    fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        },
         body: JSON.stringify({
             project_id: projectId,
             po_id: poId,
@@ -370,7 +402,7 @@ function submitStockIn() {
     })
     .then(res => res.json())
     .then(data => {
-        if(data.success) {
+        if(data.success || data.status === 'success') {
             showToastAjax('Stock received successfully!', 'success', true);
             closeStockModal();
             location.reload();

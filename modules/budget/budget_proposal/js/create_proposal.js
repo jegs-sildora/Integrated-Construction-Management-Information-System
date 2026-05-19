@@ -313,7 +313,9 @@
         }
 
         // Fetch Phases from Backend
-        fetch(`get_project_phases.php?project_id=${projectId}`)
+        fetch(`${window.GATEWAY_URL}project/phases?project_id=${projectId}`, {
+            headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+        })
             .then(response => response.json())
             .then(data => {
                 if (phaseSelect) {
@@ -638,9 +640,12 @@
 
         console.log('Submitting data:', data);
 
-        fetch('/modules/budget/api/save_proposal.php', {
+        fetch(`${window.GATEWAY_URL}budget/proposals`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.AUTH_TOKEN}`
+            },
             body: JSON.stringify(data)
         })
         .then(response => response.text())

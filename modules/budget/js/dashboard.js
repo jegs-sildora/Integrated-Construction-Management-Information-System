@@ -135,7 +135,9 @@
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     try {
-      const response = await fetch(`api/get_phase_budget_proposals.php?project_id=${SELECTED_PROJECT_ID}&phase=${encodeURIComponent(phaseName)}`);
+      const response = await fetch(`${window.GATEWAY_URL}budget/proposals?project_id=${SELECTED_PROJECT_ID}&phase_id=${currentPhaseData.phase_id}&status=APPROVED`, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+      });
       const result = await response.json();
 
       if (result.success && result.proposals.length > 0) {
@@ -196,7 +198,9 @@
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     try {
-      const response = await fetch(`api/get_phase_expenses.php?project_id=${SELECTED_PROJECT_ID}&phase=${encodeURIComponent(phaseName)}`);
+      const response = await fetch(`${window.GATEWAY_URL}budget/expenses?project_id=${SELECTED_PROJECT_ID}&phase=${encodeURIComponent(phaseName)}`, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+      });
       const result = await response.json();
 
       if (result.success && result.expenses.length > 0) {

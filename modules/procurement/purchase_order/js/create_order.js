@@ -62,14 +62,22 @@ document.addEventListener('DOMContentLoaded', function() {
         proposalSelect.addEventListener('change', function() {
             const pid = this.value;
             if (!pid) return;
-            fetch(`/modules/budget/budget_proposal/get_proposal_details.php?id=${pid}`)
+            const url = (window.GATEWAY_URL || '/api/v1/') + 'budget/proposals?fetch_id=' + pid;
+            fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+                }
+            })
                 .then(res => res.json())
-                .then(resp => {
-                    if (!resp.success) return showToastAjax('Failed to load proposal', 'error');
+                .then(res => {
+                    const data = res.data || res;
+                    const items = data.items || [];
+                    if (!res.success && !res.status === 'success') return showToastAjax('Failed to load proposal', 'error');
                     // Populate datalist items
                     if (itemDatalist) {
                         itemDatalist.innerHTML = '';
-                        resp.items.forEach(it => {
+                        items.forEach(it => {
                             const opt = document.createElement('option');
                             opt.value = it.item_name;
                             opt.setAttribute('data-qty', it.quantity || '');
@@ -78,15 +86,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
 
+                    const proposal = data.proposal || data;
                     // Auto-select project and phase from proposal
-                    if (resp.proposal && resp.proposal.project_id) {
-                        projectSelect.value = resp.proposal.project_id;
+                    if (proposal && proposal.project_id) {
+                        projectSelect.value = proposal.project_id;
                         projectSelect.dispatchEvent(new Event('change'));
                     }
-                    if (resp.proposal && resp.proposal.phase_id) {
+                    if (proposal && proposal.phase_id) {
                         // find option with matching data-phase-id
                         for (let opt of phaseSelect.options) {
-                            if (opt.getAttribute('data-phase-id') == resp.proposal.phase_id) {
+                            if (opt.getAttribute('data-phase-id') == proposal.phase_id) {
                                 phaseSelect.value = opt.value;
                                 phaseSelect.dispatchEvent(new Event('change'));
                                 break;
@@ -236,9 +245,14 @@ document.getElementById('submit-po-btn').addEventListener('click', function() {
         items: orderItems
     };
 
-    fetch('save_order.php', {
+    const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/orders';
+    fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        },
         body: JSON.stringify(payload)
     })
     .then(response => {
@@ -248,7 +262,7 @@ document.getElementById('submit-po-btn').addEventListener('click', function() {
         return response.json();
     })
     .then(data => {
-        if (data.success) {
+        if (data.success || data.status === 'success') {
             setTimeout(() => window.location.href = '../orders.php?msg=created', 500);
         } else {
             showToastAjax('Error: ' + data.message, 'error');

@@ -150,15 +150,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function loadJobTitlesAndDepartments() {
     try {
-      // Try fetching from API (use absolute path to avoid relative dupes)
+      // Updated to use API Gateway
       const res = await fetch(
-        "/modules/workforce/api/get_form_options.php",
+        `${window.GATEWAY_URL}workforce/employees/options`,
+        { headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` } }
       );
-      const text = await res.text();
-      let j = null;
-      try {
-        j = JSON.parse(text);
-      } catch (e) {}
+      const j = await res.json();
 
       const list = document.getElementById("jobTitlesList");
 
@@ -367,18 +364,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
 window.saveEmployee = async function () {
   const form = document.getElementById("employeeForm");
+  if (!form) return;
   const submitBtn = form.querySelector('button[type="submit"]');
   const originalBtnText = submitBtn ? submitBtn.innerHTML : "Save Employee";
 
-  // 1. Determine action
+  // 1. Determine action and ID
   const idInput = document.getElementById("employee_id");
-  let currentAction =
-    idInput && idInput.value.trim() !== "" ? "update" : "create";
+  const employeeId = idInput ? idInput.value.trim() : "";
+  const isUpdate = employeeId !== "";
 
-  // 2. Prepare Data
+  // 2. Prepare Data (Convert FormData to JSON for microservice)
   const formData = new FormData(form);
-  // Explicitly append formatted action if needed by your PHP
-  // (Though usually formData contains the input type="hidden" name="action")
+  const object = {};
+  formData.forEach((value, key) => object[key] = value);
 
   // 3. UI Loading State
   if (submitBtn) {
@@ -388,22 +386,21 @@ window.saveEmployee = async function () {
   }
 
   try {
-    const response = await fetch(`api/employees.php?action=${currentAction}`, {
-      method: "POST",
-      body: formData,
+    const url = isUpdate 
+      ? `${window.GATEWAY_URL}workforce/employees/${employeeId}` 
+      : `${window.GATEWAY_URL}workforce/employees`;
+    const method = isUpdate ? "PUT" : "POST";
+
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${window.AUTH_TOKEN}`
+      },
+      body: JSON.stringify(object),
     });
 
-    const text = await response.text();
-    let result;
-
-    try {
-      result = JSON.parse(text);
-    } catch (e) {
-      console.error("Server returned non-JSON:", text);
-      if (typeof showToast === "function")
-        showToast("Server error. Check console.", "error");
-      return;
-    }
+    const result = await response.json();
 
     if (result.success) {
       if (typeof showToast === "function")
@@ -413,7 +410,8 @@ window.saveEmployee = async function () {
       if (typeof closeModal === "function") {
         closeModal();
       } else {
-        document.getElementById("employeeModal").classList.add("hidden");
+        const m = document.getElementById("employeeModal");
+        if (m) m.classList.add("hidden");
       }
 
       // REFRESH DATA AJAX (Calls function in parent employees.php)
@@ -441,12 +439,15 @@ window.saveEmployee = async function () {
 
 window.closeModal = function () {
   const modal = document.getElementById("employeeModal");
+  if (!modal) return;
   const content = modal.querySelector(".modal-content");
-  content.classList.remove("modal-open");
-  content.classList.add("modal-close");
+  if (content) {
+    content.classList.remove("modal-open");
+    content.classList.add("modal-close");
+  }
   setTimeout(() => {
     modal.classList.add("hidden");
-    content.classList.remove("modal-close");
+    if (content) content.classList.remove("modal-close");
   }, 240);
 };
 
@@ -459,26 +460,34 @@ window.openCreateModal = function () {
   if (idField) idField.value = "";
   if (actionField) actionField.value = "create";
 
-  document.getElementById("modalTitle").textContent = "Add New Employee";
-  document.getElementById("age").value = "";
-  document.getElementById("department").value = "";
+  const titleEl = document.getElementById("modalTitle");
+  if (titleEl) titleEl.textContent = "Add New Employee";
+  
+  const ageEl = document.getElementById("age");
+  if (ageEl) ageEl.value = "";
+  
+  const deptEl = document.getElementById("department");
+  if (deptEl) deptEl.value = "";
 
   const today = new Date().toISOString().split("T")[0];
   const hire = document.getElementById("hire_date");
   if (hire) hire.value = today;
 
   const modal = document.getElementById("employeeModal");
-  modal.classList.remove("hidden");
-  setTimeout(
-    () => modal.querySelector(".modal-content").classList.add("modal-open"),
-    10,
-  );
+  if (modal) {
+    modal.classList.remove("hidden");
+    const content = modal.querySelector(".modal-content");
+    if (content) setTimeout(() => content.classList.add("modal-open"), 10);
+  }
 };
 
 window.openEditModal = async function (id) {
   if (!id) return;
   try {
-    const response = await fetch(`api/employees.php?action=get&id=${id}`);
+    // Updated to use API Gateway
+    const response = await fetch(`${window.GATEWAY_URL}workforce/employees/${id}`, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    });
     const result = await response.json();
 
     if (!result.success) {
@@ -541,14 +550,15 @@ window.openEditModal = async function (id) {
     const actionField = document.getElementById("form_action");
     if (actionField) actionField.value = "update";
 
-    document.getElementById("modalTitle").textContent = "Edit Employee";
+    const titleEl = document.getElementById("modalTitle");
+    if (titleEl) titleEl.textContent = "Edit Employee";
 
     const modal = document.getElementById("employeeModal");
-    modal.classList.remove("hidden");
-    setTimeout(
-      () => modal.querySelector(".modal-content").classList.add("modal-open"),
-      10,
-    );
+    if (modal) {
+        modal.classList.remove("hidden");
+        const content = modal.querySelector(".modal-content");
+        if (content) setTimeout(() => content.classList.add("modal-open"), 10);
+    }
   } catch (e) {
     console.error("Fetch error:", e);
     if (typeof showToast === "function")

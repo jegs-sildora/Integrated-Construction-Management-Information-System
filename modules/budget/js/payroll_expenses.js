@@ -34,7 +34,9 @@ const PayrollExpenses = {
 
         try {
             // Fetch Data (read as text first to handle HTML/error responses)
-            const res = await fetch(`${this.api.details}?id=${payrollId}`);
+            const res = await fetch(`${window.GATEWAY_URL}workforce/payroll?fetch_id=${payrollId}`, {
+                headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+            });
             const raw = await res.text();
             let json = null;
             try {

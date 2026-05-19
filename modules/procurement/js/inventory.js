@@ -27,18 +27,25 @@ function fetchInventory() {
     const pageUrlParams = new URLSearchParams(window.location.search);
     const phaseId = pageUrlParams.get('phase_id') || '';
 
-    let endpoint = 'php/fetch_inventory.php';
+    let endpoint = (window.GATEWAY_URL || '/api/v1/') + 'procurement/inventory';
     const params = new URLSearchParams();
     if (projectId) params.append('project_id', projectId);
     if (phaseId) params.append('phase_id', phaseId);
     const url = params.toString() ? endpoint + '?' + params.toString() : endpoint;
 
-    fetch(url)
+    fetch(url, {
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        }
+    })
     .then(response => {
         if (!response.ok) throw new Error("HTTP error " + response.status);
         return response.json();
     })
-    .then(data => {
+    .then(res => {
+        const data = res.data || res.inventory || [];
         const tbody = document.getElementById("inventory-table-body");
         const totalCountEl = document.getElementById("total-items-count");
         const lowStockCountEl = document.getElementById("low-stock-count");

@@ -43,10 +43,19 @@ let currentMaxStock = 0.0;
 function fetchStockOuts() {
     const pidEl = document.getElementById('selected_project_id');
     const pid = pidEl ? pidEl.value : (document.getElementById('stock_projectID') ? document.getElementById('stock_projectID').value : 0);
-    const url = 'php/fetch_stockout.php' + (pid ? '?project_id=' + encodeURIComponent(pid) : '');
-    fetch(url, { credentials: 'same-origin' }) 
+    
+    let url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/stockout';
+    if (pid) url += '?project_id=' + encodeURIComponent(pid);
+
+    fetch(url, {
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        }
+    }) 
     .then(response => response.json())
-    .then(data => {
+    .then(res => {
+        const data = res.data || res.stockout || res || [];
         const tbody = document.getElementById("stock-out-table-body");
         if(!tbody) return;
         
@@ -82,16 +91,25 @@ function fetchStockOuts() {
 function loadInventoryDropdown() {
     const pidEl = document.getElementById('selected_project_id');
     const pid = pidEl ? pidEl.value : (document.getElementById('stock_projectID') ? document.getElementById('stock_projectID').value : 0);
-    const url = 'php/fetch_inventory_dropdown.php' + (pid ? '?project_id=' + encodeURIComponent(pid) : '');
-    fetch(url, { credentials: 'same-origin' })
+    
+    let url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/inventory';
+    if (pid) url += '?project_id=' + encodeURIComponent(pid);
+
+    fetch(url, {
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+        }
+    })
     .then(response => response.json())
-    .then(data => {
+    .then(res => {
+        const data = res.data || res.inventory || res || [];
         const dropdown = document.getElementById("stock_itemID");
         if(!dropdown) return;
 
         dropdown.innerHTML = '<option value="" disabled selected>Select Item (Available Stock)</option>';
         
-        if(data.forEach) {
+        if(Array.isArray(data)) {
             data.forEach(item => {
                 let option = document.createElement("option");
                 option.value = item.item_id;
@@ -214,12 +232,22 @@ if(form) {
         }
 
         let formData = new FormData(this);
+        const payload = Object.fromEntries(formData);
+        const url = (window.GATEWAY_URL || '/api/v1/') + 'procurement/stockout';
 
-        fetch('php/save_stockout.php', { method: 'POST', body: formData })
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (window.AUTH_TOKEN || '')
+            },
+            body: JSON.stringify(payload)
+        })
         .then(response => response.json())
         .then(data => {
-            if (data.status === "success") {
-                showToastAjax(data.message, "success");
+            if (data.status === "success" || data.success) {
+                showToastAjax(data.message || 'Stock issued successfully', "success");
                 
                 closeIssueModal();
                 const err = document.getElementById('stock_quantity_error'); if(err) err.textContent = '';

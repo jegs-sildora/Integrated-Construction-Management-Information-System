@@ -7,7 +7,7 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg p-1.5">
-                        <img src="/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+                        <img src="<?php echo BASE_URL; ?>assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
                     </div>
                     <div>
                         <h2 class="text-2xl font-bold text-white">Budget Proposal Details</h2>
@@ -27,7 +27,7 @@
             <div class="text-center pb-6 border-b-2 border-dashed border-gray-200">
                 <div class="flex justify-center mb-3">
                     <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-gray-100 p-2">
-                        <img src="/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+                        <img src="<?php echo BASE_URL; ?>assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
                     </div>
                 </div>
                 <h1 class="text-3xl font-bold text-gray-900 mb-1">ICMIS</h1>

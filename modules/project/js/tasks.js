@@ -94,13 +94,13 @@ document.addEventListener('click', function(e) {
 
 // Update task status on server when dragged to a new column
 function updateTaskStatus(taskId, newStatus, cardElement) {
-    const formData = new FormData();
-    formData.append('task_id', taskId);
-    formData.append('status', newStatus);
-
-    fetch(updateStatusUrl, {
+    fetch(`${window.GATEWAY_URL}project/update_task_status`, {
         method: 'POST',
-        body: formData
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+        },
+        body: JSON.stringify({ task_id: taskId, status: newStatus })
     })
     .then(res => res.json())
     .then(data => {
@@ -179,7 +179,9 @@ document.getElementById('addTaskBtn')?.addEventListener('click', function() {
 
 // ------------------ Edit Task Logic ------------------
 function handleEditTask(taskId) {
-    fetch(backendUrl + '?fetch_id=' + taskId)
+    fetch(`${window.GATEWAY_URL}project/tasks?fetch_id=${taskId}`, {
+        headers: { 'Authorization': `Bearer ${window.AUTH_TOKEN}` }
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -241,10 +243,14 @@ function confirmDelete() {
     btn.disabled = true;
     btn.innerHTML = `<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Deleting...`;
 
-    const formData = new FormData();
-    formData.append('delete_id', taskToDelete);
-
-    fetch(backendUrl, { method: 'POST', body: formData })
+    fetch(`${window.GATEWAY_URL}project/tasks`, { 
+        method: 'DELETE', 
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+        },
+        body: JSON.stringify({ delete_id: taskToDelete }) 
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -288,8 +294,16 @@ document.getElementById('taskForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     
     const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
 
-    fetch(backendUrl, { method: 'POST', body: formData })
+    fetch(`${window.GATEWAY_URL}project/tasks`, { 
+        method: 'POST', 
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.AUTH_TOKEN}`
+        },
+        body: JSON.stringify(data) 
+    })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
