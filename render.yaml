@@ -69,6 +69,8 @@ services:
         fromDatabase:
           name: icmis-budget-db
           property: connectionString
+      - key: PROJECT_SERVICE_URL
+        value: http://icmis-project:10000
 
   # ----------------------------------------------------------------------------
   # 5. PROCUREMENT SERVICE (Private)
@@ -83,6 +85,8 @@ services:
         fromDatabase:
           name: icmis-procurement-db
           property: connectionString
+      - key: PROJECT_SERVICE_URL
+        value: http://icmis-project:10000
 
   # ----------------------------------------------------------------------------
   # 6. WORKFORCE SERVICE (Private)

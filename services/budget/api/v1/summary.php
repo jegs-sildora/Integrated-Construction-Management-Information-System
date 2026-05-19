@@ -18,7 +18,8 @@ if ($project_id <= 0) {
 try {
     // 0. Fetch Project Name from Project Service
     $project_name = 'Unknown Project';
-    $project_service_url = 'http://project-service/api/v1/projects.php?fetch_id=' . $project_id;
+    $project_service_base = rtrim(getenv('PROJECT_SERVICE_URL') ?: 'http://project-service', '/');
+    $project_service_url = $project_service_base . '/api/v1/projects.php?fetch_id=' . $project_id;
     $ch = curl_init($project_service_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 3);

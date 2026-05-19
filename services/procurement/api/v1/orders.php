@@ -43,13 +43,28 @@ try {
 
         case 'POST':
             $input = json_decode(file_get_contents('php://input'), true);
+            $project_id = intval($input['project_id'] ?? 0);
+
+            if ($project_id <= 0) throw new Exception("Valid Project ID required");
+
+            // Inter-service Validation
+            $project_service_base = rtrim(getenv('PROJECT_SERVICE_URL') ?: 'http://project-service', '/');
+            $ch = curl_init($project_service_base . '/api/v1/projects.php?fetch_id=' . $project_id);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            $res = curl_exec($ch);
+            $proj_data = json_decode($res, true);
+            if (!isset($proj_data['success']) || !$proj_data['success']) {
+                throw new Exception("Invalid Project ID: Project does not exist in Project Service");
+            }
+
             $db->beginTransaction();
             
             $sql = "INSERT INTO purchase_orders (po_reference, supplier_id, project_id, order_date, total_amount, status) 
                     VALUES (?, ?, ?, ?, ?, ?) RETURNING po_id";
             $stmt = $db->prepare($sql);
             $stmt->execute([
-                $input['po_reference'], $input['supplier_id'], $input['project_id'], 
+                $input['po_reference'], $input['supplier_id'], $project_id, 
                 $input['order_date'] ?? date('Y-m-d'), $input['total_amount'], $input['status'] ?? 'PENDING'
             ]);
             $poId = $stmt->fetchColumn();
