@@ -1,21 +1,10 @@
 <?php
 /**
  * ApiHelper.php - Microservices Communication Helper
- * 
- * Provides a centralized way for the monolithic frontend to communicate
- * with the microservices via the API Gateway.
  */
 
 class ApiHelper {
     
-    /**
-     * Send a request to the API Gateway.
-     * 
-     * @param string $endpoint The API endpoint (e.g., 'project/projects')
-     * @param string $method The HTTP method (GET, POST, PUT, DELETE)
-     * @param array|null $data The data to send (for POST/PUT)
-     * @return array The response with 'status' and 'data'
-     */
     public static function call($endpoint, $method = 'GET', $data = null) {
         if (!defined('GATEWAY_URL')) {
             throw new Exception('GATEWAY_URL is not defined in config.php');
@@ -29,7 +18,6 @@ class ApiHelper {
             'Accept: application/json'
         ];
         
-        // Inject JWT token from session if available
         if (session_status() === PHP_SESSION_NONE) {
             @session_start();
         }
@@ -41,6 +29,7 @@ class ApiHelper {
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         if ($data !== null && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
@@ -64,13 +53,14 @@ class ApiHelper {
         $decoded = json_decode($response, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
+            // Return the first 500 chars of response to see if it's an HTML error page
+            $snippet = substr(strip_tags($response), 0, 500);
             return [
                 'status' => $httpCode,
                 'data' => [
                     'success' => false,
-                    'error' => 'Invalid JSON response from service',
-                    'raw_response' => substr($response, 0, 1000), // Limit size
-                    'json_error' => json_last_error_msg()
+                    'error' => 'Invalid JSON response',
+                    'debug_info' => $snippet ?: 'Empty response body'
                 ]
             ];
         }
@@ -81,19 +71,8 @@ class ApiHelper {
         ];
     }
     
-    public static function get($endpoint) {
-        return self::call($endpoint, 'GET');
-    }
-    
-    public static function post($endpoint, $data) {
-        return self::call($endpoint, 'POST', $data);
-    }
-
-    public static function put($endpoint, $data) {
-        return self::call($endpoint, 'PUT', $data);
-    }
-
-    public static function delete($endpoint) {
-        return self::call($endpoint, 'DELETE');
-    }
+    public static function get($endpoint) { return self::call($endpoint, 'GET'); }
+    public static function post($endpoint, $data) { return self::call($endpoint, 'POST', $data); }
+    public static function put($endpoint, $data) { return self::call($endpoint, 'PUT', $data); }
+    public static function delete($endpoint) { return self::call($endpoint, 'DELETE'); }
 }
