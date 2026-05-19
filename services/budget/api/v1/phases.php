@@ -4,6 +4,8 @@
  * Aggregates budget data per phase by communicating with the Project Service.
  */
 header('Content-Type: application/json');
+error_reporting(0);
+ini_set('display_errors', 0);
 
 require_once __DIR__ . '/../../Database.php';
 
@@ -69,11 +71,15 @@ try {
         // Determine Status
         $status = 'Upcoming';
         $now = date('Y-m-d');
-        if ($rp['status'] === 'Completed') {
+        $rp_status = $rp['status'] ?? '';
+        $rp_start = $rp['start_date'] ?? '';
+        $rp_end = $rp['end_date'] ?? '';
+
+        if ($rp_status === 'Completed') {
             $status = 'Completed';
         } elseif ($utilization > 100) {
             $status = 'Over Budget';
-        } elseif ($rp['start_date'] <= $now && ($rp['end_date'] >= $now || empty($rp['end_date']))) {
+        } elseif ($rp_start && $rp_start <= $now && (empty($rp_end) || $rp_end >= $now)) {
             $status = 'Active';
         }
 
@@ -91,7 +97,7 @@ try {
             'status' => $status,
             'color' => $colors[$index % count($colors)],
             'icon' => $icon,
-            'date_range' => ($rp['start_date'] ? date('M d, Y', strtotime($rp['start_date'])) : 'TBD') . ' - ' . ($rp['end_date'] ? date('M d, Y', strtotime($rp['end_date'])) : 'TBD'),
+            'date_range' => ($rp_start ? date('M d, Y', strtotime($rp_start)) : 'TBD') . ' - ' . ($rp_end ? date('M d, Y', strtotime($rp_end)) : 'TBD'),
             'allocated' => $allocated,
             'spent' => $spent,
             'remaining' => $allocated - $spent,

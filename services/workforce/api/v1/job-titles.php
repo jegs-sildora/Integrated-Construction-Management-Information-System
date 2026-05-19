@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', 0);
 /**
  * ========================= API: Job Titles =========================
  * Purpose: Fetch active job titles and their default rates.

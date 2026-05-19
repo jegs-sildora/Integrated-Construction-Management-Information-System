@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', 0);
 /**
  * ========================= API: Generate Report =========================
  * Purpose: Aggregates data from multiple microservices to generate 

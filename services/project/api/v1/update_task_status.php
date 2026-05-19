@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', 0);
 /**
  * ========================= API: Update Task Status =========================
  * Purpose: Handle task status updates (e.g., for Kanban drag-and-drop).

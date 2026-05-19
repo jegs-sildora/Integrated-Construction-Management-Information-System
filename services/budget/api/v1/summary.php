@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', 0);
 /**
  * Budget Summary API v1 - Budget Service
  * Returns financial overview for a specific project.

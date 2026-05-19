@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', 0);
 /**
  * ========================= API: Project Phases =========================
  * Purpose: Proxy to fetch phases from the Project microservice for 

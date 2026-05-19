@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', 0);
 ob_start();
 header('Content-Type: application/json; charset=utf-8');
 

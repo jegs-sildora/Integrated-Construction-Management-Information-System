@@ -6,6 +6,9 @@
  * ============================================================================ 
  */
 
+error_reporting(0);
+ini_set('display_errors', 0);
+
 require_once __DIR__ . '/../../Database.php';
 require_once __DIR__ . '/../../Logger.php';
 header('Content-Type: application/json');
@@ -26,7 +29,7 @@ try {
     if ($method === 'GET' && isset($_GET['project_id']) && !isset($_GET['id']) && !isset($_GET['fetch_id'])) {
         $project_id = intval($_GET['project_id']);
         
-        $stmt = $db->prepare("SELECT ph.phase_id, ph.phase_name, ph.start_date, ph.end_date, ph.project_id,
+        $stmt = $db->prepare("SELECT ph.phase_id, ph.phase_name, ph.start_date, ph.end_date, ph.project_id, ph.status,
                                      p.project_name, p.project_code
                               FROM project_phases ph
                               LEFT JOIN projects p ON ph.project_id = p.project_id
