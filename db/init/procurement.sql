@@ -61,3 +61,18 @@ CREATE TABLE stock_out (
   project_id INT, -- Soft FK to Project
   date_issued DATE DEFAULT CURRENT_DATE
 );
+
+CREATE TABLE audit_logs (
+  log_id SERIAL PRIMARY KEY,
+  user_id INT,
+  project_id INT,
+  user_name VARCHAR(100) DEFAULT 'System',
+  action VARCHAR(50) NOT NULL,
+  module VARCHAR(50) NOT NULL,
+  details TEXT,
+  record_id INT,
+  ip_address VARCHAR(45),
+  user_agent VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

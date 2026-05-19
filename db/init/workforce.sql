@@ -95,3 +95,18 @@ CREATE TABLE payroll (
   net_pay NUMERIC(10,2),
   status VARCHAR(50) DEFAULT 'Calculated' CHECK (status IN ('Calculated','Approved','Processed'))
 );
+
+CREATE TABLE audit_logs (
+  log_id SERIAL PRIMARY KEY,
+  user_id INT,
+  project_id INT,
+  user_name VARCHAR(100) DEFAULT 'System',
+  action VARCHAR(50) NOT NULL,
+  module VARCHAR(50) NOT NULL,
+  details TEXT,
+  record_id INT,
+  ip_address VARCHAR(45),
+  user_agent VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

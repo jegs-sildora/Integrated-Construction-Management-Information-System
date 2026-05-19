@@ -34,3 +34,18 @@ CREATE TABLE budget_expenses (
   status VARCHAR(50) DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
   created_by INT -- Soft FK to Auth
 );
+
+CREATE TABLE audit_logs (
+  log_id SERIAL PRIMARY KEY,
+  user_id INT,
+  project_id INT,
+  user_name VARCHAR(100) DEFAULT 'System',
+  action VARCHAR(50) NOT NULL,
+  module VARCHAR(50) NOT NULL,
+  details TEXT,
+  record_id INT,
+  ip_address VARCHAR(45),
+  user_agent VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

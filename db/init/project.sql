@@ -35,3 +35,18 @@ CREATE TABLE tasks (
   status VARCHAR(50) DEFAULT 'Not Started' CHECK (status IN ('Not Started','In Progress','Completed','On Hold')),
   priority VARCHAR(50) DEFAULT 'Medium' CHECK (priority IN ('Low','Medium','High','Urgent'))
 );
+
+CREATE TABLE audit_logs (
+  log_id SERIAL PRIMARY KEY,
+  user_id INT,
+  project_id INT,
+  user_name VARCHAR(100) DEFAULT 'System',
+  action VARCHAR(50) NOT NULL,
+  module VARCHAR(50) NOT NULL,
+  details TEXT,
+  record_id INT,
+  ip_address VARCHAR(45),
+  user_agent VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
