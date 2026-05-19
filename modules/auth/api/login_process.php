@@ -48,10 +48,12 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['login'])) 
         header("Location: " . BASE_URL . "dashboard.php");
         exit();
     } else {
-        // Error handling
-        $error = $data['error'] ?? 'Login failed. Please try again.';
+        // Error handling: Get both the error title and the specific message
+        $errorTitle = $data['error'] ?? 'Login failed';
+        $errorMessage = $data['message'] ?? 'Please check your connection.';
+        
         $debug = isset($data['debug_info']) ? "&debug=" . urlencode($data['debug_info']) : "";
-        header("Location: " . BASE_URL . "index.php?error=" . urlencode($error) . "&email=" . urlencode($email) . $debug);
+        header("Location: " . BASE_URL . "index.php?error=" . urlencode($errorTitle . ": " . $errorMessage) . "&email=" . urlencode($email) . $debug);
         exit();
     }
 } else {
