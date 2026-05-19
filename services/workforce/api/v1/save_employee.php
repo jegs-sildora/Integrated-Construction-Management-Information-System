@@ -10,7 +10,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 require_once __DIR__ . '/../../Database.php';
 require_once __DIR__ . '/../../Logger.php';
 
-$db = Database::getConnection();
+$db = \Database::getConnection();
 
 // Handle JSON Input from API Gateway
 if (empty($_POST)) {

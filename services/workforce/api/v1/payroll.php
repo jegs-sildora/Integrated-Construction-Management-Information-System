@@ -6,12 +6,12 @@ header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
-
 require_once __DIR__ . '/../../Database.php';
 require_once __DIR__ . '/../../Logger.php';
 
-$db = Database::getConnection();
+$db = \Database::getConnection();
 
+// Helper
 // PH Contribution Config (2025 Standard)
 const PH_SSS_RATE = 0.045; 
 const PH_SSS_MAX = 1350;   
