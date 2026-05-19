@@ -9,7 +9,7 @@ require_once __DIR__ . '/../../Logger.php';
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
         http_response_code(405);
-        echo json_encode(['error' => 'Method not allowed']);
+        echo json_encode(['success' => false, 'error' => 'Method not allowed']);
         exit;
     }
 
@@ -19,22 +19,26 @@ try {
 
     if (empty($email) || empty($password)) {
         http_response_code(400);
-        echo json_encode(['error' => 'Email and password are required']);
+        echo json_encode(['success' => false, 'error' => 'Email and password are required']);
         exit;
     }
 
     $db = Database::getConnection();
-    if (!$db) {
-        throw new Exception("Could not establish database connection");
-    }
-
-    $stmt = $db->prepare("SELECT user_id, full_name, password, role FROM users WHERE email = ?");
+    
+    // Case-insensitive search using ILIKE
+    $stmt = $db->prepare("SELECT user_id, full_name, password, role FROM users WHERE email ILIKE ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if (!$user || !password_verify($password, $user['password'])) {
+    if (!$user) {
         http_response_code(401);
-        echo json_encode(['error' => 'Invalid credentials']);
+        echo json_encode(['success' => false, 'error' => 'Invalid credentials', 'message' => 'User not found']);
+        exit;
+    }
+
+    if (!password_verify($password, $user['password'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Invalid credentials', 'message' => 'Incorrect password']);
         exit;
     }
 
@@ -46,7 +50,7 @@ try {
 
     $token = JwtUtils::generate($payload);
 
-    // Log successful login (fails silently if audit_logs table is missing)
+    // Log successful login
     Logger::login('User logged in successfully via API', $user['user_id'], $user['full_name']);
 
     ob_end_clean();
