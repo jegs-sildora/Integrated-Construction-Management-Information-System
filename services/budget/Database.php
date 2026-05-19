@@ -1,6 +1,4 @@
 <?php
-namespace Budget;
-
 class Database {
     private static $instance = null;
 

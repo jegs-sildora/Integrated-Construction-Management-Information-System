@@ -1,6 +1,4 @@
 <?php
-namespace Procurement;
-
 class Database {
     private static $instance = null;
 
