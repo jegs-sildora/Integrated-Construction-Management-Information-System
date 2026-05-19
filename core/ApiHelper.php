@@ -1,6 +1,7 @@
 <?php
 /**
  * ApiHelper.php - Microservices Communication Helper
+ * v1.6 - Guaranteed Debugging
  */
 
 class ApiHelper {
@@ -47,21 +48,26 @@ class ApiHelper {
                 'data' => [
                     'success' => false,
                     'error' => 'Gateway Connection Error',
-                    'debug_info' => $error
+                    'debug_info' => 'CURL Error: ' . $error . ' | URL: ' . $url
                 ]
             ];
         }
 
+        // --- THE JSON INTEGRITY CHECK ---
         $decoded = json_decode($response, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            // CRITICAL: If not JSON, return the raw response as debug_info
+            // This is the "Trashy Code" Killer: If we get HTML or text, 
+            // we capture exactly what it is and send it to the UI.
+            $raw_text = trim(strip_tags($response));
+            $debug_msg = !empty($raw_text) ? substr($raw_text, 0, 200) : "Empty response from gateway (Check logs)";
+            
             return [
                 'status' => $httpCode,
                 'data' => [
                     'success' => false,
                     'error' => 'Invalid JSON response from gateway',
-                    'debug_info' => substr(strip_tags($response), 0, 1000)
+                    'debug_info' => 'RAW RESPONSE: ' . $debug_msg
                 ]
             ];
         }
