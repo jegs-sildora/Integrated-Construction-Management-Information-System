@@ -1,0 +1,25 @@
+# ICMIS Apache Configuration
+# v1.1 - Frontend Routing & Security
+
+Options -Indexes
+RewriteEngine On
+
+# 1. Force HTTPS on Render
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 2. Redirect to dashboard.php if logged in and accessing root (handled in PHP usually, but good to have)
+# DirectoryIndex index.php
+
+# 3. Allow access to existing files and directories
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# 4. Handle pretty URLs (e.g. /dashboard -> dashboard.php)
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^([^\.]+)$ $1.php [NC,L]
+
+# 5. Error Documents
+ErrorDocument 404 /index.php?error=Page+not+found
