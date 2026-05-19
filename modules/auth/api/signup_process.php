@@ -47,7 +47,8 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['signup']))
     } else {
         // ERROR: Redirect with the error from Gateway
         $error = $data['error'] ?? 'Registration failed. Please try again.';
-        header("Location: " . BASE_URL . "index.php?error=" . urlencode($error) . "&signup_name=" . urlencode($full_name));
+        $debug = isset($data['debug_info']) ? "&debug=" . urlencode($data['debug_info']) : "";
+        header("Location: " . BASE_URL . "index.php?error=" . urlencode($error) . "&signup_name=" . urlencode($full_name) . $debug);
         exit();
     }
 } else {

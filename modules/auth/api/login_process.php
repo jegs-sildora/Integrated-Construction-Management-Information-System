@@ -50,7 +50,8 @@ if (($_SERVER["REQUEST_METHOD"] ?? 'GET') === 'POST' && isset($_POST['login'])) 
     } else {
         // Error handling
         $error = $data['error'] ?? 'Login failed. Please try again.';
-        header("Location: " . BASE_URL . "index.php?error=" . urlencode($error) . "&email=" . urlencode($email));
+        $debug = isset($data['debug_info']) ? "&debug=" . urlencode($data['debug_info']) : "";
+        header("Location: " . BASE_URL . "index.php?error=" . urlencode($error) . "&email=" . urlencode($email) . $debug);
         exit();
     }
 } else {
