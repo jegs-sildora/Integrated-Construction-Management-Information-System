@@ -62,6 +62,6 @@ date_default_timezone_set('Asia/Manila');
 ini_set('date.timezone', 'Asia/Manila');
 
 // 5. Error Reporting
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
-ini_set('display_errors', 0); // Disable for production, but logs will still capture errors
+error_reporting(E_ALL & ~E_DEPRECATED);
+ini_set('display_errors', 0); 
 ?>
