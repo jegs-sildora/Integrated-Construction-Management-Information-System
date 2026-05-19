@@ -2,17 +2,10 @@
 /**
  * modules/project/project_context.php
  * 
- * Module-specific wrapper for ProjectContext.
+ * Migration Bridge for Project Module.
  */
 
-require_once __DIR__ . '/../../core/ProjectContext.php';
-
-/**
- * Get the current project context
- */
-function getProjectContext($conn = null) {
-    return ProjectContext::getProjectId();
-}
+require_once __DIR__ . '/../../core/Context.php';
 
 /**
  * Get the database connection (Legacy Mock support)
@@ -24,18 +17,3 @@ function getProjectConnection() {
     }
     return $conn;
 }
-
-/**
- * Build navigation URL with context
- */
-function buildContextUrl($base_url, $params = []) {
-    return ProjectContext::buildUrl($base_url, $params);
-}
-
-/**
- * Clear project context
- */
-function clearProjectContext() {
-    ProjectContext::clear();
-}
-?>

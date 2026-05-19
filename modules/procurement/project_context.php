@@ -1,17 +1,19 @@
 <?php
-// /modules/procurement/project_context.php
-// Bridging legacy context to Project Microservice
+/**
+ * modules/procurement/project_context.php
+ * 
+ * Migration Bridge for Procurement Module.
+ */
 
-if (session_status() === PHP_SESSION_NONE) session_start();
-require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/../../core/Context.php';
 
-class ProjectContext {
-    public static function getProjectId() {
-        return $_SESSION['current_project_id'] ?? 0;
+/**
+ * Get the database connection (Legacy Mock support)
+ */
+function getProcurementConnection() {
+    global $conn;
+    if (!isset($conn)) {
+        require_once __DIR__ . '/../../config/database.php';
     }
-    
-    public static function getProjectDetails($id) {
-        $res = ApiHelper::get("project/projects/$id");
-        return $res['data']['project'] ?? null;
-    }
+    return $conn;
 }

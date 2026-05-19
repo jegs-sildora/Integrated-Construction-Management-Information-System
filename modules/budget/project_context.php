@@ -1,12 +1,19 @@
 <?php
-// /modules/budget/project_context.php
-// Bridging legacy context to Project Microservice
+/**
+ * modules/budget/project_context.php
+ * 
+ * Migration Bridge for Budget Module.
+ */
 
-if (session_status() === PHP_SESSION_NONE) session_start();
-require_once __DIR__ . '/../../core/ApiHelper.php';
+require_once __DIR__ . '/../../core/Context.php';
 
-class ProjectContext {
-    public static function getProjectId() {
-        return $_SESSION['current_project_id'] ?? 0;
+/**
+ * Get the database connection (Legacy Mock support)
+ */
+function getBudgetConnection() {
+    global $conn;
+    if (!isset($conn)) {
+        require_once __DIR__ . '/../../config/database.php';
     }
+    return $conn;
 }
