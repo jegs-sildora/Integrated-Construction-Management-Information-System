@@ -220,6 +220,16 @@ if (empty($_SESSION['csrf_token'])) {
          * This is useful for redirecting to the signup form from other pages with pre-filled data.
          */
         const urlParams = new URLSearchParams(window.location.search);
+        
+        // --- CONSOLE DEBUGGER ---
+        if (urlParams.has('error') || urlParams.has('debug')) {
+            console.group("ICMIS Gateway Debugger");
+            console.error("Error Message:", urlParams.get('error'));
+            console.warn("Debug Info:", urlParams.get('debug'));
+            console.info("Full URL:", window.location.href);
+            console.groupEnd();
+        }
+
         if (urlParams.has('signup_name')) {
             toggleForm('signup');
         }
