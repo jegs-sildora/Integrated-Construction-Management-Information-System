@@ -22,12 +22,14 @@ try {
     $project_service_url = $project_service_base . '/api/v1/phases.php?project_id=' . $project_id;
     $ch = curl_init($project_service_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_TIMEOUT, 5);
     $project_res = curl_exec($ch);
     $project_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     if ($project_status !== 200) {
-        throw new Exception("Could not fetch phases from Project Service (Status: $project_status)");
+        $err = curl_error($ch);
+        throw new Exception("Could not fetch phases from Project Service (Status: $project_status, URL: $project_service_url, Error: $err)");
     }
 
     $project_data = json_decode($project_res, true);
