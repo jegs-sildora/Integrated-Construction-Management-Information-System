@@ -51,13 +51,21 @@ try {
 
             // Inter-service Validation
             $project_service_base = rtrim(getenv('PROJECT_SERVICE_URL') ?: 'http://project-service', '/');
-            $ch = curl_init($project_service_base . '/api/v1/projects.php?fetch_id=' . $project_id);
+            $url = $project_service_base . '/api/v1/projects.php?fetch_id=' . $project_id;
+            $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
             $res = curl_exec($ch);
+            $info = curl_getinfo($ch);
+            curl_close($ch);
+            
+            if ($res === false || $info['http_code'] !== 200) {
+                throw new Exception("Inter-service validation failed for $url");
+            }
             $proj_data = json_decode($res, true);
             if (!isset($proj_data['success']) || !$proj_data['success']) {
-                throw new Exception("Invalid Project ID: Project does not exist in Project Service");
+                throw new Exception("Validation Error: " . ($proj_data['message'] ?? 'Invalid Project ID'));
             }
 
             $db->beginTransaction();
