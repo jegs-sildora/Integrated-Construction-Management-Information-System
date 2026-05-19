@@ -64,4 +64,4 @@ ini_set('date.timezone', 'Asia/Manila');
 // 5. Error Reporting
 error_reporting(E_ALL & ~E_DEPRECATED);
 ini_set('display_errors', 0); 
-?>
+
