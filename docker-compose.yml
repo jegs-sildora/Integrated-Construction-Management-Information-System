@@ -34,6 +34,14 @@ services:
     build: ./services/gateway
     ports:
       - "8000:80"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service
+      - PROJECT_SERVICE_URL=http://project-service
+      - BUDGET_SERVICE_URL=http://budget-service
+      - PROCUREMENT_SERVICE_URL=http://procurement-service
+      - WORKFORCE_SERVICE_URL=http://workforce-service
+      - REPORTS_SERVICE_URL=http://reports-service
+      - ADMIN_SERVICE_URL=http://admin-service
     volumes:
       - ./services/gateway:/var/www/html
       - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/dev.ini
