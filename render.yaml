@@ -13,17 +13,19 @@ services:
     healthCheckPath: /
     envVars:
       - key: AUTH_SERVICE_URL
-        value: http://icmis-auth:10000
+        value: https://icmis-auth.onrender.com
       - key: PROJECT_SERVICE_URL
-        value: http://icmis-project:10000
+        value: https://icmis-project.onrender.com
       - key: BUDGET_SERVICE_URL
-        value: http://icmis-budget:10000
+        value: https://icmis-budget.onrender.com
       - key: PROCUREMENT_SERVICE_URL
-        value: http://icmis-procurement:10000
+        value: https://icmis-procurement.onrender.com
       - key: WORKFORCE_SERVICE_URL
-        value: http://icmis-workforce:10000
+        value: https://icmis-workforce.onrender.com
       - key: REPORTS_SERVICE_URL
-        value: http://icmis-reports:10000
+        value: https://icmis-reports.onrender.com
+      - key: ADMIN_SERVICE_URL
+        value: https://icmis-admin.onrender.com
 
   # ----------------------------------------------------------------------------
   # 2. AUTH SERVICE (Private)
@@ -101,7 +103,12 @@ services:
         fromDatabase:
           name: icmis-workforce-db
           property: connectionString
+      - key: AUTH_SERVICE_URL
+        value: https://icmis-auth.onrender.com
+      - key: PROJECT_SERVICE_URL
+        value: https://icmis-project.onrender.com
 
+  # ----------------------------------------------------------------------------
   # ----------------------------------------------------------------------------
   # 7. REPORTS SERVICE (Private)
   # ----------------------------------------------------------------------------
@@ -115,9 +122,32 @@ services:
         fromDatabase:
           name: icmis-reports-db
           property: connectionString
+      - key: AUTH_SERVICE_URL
+        value: https://icmis-auth.onrender.com
+      - key: PROJECT_SERVICE_URL
+        value: https://icmis-project.onrender.com
 
   # ----------------------------------------------------------------------------
-  # 8. FRONTEND (Public Monolith UI)
+  # 8. ADMIN SERVICE (Private)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: icmis-admin
+    env: php
+    plan: starter
+    rootDir: services/admin
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icmis-auth-db # Admin shares Auth DB or has its own? PRD says isolated. 
+          # Actually, Admin usually checks audit logs from all or has its own. 
+          # Let's use auth-db for now if it manages users, or create icmis-admin-db.
+          # For consistency with earlier migrations, let's assume it has its own.
+          property: connectionString
+      - key: AUTH_SERVICE_URL
+        value: https://icmis-auth.onrender.com
+
+  # ----------------------------------------------------------------------------
+  # 9. FRONTEND (Public Monolith UI)
   # ----------------------------------------------------------------------------
   - type: web
     name: icmis-frontend
@@ -166,4 +196,9 @@ databases:
   - name: icmis-reports-db
     plan: starter
     databaseName: reports
+    user: icmis_user
+
+  - name: icmis-admin-db
+    plan: starter
+    databaseName: admin
     user: icmis_user
