@@ -10,3 +10,8 @@ RUN a2enmod rewrite
 # Copy local code to the container
 COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html
+
+# Use a custom entrypoint to set the port at runtime
+CMD sed -i "s/Listen 80/Listen ${PORT:-80}/g" /etc/apache2/ports.conf && \
+    sed -i "s/:80/:${PORT:-80}/g" /etc/apache2/sites-available/000-default.conf && \
+    apache2-foreground

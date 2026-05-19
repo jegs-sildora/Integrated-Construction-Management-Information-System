@@ -25,21 +25,33 @@ $method     = $_SERVER['REQUEST_METHOD'];
 
 // Standardize route parsing
 $path = parse_url($requestUri, PHP_URL_PATH);
+
+// --- HEALTH CHECK & HEARTBEAT ---
+if ($path === '/' || $path === '/health') {
+    http_response_code(200);
+    die(json_encode(['status' => 'online', 'service' => 'icmis-gateway', 'timestamp' => date('Y-m-d H:i:s')]));
+}
+
 $parts = explode('/', trim($path, '/'));
 
 if (count($parts) < 3 || $parts[0] !== 'api' || $parts[1] !== 'v1') {
     http_response_code(404);
-    die(json_encode(['success' => false, 'error' => 'Route mismatch']));
+    die(json_encode(['success' => false, 'error' => 'Route mismatch', 'path' => $path]));
 }
 
 $serviceKey = $parts[2];
 if (!isset($services[$serviceKey])) {
     http_response_code(404);
-    die(json_encode(['success' => false, 'error' => 'Service unknown']));
+    die(json_encode(['success' => false, 'error' => 'Service unknown', 'service' => $serviceKey]));
 }
 
 $subPath = implode('/', array_slice($parts, 3)) ?: 'index';
-$targetUrl = $services[$serviceKey] . '/api/v1/' . $subPath . '.php';
+
+// Fix: Prevent double .php if already provided in URI
+$targetUrl = $services[$serviceKey] . '/api/v1/' . $subPath;
+if (!str_ends_with($subPath, '.php')) {
+    $targetUrl .= '.php';
+}
 
 if (!empty($_SERVER['QUERY_STRING'])) {
     $targetUrl .= '?' . $_SERVER['QUERY_STRING'];

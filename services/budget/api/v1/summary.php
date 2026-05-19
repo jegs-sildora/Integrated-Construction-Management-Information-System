@@ -6,10 +6,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
-use Budget\Database;
-
-$db = new Database();
-$conn = $db->getConnection();
+$conn = Database::getConnection();
 
 $project_id = isset($_GET['project_id']) ? intval($_GET['project_id']) : 0;
 

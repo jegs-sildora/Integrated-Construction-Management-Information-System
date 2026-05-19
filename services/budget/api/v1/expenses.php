@@ -5,8 +5,6 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
-use Budget\Database;
-
 $db = Database::getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -35,6 +33,24 @@ try {
             $stmt = $db->prepare($sql);
             $stmt->execute([$input['project_id'], $input['phase_id'], $input['category'], $input['description'], $input['amount'], $input['expense_date'] ?? date('Y-m-d')]);
             echo json_encode(['success' => true, 'expense_id' => $stmt->fetchColumn()]);
+            break;
+
+        case 'PUT':
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = $input['expense_id'] ?? null;
+            if (!$id) throw new Exception("ID required");
+            $sql = "UPDATE budget_expenses SET category = ?, description = ?, amount = ?, expense_date = ?, status = ? WHERE expense_id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$input['category'], $input['description'], $input['amount'], $input['expense_date'], $input['status'], $id]);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'DELETE':
+            $id = $_GET['id'] ?? null;
+            if (!$id) throw new Exception("ID required");
+            $stmt = $db->prepare("DELETE FROM budget_expenses WHERE expense_id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true]);
             break;
     }
 } catch (Exception $e) {

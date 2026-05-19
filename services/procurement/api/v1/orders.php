@@ -5,7 +5,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
-use Procurement\Database;
+
 
 $db = Database::getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -23,19 +23,19 @@ try {
                 $order = $stmt->fetch();
                 
                 if ($order) {
-                    $stmtItems = $db->prepare("SELECT * FROM po_items WHERE po_id = ?");
+                    $stmtItems = $db->prepare("SELECT * FROM purchase_order_items WHERE po_id = ?");
                     $stmtItems->execute([$id]);
                     $order['items'] = $stmtItems->fetchAll();
                 }
 
                 echo json_encode(['success' => (bool)$order, 'order' => $order]);
             } elseif (isset($_GET['action']) && $_GET['action'] === 'approved') {
-                $stmt = $db->prepare("SELECT po_id, po_reference FROM purchase_orders WHERE status = 'Approved' ORDER BY po_reference ASC");
+                $stmt = $db->prepare("SELECT po_id, po_reference FROM purchase_orders WHERE status = 'APPROVED' ORDER BY po_reference ASC");
                 $stmt->execute();
                 echo json_encode(['success' => true, 'orders' => $stmt->fetchAll()]);
             } else {
                 $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 50;
-                $stmt = $db->prepare("SELECT o.*, s.supplier_name FROM purchase_orders o LEFT JOIN suppliers s ON o.supplier_id = s.supplier_id ORDER BY o.created_at DESC LIMIT ?");
+                $stmt = $db->prepare("SELECT o.*, s.supplier_name FROM purchase_orders o LEFT JOIN suppliers s ON o.supplier_id = s.supplier_id ORDER BY o.po_id DESC LIMIT ?");
                 $stmt->execute([$limit]);
                 echo json_encode(['success' => true, 'orders' => $stmt->fetchAll()]);
             }
@@ -50,15 +50,15 @@ try {
             $stmt = $db->prepare($sql);
             $stmt->execute([
                 $input['po_reference'], $input['supplier_id'], $input['project_id'], 
-                $input['order_date'] ?? date('Y-m-d'), $input['total_amount'], $input['status'] ?? 'Pending'
+                $input['order_date'] ?? date('Y-m-d'), $input['total_amount'], $input['status'] ?? 'PENDING'
             ]);
             $poId = $stmt->fetchColumn();
 
             if (isset($input['items']) && is_array($input['items'])) {
-                $itemSql = "INSERT INTO po_items (po_id, item_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)";
+                $itemSql = "INSERT INTO purchase_order_items (po_id, item_name, quantity, unit_cost, total_cost) VALUES (?, ?, ?, ?, ?)";
                 $itemStmt = $db->prepare($itemSql);
                 foreach ($input['items'] as $item) {
-                    $itemStmt->execute([$poId, $item['name'], $item['quantity'], $item['unit_price'], $item['quantity'] * $item['unit_price']]);
+                    $itemStmt->execute([$poId, $item['item_name'] ?? $item['name'], $item['quantity'], $item['unit_cost'] ?? $item['unit_price'], ($item['quantity'] * ($item['unit_cost'] ?? $item['unit_price']))]);
                 }
             }
             
@@ -90,3 +90,4 @@ try {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
+

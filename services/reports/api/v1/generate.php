@@ -11,7 +11,13 @@ header('Content-Type: application/json');
 // Helper for internal service calls
 function callService($service, $endpoint, $method = 'GET', $data = null) {
     $baseUrl = getenv(strtoupper($service) . '_SERVICE_URL') ?: "http://$service-service";
-    $url = "$baseUrl/api/v1/$endpoint.php";
+    
+    // Split endpoint into path and query
+    $parts = explode('?', $endpoint);
+    $path = $parts[0];
+    $query = isset($parts[1]) ? '?' . $parts[1] : '';
+    
+    $url = "$baseUrl/api/v1/{$path}.php$query";
     
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

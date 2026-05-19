@@ -5,7 +5,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
-use Procurement\Database;
+
 
 $db = Database::getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -27,9 +27,9 @@ try {
 
         case 'POST':
             $input = json_decode(file_get_contents('php://input'), true);
-            $sql = "INSERT INTO suppliers (supplier_name, contact_person, email, phone, address) VALUES (?, ?, ?, ?, ?) RETURNING supplier_id";
+            $sql = "INSERT INTO suppliers (supplier_name, contact_person, email, contact_number, address) VALUES (?, ?, ?, ?, ?) RETURNING supplier_id";
             $stmt = $db->prepare($sql);
-            $stmt->execute([$input['supplier_name'], $input['contact_person'], $input['email'], $input['phone'], $input['address']]);
+            $stmt->execute([$input['supplier_name'], $input['contact_person'], $input['email'], $input['contact_number'] ?? $input['phone'], $input['address']]);
             echo json_encode(['success' => true, 'supplier_id' => $stmt->fetchColumn()]);
             break;
 
@@ -37,9 +37,9 @@ try {
             $input = json_decode(file_get_contents('php://input'), true);
             $id = $input['supplier_id'] ?? null;
             if (!$id) throw new Exception("Supplier ID required");
-            $sql = "UPDATE suppliers SET supplier_name = ?, contact_person = ?, email = ?, phone = ?, address = ? WHERE supplier_id = ?";
+            $sql = "UPDATE suppliers SET supplier_name = ?, contact_person = ?, email = ?, contact_number = ?, address = ? WHERE supplier_id = ?";
             $stmt = $db->prepare($sql);
-            $stmt->execute([$input['supplier_name'], $input['contact_person'], $input['email'], $input['phone'], $input['address'], $id]);
+            $stmt->execute([$input['supplier_name'], $input['contact_person'], $input['email'], $input['contact_number'] ?? $input['phone'], $input['address'], $id]);
             echo json_encode(['success' => true]);
             break;
 
@@ -55,3 +55,4 @@ try {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
+

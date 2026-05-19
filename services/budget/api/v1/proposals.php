@@ -5,8 +5,6 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
-use Budget\Database;
-
 $db = Database::getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 

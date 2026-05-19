@@ -5,7 +5,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../Database.php';
 
-use Procurement\Database;
+
 
 $db = Database::getConnection();
 
@@ -32,3 +32,4 @@ try {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
+

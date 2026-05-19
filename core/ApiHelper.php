@@ -32,7 +32,7 @@ class ApiHelper {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
         
         if ($data !== null && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));

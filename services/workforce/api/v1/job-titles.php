@@ -11,9 +11,9 @@ require_once __DIR__ . '/../../Database.php';
 try {
     $db = Database::getConnection();
     
-    $sql = "SELECT job_title_id, title_name, department, default_daily_rate, default_monthly_salary, status 
+    $sql = "SELECT job_title_id, title_name, department, default_daily_rate, default_monthly_salary, is_active 
             FROM job_titles 
-            WHERE status = 'Active' 
+            WHERE is_active = TRUE 
             ORDER BY title_name ASC";
             
     $stmt = $db->query($sql);
