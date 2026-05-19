@@ -1,24 +1,16 @@
 <?php
 /**
  * Sidebar component
- *
- * Responsibilities:
- * - Render the main app navigation.
- * - Preserve an optional `project_id` context and append it to module links when present.
- * - Provide responsive behavior: the sidebar is hidden on small screens and can be toggled
- *   via the header's mobile button. CSS classes `sidebar-closed` and `sidebar-open` control
- *   the mobile slide animation.
+ * v1.8 - Dynamic Paths Fixed
  */
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Determine current page/URI for active link highlighting
 $current_page = basename($_SERVER['PHP_SELF']);
 $current_uri = $_SERVER['REQUEST_URI'];
 
-// Preserve project context (priority: URL param > session)
 $active_project_id = 0;
 if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
     $active_project_id = intval($_GET['project_id']);
@@ -29,17 +21,18 @@ if (isset($_GET['project_id']) && !empty($_GET['project_id'])) {
 
 $project_qs = ($active_project_id > 0) ? '?project_id=' . $active_project_id : '';
 
-// Quick path helpers
-$root_path = '/icmis/';
-$budget_path = '/icmis/modules/budget/';
-$procurement_path = '/icmis/modules/procurement/';
-$workforce_path = '/icmis/modules/workforce/';
-$project_path = '/icmis/modules/project/';
-$reports_path = '/icmis/modules/reports/';
-$logs_path = '/icmis/modules/admin/';
-$admin_path = '/icmis/modules/admin/';
+// --- DYNAMIC PATH RESOLUTION ---
+$base = defined('BASE_URL') ? BASE_URL : '/';
+$root_path = $base;
+$budget_path = $base . 'modules/budget/';
+$procurement_path = $base . 'modules/procurement/';
+$workforce_path = $base . 'modules/workforce/';
+$project_path = $base . 'modules/project/';
+$reports_path = $base . 'modules/reports/';
+$admin_path = $base . 'modules/admin/';
+$logs_path = $admin_path;
 
-// Active-state booleans used to style current section
+// Active-state logic remains the same...
 $is_main_dashboard = ($current_page === 'dashboard.php' && strpos($current_uri, '/modules/') === false);
 $is_projects = (strpos($current_uri, '/modules/project/') !== false);
 $is_budget = strpos($current_uri, '/modules/budget/') !== false;
@@ -167,7 +160,6 @@ $is_audit_logs = (strpos($current_uri, '/modules/admin/audit_logs.php') !== fals
             </li>
 
             <?php 
-            // Audit Logs - Only visible to Admin users
             $user_role = $_SESSION['user_role'] ?? '';
             if (strtolower($user_role) === 'admin'): 
             ?>
@@ -187,8 +179,6 @@ $is_audit_logs = (strpos($current_uri, '/modules/admin/audit_logs.php') !== fals
         const submenu = document.getElementById(id);
         if (submenu) {
             submenu.classList.toggle('hidden');
-            
-            // Rotate the arrow icon if present
             const arrow = button.querySelector('svg:last-child');
             if (arrow && arrow !== button.querySelector('svg:first-child')) {
                 arrow.classList.toggle('rotate-180');
@@ -197,33 +187,12 @@ $is_audit_logs = (strpos($current_uri, '/modules/admin/audit_logs.php') !== fals
     }
     </script>
     <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #d1d5db; 
-            border-radius: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af; 
-        }
-        /* Sidebar slide animation for small screens */
-        .sidebar-closed {
-            transform: translateX(-100%);
-            transition: transform 320ms cubic-bezier(.22,.99,.39,1);
-        }
-        .sidebar-open {
-            transform: translateX(0);
-            transition: transform 320ms cubic-bezier(.22,.99,.39,1);
-        }
-        @media (min-width: 768px) {
-            .sidebar-closed, .sidebar-open {
-                transform: none !important;
-                transition: none !important;
-            }
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .sidebar-closed { transform: translateX(-100%); transition: transform 320ms cubic-bezier(.22,.99,.39,1); }
+        .sidebar-open { transform: translateX(0); transition: transform 320ms cubic-bezier(.22,.99,.39,1); }
+        @media (min-width: 768px) { .sidebar-closed, .sidebar-open { transform: none !important; transition: none !important; } }
     </style>
 </aside>

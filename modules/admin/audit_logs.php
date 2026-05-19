@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../core/ApiHelper.php';
 
 // Access Control - Admin Only
 if (!isset($_SESSION['user_id'])) {
-    header('Location: /icmis/index.php?error=not_logged_in');
+    header('Location: /index.php?error=not_logged_in');
     exit;
 }
 

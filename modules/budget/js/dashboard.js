@@ -6,7 +6,7 @@
       sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
       return;
     }
-    fetch('/icmis/includes/toast.php', {
+    fetch('/includes/toast.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, type })
@@ -135,7 +135,7 @@
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     try {
-      const response = await fetch(`budget_expenses/get_phase_budget_proposals.php?project_id=${SELECTED_PROJECT_ID}&phase=${encodeURIComponent(phaseName)}`);
+      const response = await fetch(`api/get_phase_budget_proposals.php?project_id=${SELECTED_PROJECT_ID}&phase=${encodeURIComponent(phaseName)}`);
       const result = await response.json();
 
       if (result.success && result.proposals.length > 0) {
@@ -196,7 +196,7 @@
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     try {
-      const response = await fetch(`budget_expenses/get_phase_expenses.php?project_id=${SELECTED_PROJECT_ID}&phase=${encodeURIComponent(phaseName)}`);
+      const response = await fetch(`api/get_phase_expenses.php?project_id=${SELECTED_PROJECT_ID}&phase=${encodeURIComponent(phaseName)}`);
       const result = await response.json();
 
       if (result.success && result.expenses.length > 0) {

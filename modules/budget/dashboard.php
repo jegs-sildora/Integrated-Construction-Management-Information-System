@@ -321,7 +321,7 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
               <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-gray-100 p-2">
-                  <img src="/icmis/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+                  <img src="/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
               </div>
             <div>
               <h3 class="text-2xl font-bold text-white">Phase Budget Details</h3>
@@ -341,7 +341,7 @@
           <div class="border-b-2 border-dashed border-gray-300 p-6 text-center">
             <div class="flex justify-center mb-3">
                 <div class="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-gray-100 p-2">
-                  <img src="/icmis/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+                  <img src="/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
                 </div>
             </div>
             <h2 class="text-2xl font-bold text-gray-900">ICMIS</h2>

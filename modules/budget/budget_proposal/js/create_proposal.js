@@ -6,7 +6,7 @@
             sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
             return;
         }
-        fetch('/icmis/includes/toast.php', {
+        fetch('/includes/toast.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message, type })
@@ -638,7 +638,7 @@
 
         console.log('Submitting data:', data);
 
-        fetch('http://localhost/icmis/modules/budget/budget_proposal/save_proposal.php', {
+        fetch('/modules/budget/api/save_proposal.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

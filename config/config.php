@@ -43,7 +43,7 @@ if ($is_docker) {
     $base_dir = str_replace(['/config/config.php', '\\config\\config.php'], '', $script_name);
     $base_dir = trim($base_dir, '/');
     
-    define('BASE_URL', $protocol . 'localhost/icmis/'); 
+    define('BASE_URL', $protocol . 'localhost/'); 
     define('GATEWAY_URL', 'http://localhost:8000/api/v1/');
 }
 

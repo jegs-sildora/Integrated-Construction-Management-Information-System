@@ -152,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       // Try fetching from API (use absolute path to avoid relative dupes)
       const res = await fetch(
-        "/icmis/modules/workforce/api/get_form_options.php",
+        "/modules/workforce/api/get_form_options.php",
       );
       const text = await res.text();
       let j = null;

@@ -1,13 +1,13 @@
 /**
  * Payroll Expenses Logic
  * Location: /budget/js/payroll_expenses.js
- * Backend: /budget/budget_expenses/get_payroll_expense_details.php
+ * Backend: /budget/api/get_payroll_expense_details.php
  */
 
 const PayrollExpenses = {
     // Configuration for endpoints
     api: {
-        details: 'budget_expenses/get_payroll_expense_details.php'
+        details: 'api/get_payroll_expense_details.php'
     },
 
     // Open the modal and fetch details

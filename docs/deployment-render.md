@@ -134,3 +134,4 @@ DATABASE_URL: postgresql://icmis_db_main_user:EsOtnq65XnAEFjhBubkvJlzfaFqTGv7b@d
 PROJECT_SERVICE_URL: http://icmis-project
 AUTH_SERVICE_URL: http://icmis-auth
 
+PORT: 80

@@ -4,7 +4,7 @@ function showToastAjax(message, type = 'success', persist = false) {
         sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
         return;
     }
-    fetch('/icmis/includes/toast.php', {
+    fetch('/includes/toast.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, type })
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
         proposalSelect.addEventListener('change', function() {
             const pid = this.value;
             if (!pid) return;
-            fetch(`/icmis/modules/budget/budget_proposal/get_proposal_details.php?id=${pid}`)
+            fetch(`/modules/budget/budget_proposal/get_proposal_details.php?id=${pid}`)
                 .then(res => res.json())
                 .then(resp => {
                     if (!resp.success) return showToastAjax('Failed to load proposal', 'error');

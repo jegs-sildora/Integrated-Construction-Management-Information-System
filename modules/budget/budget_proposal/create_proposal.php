@@ -320,7 +320,7 @@ $pageSection = "Budget & Cost Control";
 
                     <div class="flex items-center mb-6">
                         <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-md p-1.5 mr-4 border border-gray-100">
-                            <img src="/icmis/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
+                            <img src="/assets/images/nobg_logo.png" alt="ICMIS Logo" class="w-full h-full object-contain">
                         </div>
                         <div>
                             <h2 class="text-xl font-bold text-gray-900">ICMIS</h2>

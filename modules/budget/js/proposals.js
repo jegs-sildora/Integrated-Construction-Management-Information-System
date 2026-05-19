@@ -6,7 +6,7 @@ function showToastAjax(message, type = 'success', persist = false) {
         sessionStorage.setItem('pendingToast', JSON.stringify({ message, type }));
         return;
     }
-    fetch('/icmis/includes/toast.php', {
+    fetch('/includes/toast.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, type })
@@ -49,7 +49,7 @@ function confirmDelete() {
     Deleting...
   `;
 
-  fetch('budget_proposal/delete_proposal.php', {
+  fetch('api/delete_proposal.php', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
